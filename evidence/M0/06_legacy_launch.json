@@ -1,0 +1,37 @@
+{
+  "contract": "NemoHostContract/v0",
+  "receipt_id": "rcpt_9bc1fadf0b5749a6",
+  "request_digest": "sha256:2b3fa0a4ea002a2fa7561ff00a425fa2c33d20c6665d4061dd4b3682a49da474",
+  "request_id": "req_5ea97fbf0a8a43a5",
+  "host": {
+    "host_id": "win98-retrobox",
+    "display_name": "RetroBox (Windows 98 SE)",
+    "os_family": "windows",
+    "os_release": "98-se",
+    "engine": "dos-bridge/0.1",
+    "contract": "NemoHostContract/v0"
+  },
+  "capability": "apps.launch",
+  "subject": "mobile:iphone-danny",
+  "lease_id": "lease_4256954ede2341e8",
+  "decision": {
+    "decision": "ALLOW",
+    "reason": null,
+    "detail": ""
+  },
+  "started_at": 1789676756.1157298,
+  "ended_at": 1789676756.1157298,
+  "result": {
+    "app": "DOOM.EXE",
+    "pid": null,
+    "note": "no pid table on this engine"
+  },
+  "effects": [
+    {
+      "kind": "process.spawn",
+      "app": "DOOM.EXE"
+    }
+  ],
+  "evidence": "DEMONSTRATED",
+  "seal": "sha256:197d7a4960a6577874ab5180bdbfb31f1883cdec96e9e3df31f85961f99efdbb"
+}

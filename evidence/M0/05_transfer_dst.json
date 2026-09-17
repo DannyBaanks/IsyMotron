@@ -1,0 +1,37 @@
+{
+  "contract": "NemoHostContract/v0",
+  "receipt_id": "rcpt_02091ddbdf8b4e94",
+  "request_digest": "sha256:6db477e572b3cb573c34174c5188ce9b4c85af40f3e0aa9dab1649c7ff7a84ae",
+  "request_id": "req_d98ad3a7d83c4e42",
+  "host": {
+    "host_id": "win98-retrobox",
+    "display_name": "RetroBox (Windows 98 SE)",
+    "os_family": "windows",
+    "os_release": "98-se",
+    "engine": "dos-bridge/0.1",
+    "contract": "NemoHostContract/v0"
+  },
+  "capability": "filesystem.write",
+  "subject": "mobile:iphone-danny",
+  "lease_id": "lease_074ab1c70b2243a5",
+  "decision": {
+    "decision": "ALLOW",
+    "reason": null,
+    "detail": ""
+  },
+  "started_at": 1789676756.1157298,
+  "ended_at": 1789676756.1157298,
+  "result": {
+    "path": "C:\\NEMO\\INBOX\\SHOT.PNG",
+    "overwrote": false
+  },
+  "effects": [
+    {
+      "kind": "fs.write",
+      "path": "C:/NEMO/INBOX/SHOT.PNG",
+      "bytes": 7
+    }
+  ],
+  "evidence": "DEMONSTRATED",
+  "seal": "sha256:446b6d02f454a97366755764dd72fb42f592d36d903650cf919c5f36d5d08770"
+}
