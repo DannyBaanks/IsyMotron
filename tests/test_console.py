@@ -241,3 +241,11 @@ def test_state_reports_scopes_and_awareness(console):
     granted = {c["id"]: c["state"] for c in host["capabilities"]}
     assert granted["filesystem.read"] == "GRANTED"
     assert granted["process.inspect"] == "AVAILABLE"
+
+
+def test_the_avatar_token_reads_the_state(console):
+    """R5's read side: the avatar token reads /api/state and /api/avatar,
+    and its writes are refused (asserted in test_avatar_authority.py)."""
+    state, base = console
+    s = get(base, "/api/state", token=state.avatar_token)
+    assert s["tier"] == "local"

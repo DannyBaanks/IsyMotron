@@ -33,7 +33,9 @@ def _bootstrap_paths() -> str:
 
 ROOT = _bootstrap_paths()
 
-from console.server import ConsoleState, lan_address, serve   # noqa: E402
+from console.server import (ConsoleState, lan_address, serve,  # noqa: E402
+                            write_avatar_token)
+from avatar.inbox import InboxTail, resolve_inbox_path, spawn_poller  # noqa: E402
 from isymotron.awareness import HostAwarenessEngine           # noqa: E402
 from relay.loopback import LoopbackRelay                      # noqa: E402
 
@@ -133,6 +135,28 @@ def main(argv=None) -> int:
     print(f"  grants {grants_path}")
 
     state = ConsoleState(relay, awareness, grants_path, factory)
+
+    # The authority channel (AV3). One `mode` event at start; the open channel
+    # reader as a daemon thread. The avatar token goes to a file only local
+    # processes read -- never argv, never a printed URL (R5).
+    provider_label = "none"
+    if factory is not None:
+        try:
+            provider_label = factory().label
+        except Exception:
+            provider_label = "unknown"
+    state.avatar.publish_authority("mode", state="idle", provider=provider_label)
+
+    inbox_path = resolve_inbox_path()
+    spawn_poller(InboxTail(state.avatar, inbox_path))
+    print(f"  {DIM}avatar inbox {inbox_path}{OFF}")
+
+    try:
+        token_path = write_avatar_token(state.avatar_token)
+        print(f"  {DIM}avatar token {token_path}{OFF}")
+    except OSError as exc:
+        print(f"  {DIM}avatar token not written: {exc}{OFF}")
+
     try:
         httpd, url = serve(state, port=args.port, lan=args.lan)
     except OSError as exc:

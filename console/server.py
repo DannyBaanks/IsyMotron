@@ -28,11 +28,14 @@ import os
 import secrets
 import socket
 import threading
+import time
 import urllib.parse
 from typing import Any, Callable
 
+from avatar.model import AvatarBus
 from isymotron.attribution import Attribution
 from isymotron.awareness import HostAwarenessEngine
+from isymotron.resources import fs_roots, to_uri
 from isymotron.verdicts import Decision
 from relay.loopback import LoopbackRelay
 
@@ -48,6 +51,35 @@ SERVABLE = {
     "favicon.svg": "image/svg+xml",
 }
 
+#: Awareness event types that become avatar `host` events (contract §3.1:
+#: suspend / network change). PROCESS_STARTED etc. are noise to a pet.
+HOST_EVENT_KINDS = {
+    "HOST_SUSPEND_REQUESTED", "HOST_RESUMED",
+    "NETWORK_UP", "NETWORK_DOWN", "NETWORK_CHANGED",
+}
+
+
+def avatar_token_path() -> str:
+    """Where the read-only avatar token lives (AV3).
+
+    Overridable for tests via ISYMOTRON_AVATAR_TOKEN_PATH; the product path is
+    %LOCALAPPDATA%\\IsyMotron\\session\\avatar.token. Never argv, never a URL
+    printed to the console (R5).
+    """
+    override = os.environ.get("ISYMOTRON_AVATAR_TOKEN_PATH")
+    if override:
+        return override
+    local = os.environ.get("LOCALAPPDATA") or ""
+    return os.path.join(local, "IsyMotron", "session", "avatar.token")
+
+
+def write_avatar_token(token: str, path: str | None = None) -> str:
+    path = path or avatar_token_path()
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(token)
+    return path
+
 
 class ConsoleState:
     """Everything the console can see. Assembled once, read many times."""
@@ -62,7 +94,13 @@ class ConsoleState:
         self.subject = subject
         self.receipts: list[dict] = []
         self.token = secrets.token_urlsafe(24)
+        # The avatar is a representation, never an authority
+        # (docs/AVATAR_CONTRACT.md). It gets a second token: read-only in
+        # effect, refused on every POST (R5).
+        self.avatar = AvatarBus()
+        self.avatar_token = secrets.token_urlsafe(24)
         self._lock = threading.Lock()
+        self._emitted_awareness: set[str] = set()
 
     # -- reads --------------------------------------------------------------
     def snapshot(self) -> dict:
@@ -100,11 +138,58 @@ class ConsoleState:
         if self.awareness is None:
             return None
         snap = self.awareness.snapshot()
+        for event in self.awareness.recent_events(limit=12):
+            if event.event_id in self._emitted_awareness:
+                continue
+            if event.event_type not in HOST_EVENT_KINDS:
+                continue
+            self._emitted_awareness.add(event.event_id)
+            self.avatar.publish_authority(
+                "host", host_id=event.host_id, awareness_event=event.event_id,
+                event_type=event.event_type.value, state="waiting",
+                text=f"host report: {event.event_type.value} on {event.host_id}")
         return {
             "snapshot": snap.to_dict(),
             "health": self.awareness.health(),
             "events": [e.to_dict() for e in self.awareness.recent_events(limit=12)],
         }
+
+    # -- avatar producers (the authority channel) ---------------------------
+    def _logical_detail(self, host_id: str, capability: str, params: Any) -> str:
+        """R6: authority details are logical. A path param resolves to its
+        granted hostfs:// name; anything that does not resolve stays unnamed.
+        A physical path never reaches a renderer."""
+        if not isinstance(params, dict):
+            return capability
+        path = params.get("path")
+        if isinstance(path, str):
+            scope = self._scopes_for(host_id).get(capability, {})
+            uri = to_uri(path, fs_roots(scope))
+            if uri:
+                return f"{capability} on {uri}"
+        return capability
+
+    def _verdict_event(self, host_id: str, capability: str, decision: dict,
+                       receipt_id, seal_ok, params: Any = None) -> None:
+        """One verdict visual, straight from a real receipt. Only code that
+        held an ExecutionReceipt calls this -- never an inbox line (R1/R2)."""
+        outcome = decision.get("decision")
+        reason = decision.get("reason")
+        allowed = outcome == "ALLOW"
+        detail = self._logical_detail(host_id, capability, params)
+        self.avatar.publish_authority(
+            "verdict",
+            host_id=host_id,
+            capability=capability,
+            decision=outcome,
+            reason=reason,
+            detail=detail,
+            receipt_id=receipt_id,
+            seal_ok=seal_ok,
+            state="success" if allowed else "error",
+            text=(f"The host allowed: {detail}" if allowed else
+                  f"The host refused: {detail}" + (f" ({reason})" if reason else "")),
+        )
 
     # -- writes -------------------------------------------------------------
     def execute(self, host_id: str, capability: str, params: dict) -> dict:
@@ -118,6 +203,8 @@ class ConsoleState:
                     "receipt_id": None, "seal_ok": None,
                 }
                 self.receipts.append(entry)
+                self._verdict_event(host_id, capability, decision.to_dict(),
+                                    None, None, params)
                 return entry
 
             from isymotron.contracts import ExecutionRequest
@@ -137,6 +224,8 @@ class ConsoleState:
                 "wall": rcpt.ended_at,
             }
             self.receipts.append(entry)
+            self._verdict_event(host_id, capability, rcpt.decision.to_dict(),
+                                rcpt.receipt_id, entry["seal_ok"], params)
             return entry
 
 
@@ -152,19 +241,27 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
     def _is_loopback(self) -> bool:
         return self.client_address[0] in ("127.0.0.1", "::1", "localhost")
 
-    def _authorized(self) -> bool:
-        """The session token, from a header or the query string.
+    def _token_kind(self) -> str | None:
+        """Which token this request carried: "session" or "avatar".
 
         Not a security boundary against someone already on this machine -- it
         is the thing that stops another page in the browser, or a stray device
         on the wifi, from driving the host. It is compared in constant time and
-        never logged.
+        never logged. The avatar token reads the two GET routes and is refused
+        on every POST (R5).
         """
         supplied = self.headers.get("X-IsyMotron-Token", "")
         if not supplied:
             q = urllib.parse.urlparse(self.path).query
             supplied = urllib.parse.parse_qs(q).get("t", [""])[0]
-        return secrets.compare_digest(supplied, self.state.token)
+        if secrets.compare_digest(supplied, self.state.token):
+            return "session"
+        if secrets.compare_digest(supplied, self.state.avatar_token):
+            return "avatar"
+        return None
+
+    def _authorized(self) -> bool:
+        return self._token_kind() is not None
 
     def _send(self, code: int, body: bytes, ctype: str) -> None:
         self.send_response(code)
@@ -211,6 +308,18 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
         if path == "/api/events":
             block = self.state._awareness_block()
             return self._json(block or {"error": "no awareness engine"})
+        if path == "/api/avatar":
+            q = urllib.parse.parse_qs(parsed.query)
+            try:
+                since = int(q.get("since", ["0"])[0])
+            except ValueError:
+                since = 0
+            view = self.state.avatar.view(time.time())
+            return self._json({
+                "events": self.state.avatar.since(since),
+                "view": {"state": view.state, "host_frame": view.host_frame,
+                         "third_party": view.third_party},
+            })
         return self._deny("not found", 404)
 
     def do_POST(self) -> None:
@@ -220,6 +329,11 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
             return self._deny("not found", 404)
         if not self._authorized():
             return self._deny("bad or missing session token", 401)
+        if self._token_kind() == "avatar":
+            # R5: the avatar holds no authority and asks for none. Its token
+            # reads; it never writes, on any route.
+            return self._deny("the avatar token is read-only: the avatar holds "
+                              "no authority (R5)", 403)
 
         length = int(self.headers.get("Content-Length") or 0)
         if length > 1_000_000:
@@ -311,16 +425,26 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
             return self._deny("intent is required", 400)
         descs = [self.state.relay._host(h["host_id"]).describe()
                  for h in self.state.relay.hosts()]
+        self.state.avatar.publish_authority(
+            "planning", state="thinking", text="the planner is thinking")
         try:
             plan = Planner(self.state.provider_factory()).plan(intent, descs,
                                                                max_tokens=2000)
         except PlanRejected as exc:
+            self.state.avatar.publish_authority(
+                "planned", state="waiting", text=f"plan refused: {exc.reason}")
             return self._json({"rejected": exc.reason, "detail": exc.detail}, 200)
         except ProviderError as exc:
             attribution = (exc.outcome.attribution.value if exc.outcome
                            else Attribution.UNKNOWN.value)
+            self.state.avatar.publish_authority(
+                "provider_error", state="error", text=str(exc),
+                status=exc.status, attribution=attribution)
             return self._json({"provider_error": str(exc), "status": exc.status,
                                "attribution": attribution}, 200)
+        self.state.avatar.publish_authority(
+            "planned", state="waiting",
+            text=f"plan {plan.verdict()}: {len(plan.steps)} step(s)")
         return self._json({"plan": plan.to_dict(), "verdict": plan.verdict()})
 
     def _run(self, body: dict) -> None:
@@ -337,6 +461,11 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:
             return self._deny(f"plan did not revalidate: {exc}", 400)
 
+        for i, step_spec in enumerate(plan.steps, 1):
+            self.state.avatar.publish_authority(
+                "step", index=i, host_id=step_spec.host,
+                capability=step_spec.capability, state="working",
+                text=f"step {i}: {step_spec.capability}")
         execution = Executor(self.state.relay, self.state.subject).run(plan)
         for step in execution.steps:
             self.state.receipts.append({
@@ -351,6 +480,10 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
                 "seal_ok": step.receipt.verify(),
                 "wall": step.receipt.ended_at,
             })
+            self.state._verdict_event(
+                step.request.host_id, step.request.capability,
+                step.receipt.decision.to_dict(), step.receipt.receipt_id,
+                step.receipt.verify(), step.request.params)
         return self._json(execution.to_dict())
 
 
