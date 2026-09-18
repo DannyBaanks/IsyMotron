@@ -37,7 +37,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 |---|---|---|---|
 | AV0 | Freeze architecture + contract | **DONE** | — |
 | AV1 | Pure avatar model (bus, channels, precedence) | **DONE** | AV0 |
-| AV2 | Open channel: inbox reader, companion-event-v1 | IN_PROGRESS | AV1 |
+| AV2 | Open channel: inbox reader, companion-event-v1 | **DONE** | AV1 |
 | AV3 | Authority channel: producers + `/api/avatar` | NOT_STARTED | AV1 |
 | AV4 | Web renderer in the console | NOT_STARTED | AV2, AV3 |
 | AV5 | Desktop renderer (Companion window, adapted) | NOT_STARTED | AV2, AV3 |
@@ -144,7 +144,16 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 - **Failure conditions:** reading the whole file on each poll (O(n) growth);
   any path where an inbox line reaches `publish_authority`.
 - **Commit boundary:** `AV2: open channel -- companion-event-v1 in, framed as third party`
-- **Result:** —
+- **Result:** `659e4b8`; 166 passed (161 + 5 new), `py -m pytest -q`; real run
+  (separate `cmd` process, `echo {...} >> inbox.jsonl`, poller daemon 250 ms):
+  event in `bus.since(0)` in **0.281 s** as
+  `{"seq": 1, "channel": "open", "agent": "opencode", "agent_verified": false,
+  "type": "say", "text": "hola desde un proceso aparte", "ttl": 8, "priority": 0}`;
+  backlog present at the tail's first sighting was **not** replayed
+  (`bus.since(0) == []`, 0 accepted); malformed lines counted, none raised.
+  Note: one test initially failed because it wrote the plugin line *before*
+  the tail's first sighting — that is backlog by definition (contract §1);
+  the test was reordered, the reader semantics did not change.
 
 ---
 
