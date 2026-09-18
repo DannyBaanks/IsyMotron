@@ -188,6 +188,20 @@ One claim of its own, and it is the reason the engine exists:
 > from inside the process. Corroborated by the Windows event log at 795 s.
 > See `docs/FINDINGS.md` #7, #8 and `docs/HOST_AWARENESS.md`.
 
+**M5 scope:** the console surface (`tests/test_console.py`, 17 passed) and the
+packaged binary. Highlights: `test_lan_cannot_grant` (a remote surface may use
+authority and never widen it), `test_lan_grant_does_not_touch_the_grant_file`,
+`test_only_allowlisted_files_are_served` (no directory walk, no traversal),
+`test_out_of_scope_execute_is_denied_with_no_payload`.
+
+The binary is self-verifying: `build_exe.py` starts it, confirms it serves and
+confirms it returns 401 without a token, and fails the build otherwise. That
+check exists because the first build compiled cleanly and died on launch.
+
+Windows 7 and earlier: **out of product scope**, on licensing grounds rather
+than technical ones. No legal copies are obtainable to test on, so any claim
+about them would be `NOT_DEMONSTRATED` regardless. Invariant 2.13.
+
 Platform status: Windows `DEMONSTRATED`; Linux `NOT_DEMONSTRATED` (documented
 seam, reports UNKNOWN); macOS `NOT_DEMONSTRATED` (no hardware, no stub);
 pre-suspend notification `NOT_DEMONSTRATED` (no message pump, never claimed).

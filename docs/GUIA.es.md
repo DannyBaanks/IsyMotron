@@ -549,3 +549,118 @@ por defecto. Ausencia de evidencia no es evidencia de que todo iba bien.
 - **macOS no existe aquí.** Sin hardware para demostrarlo, no hay ni stub.
 - **Hibernación y pausa de VM sin medir.** Deberían mover el sesgo igual.
   `UNKNOWN`, no "seguro que sí".
+
+---
+
+## 13. El ejecutable (M5)
+
+### 13.1 Compilarlo
+
+```
+python build_exe.py
+```
+
+Salida real:
+
+```
+  C:\Development\ISyCo Git\ISyMotron\dist\IsyMotron.exe
+  7.2 MB, built in 9s
+
+  smoke test...
+  serves /api/state, 1 host(s), tier local
+  refuses /api/state without a token (401)
+```
+
+**7.2 MB, un solo fichero, sin dependencias en ejecución.** PyInstaller sólo
+hace falta para compilar; el binario lleva la librería estándar y este repo.
+
+### 13.2 El smoke test no es decorativo
+
+La primera versión **compiló perfecta y no arrancaba**:
+
+```
+ModuleNotFoundError: No module named 'email'
+```
+
+Excluí `email` para adelgazar el binario y resulta que `http.server` de la
+propia librería estándar lo importa. PyInstaller no avisó de nada.
+
+Por eso `build_exe.py` ahora arranca el binario, comprueba que sirve y que
+rechaza sin token, y **devuelve error si no** (`BUILD REJECTED`). Un build que
+compila no es un build que funciona.
+
+Segunda trampa, por si tocas ese código: el smoke test leía la URL del stdout
+del hijo. Un binario congelado **bufferiza stdout cuando va a una tubería**, así
+que `readline()` espera a que el proceso termine — y no termina nunca, porque es
+un servidor. Se colgó siete minutos demostrándolo. Ahora la URL sale por
+`--url-file`, que además evita poner el token en la línea de comandos, donde
+cualquiera que liste procesos lo vería.
+
+### 13.3 Usarlo
+
+```
+IsyMotron.exe                 # localhost, abre el navegador solo
+IsyMotron.exe --lan           # además accesible desde tu teléfono
+IsyMotron.exe --demo-host     # añade el RetroBox simulado
+IsyMotron.exe --port 9000
+```
+
+Salida real al arrancar:
+
+```
+  host   win11-danny        nt-real/0.1        4/5 granted
+  host   win98-retrobox     dos-bridge/0.1     4/4 granted
+  model  configured
+  grants C:\Users\progr\AppData\Local\IsyMotron\grants.json
+
+  console  http://127.0.0.1:8760/?t=J0IxuBKye61NZxKurumzT6izAe_T86Of
+  localhost only. Use --lan to open it on your phone.
+```
+
+**El token va en la URL.** Sin él, cualquier `/api/` devuelve 401 — probado en
+`test_api_without_a_token_is_refused` y en el propio smoke test del build.
+
+### 13.4 Los dos niveles de autoridad
+
+Esto es lo que más importa de la consola:
+
+| desde | puede | NO puede |
+|---|---|---|
+| **localhost** | conceder, revocar, ejecutar, planificar | — |
+| **la red (`--lan`)** | leer, planificar, ejecutar | **conceder ni revocar** |
+
+Es el invariante 2.7 hecho código. Tu teléfono puede *usar* la autoridad que
+concediste sentado al teclado, y **nunca ampliarla**. Un `/api/grant` desde la
+red devuelve 403 con el motivo escrito, y **no toca el fichero de grants**
+(`test_lan_grant_does_not_touch_the_grant_file`).
+
+Si un teléfono pudiera concederse `filesystem.read C:/`, el producto entero
+dejaría de significar nada.
+
+### 13.5 La estética
+
+Oscuro, verde, tarjetas afiladas — inspirado en las superficies de producto de
+NVIDIA (GeForce NOW, la página de modelos). **El logo y el wordmark son de
+IsyMotron, no de NVIDIA**, y no se afirma ninguna afiliación. Un color y una
+retícula se pueden tomar prestados; una marca no.
+
+Funciona en el teléfono: la barra lateral se convierte en pestañas abajo, las
+tarjetas pasan a una columna, y el ledger se apila.
+
+### 13.6 Qué NO hace el .exe
+
+- **No está firmado.** SmartScreen va a avisar la primera vez. Es lo esperado
+  para un binario sin firmar y es mejor decirlo que dejar que lo descubra un
+  jurado.
+- **No es un servicio ni un icono de bandeja.** Es una ventana de consola que
+  imprime una URL. El host-agente en segundo plano es otra cosa y no está.
+- **No se auto-actualiza, ni telemetría, ni cuentas.**
+- **Windows 10/11 solamente.** Ver §13.7.
+
+### 13.7 Por qué fuera Windows 7 y anteriores
+
+Decisión tuya y la dejo escrita como lo que es: **no podemos conseguir copias
+legales** de esas versiones para probar. No es que el contrato no llegue — un
+host de 8 operaciones es justo lo que sí llegaría. Un host sin probar habría
+que etiquetarlo `NOT_DEMONSTRATED` de todas formas, así que la honestidad y el
+alcance coinciden. Invariante 2.13 del roadmap: *unsupported != impossible*.

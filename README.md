@@ -8,9 +8,10 @@ that the user has explicitly granted across their own phones and computers,
 while every grant, refusal and effect is enforced and recorded by machinery the
 model does not control.
 
-**Status: M3 — Nemotron plans, the host still decides.** The authority grammar
-runs on a real Windows machine, and a real Nemotron plan orchestrates work
-across two unlike hosts — while a host refuses a step the model asked for.
+**Status: M5 — one .exe for Windows 10/11.** The authority grammar runs on a
+real Windows machine, a real Nemotron plan orchestrates work across two unlike
+hosts while a host refuses a step the model asked for, and all of it ships as a
+single 7.2 MB binary with a console you can open on your phone.
 See [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for what is demonstrated and what is
 not, and [`docs/FINDINGS.md`](docs/FINDINGS.md) for the six things first contact
 taught us that the design did not.
@@ -31,6 +32,8 @@ taught us that the design did not.
 | **Real Windows host** — NTFS, processes, app launch | `hosts/windows/win11.py` | working |
 | Local grant file — the local authority, deny-by-default | `hosts/windows/grants.py` | working |
 | Host CLI — grant, revoke, execute | `tools/host_cli.py` | working |
+| **Console** — local web UI, dark/green, phone-ready | `console/` | working |
+| **`IsyMotron.exe`** — one file, no runtime dependencies | `build_exe.py` | 7.2 MB |
 | **HostAwarenessEngine** — deterministic suspend/network facts | `core/isymotron/awareness.py` | working |
 | Attribution — `HOST_SUSPENDED` is never `PROVIDER_ERROR` | `core/isymotron/attribution.py` | working |
 | Windows power provider — clock bias, no message pump | `hosts/windows/power.py` | working |
@@ -42,12 +45,29 @@ taught us that the design did not.
 | M3 planner gate (offline) | `tests/test_planner.py` | 29 passed |
 | M3 live gate (real Nemotron) | `tests/test_live_model.py` | 5 passed |
 | M4 host awareness gate | `tests/test_awareness.py` | 21 passed |
+| M5 console surface gate | `tests/test_console.py` | 17 passed |
 | Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
-Not started: the Doctor, the sandbox, the marketplace, the identity seam, the
-mobile surface, a legacy Windows host.
+Not started: the Doctor, the sandbox, the marketplace, the identity seam, a
+legacy Windows host.
+
+**Windows 7 and earlier are out of product scope.** Not because the contract
+could not reach them — the whole point of an 8-operation surface is that it
+could — but because legal copies of those releases are not obtainable to test
+on, and an untested host would have to be labelled `NOT_DEMONSTRATED` anyway.
+Roadmap invariant 2.13: unsupported != impossible.
 
 ## Run it
+
+Build the binary (PyInstaller is a build-time dependency only):
+
+```
+python build_exe.py            # dist/IsyMotron.exe, 7.2 MB, self-smoke-tested
+IsyMotron.exe                  # opens the console on localhost
+IsyMotron.exe --lan            # also reachable from your phone
+```
+
+Or from source:
 
 ```
 python -m pytest -q             # 39 passed in 1.33s
@@ -77,7 +97,7 @@ No dependencies beyond the standard library and `pytest`. No SDK.
 Spanish walkthrough, command by command, with the real output:
 [`docs/GUIA.es.md`](docs/GUIA.es.md).
 
-## The nine rules the code actually enforces
+## The ten rules the code actually enforces
 
 1. **No capability means no action.** `list_capabilities()` omits ungranted
    capabilities entirely. They are absent from the agent's world, not forbidden
@@ -103,7 +123,10 @@ Spanish walkthrough, command by command, with the real output:
 8. **A capability's result shape is part of its contract.** Two engines
    returned the same value under different names and a plan broke on it —
    `returns` is now declared and cross-step references are checked against it.
-9. **Never ask a model to infer host state the host can report.** A closed
+9. **A remote surface uses authority; it never widens it.** The console grants
+   only from loopback. A phone can read, plan and execute what a human already
+   allowed at the keyboard, and `/api/grant` from the network is a 403.
+10. **Never ask a model to infer host state the host can report.** A closed
    laptop lid once looked exactly like provider throttling. The machine knows,
    and `time.monotonic()` on Windows does not —
    see [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md).
@@ -113,6 +136,7 @@ Spanish walkthrough, command by command, with the real output:
 ```
 core/isymotron/   L0. Contract, policy, verdicts, canonical digests.
 agents/           L1. Provider seam, planner, executor. The only model code.
+console/          The web surface and its static files. Holds no authority.
 hosts/windows/    The real Windows engine and the local grant file.
 hosts/simulator/  Two engines that serve the same contract differently.
 relay/            Transport. Holds no policy and cannot execute.

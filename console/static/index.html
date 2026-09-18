@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IsyMotron Console</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 28 28" aria-hidden="true">
+      <path d="M4 20 L4 8 L10 8 L10 14 L18 14 L18 8 L24 8 L24 20 L18 20 L18 17 L10 17 L10 20 Z"/>
+    </svg>
+    <div class="brandtext">
+      <span class="name">ISY<b>MOTRON</b></span>
+      <span class="tag">capability fabric</span>
+    </div>
+  </div>
+
+  <div class="hoststrip" id="hoststrip">
+    <div class="hs-item"><label>host</label><span id="hs-host">—</span></div>
+    <div class="hs-item"><label>power</label><span id="hs-power" class="pill">—</span></div>
+    <div class="hs-item"><label>network</label><span id="hs-net" class="pill">—</span></div>
+    <div class="hs-item"><label>epochs</label><span id="hs-epoch" class="mono">—</span></div>
+  </div>
+
+  <div class="tier" id="tier">
+    <span class="dot"></span><span id="tier-label">connecting…</span>
+  </div>
+</header>
+
+<nav class="rail">
+  <button class="nav is-on" data-view="devices"><span>Devices</span></button>
+  <button class="nav" data-view="authority"><span>Authority</span></button>
+  <button class="nav" data-view="intent"><span>Intent</span></button>
+  <button class="nav" data-view="receipts"><span>Receipts</span></button>
+  <button class="nav" data-view="host"><span>Host</span></button>
+</nav>
+
+<main>
+
+  <!-- DEVICES ------------------------------------------------------------ -->
+  <section class="view is-on" id="view-devices">
+    <div class="vhead">
+      <h1>Devices</h1>
+      <p>Each machine advertises only what a human granted on it. Ungranted
+         capabilities are not hidden from the agent — they are absent from it.</p>
+    </div>
+    <div class="grid" id="devices"></div>
+  </section>
+
+  <!-- AUTHORITY ---------------------------------------------------------- -->
+  <section class="view" id="view-authority">
+    <div class="vhead">
+      <h1>Authority</h1>
+      <p>This writes the local grant file. It is the only thing in the system
+         that can widen authority, and it only works from this machine.</p>
+    </div>
+    <div class="notice warn" id="lan-warning" hidden>
+      <b>Read &amp; run only.</b> You are connected over the network. A remote
+      surface may use the authority a human granted at the keyboard; it may
+      never widen it.
+    </div>
+    <div class="cards" id="authority"></div>
+  </section>
+
+  <!-- INTENT ------------------------------------------------------------- -->
+  <section class="view" id="view-intent">
+    <div class="vhead">
+      <h1>Intent</h1>
+      <p>Nemotron plans against the catalogue above and nothing else. The plan
+         is a proposal — every step is still judged by the host that runs it.</p>
+    </div>
+
+    <div class="prompt">
+      <textarea id="intent" rows="3" spellcheck="false"
+        placeholder="Copy the newest file in my Demo folder to the other host, then open it."></textarea>
+      <div class="promptbar">
+        <div class="hint" id="intent-hint">the model sees only granted capabilities</div>
+        <button class="btn primary" id="btn-plan">Plan</button>
+      </div>
+    </div>
+
+    <div id="planout"></div>
+  </section>
+
+  <!-- RECEIPTS ----------------------------------------------------------- -->
+  <section class="view" id="view-receipts">
+    <div class="vhead">
+      <h1>Receipts</h1>
+      <p>Every outcome, including every refusal. A denied request carries no
+         payload, and each record is sealed against tampering.</p>
+    </div>
+    <div class="ledger" id="receipts"></div>
+  </section>
+
+  <!-- HOST --------------------------------------------------------------- -->
+  <section class="view" id="view-host">
+    <div class="vhead">
+      <h1>Host awareness</h1>
+      <p>What happened to this machine, measured rather than inferred. A closed
+         laptop lid is not a provider outage.</p>
+    </div>
+    <div class="cards" id="awareness"></div>
+    <h2 class="sub">Timeline</h2>
+    <div class="ledger" id="hostevents"></div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

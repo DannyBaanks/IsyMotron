@@ -95,6 +95,9 @@ def _default_host_id() -> str:
 
 
 def _default_display_name() -> str:
+    """What a person calls this machine, not what the registry calls it."""
     import platform
-    ver = platform.win32_ver()
-    return f"{platform.node()} (Windows build {ver[1]})"
+    parts = platform.win32_ver()[1].split(".")
+    build = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+    release = "11" if build >= 22000 else "10"
+    return f"{platform.node()} — Windows {release}"
