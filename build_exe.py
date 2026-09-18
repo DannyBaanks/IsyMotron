@@ -29,6 +29,7 @@ SEP = ";" if os.name == "nt" else ":"
 #: filename, so they are declared rather than discovered.
 DATA = [
     ("console/static", "console/static"),
+    ("avatar/packs", "avatar/packs"),
 ]
 HIDDEN = [
     "isymotron.awareness", "isymotron.attribution", "isymotron.contracts",
@@ -38,6 +39,8 @@ HIDDEN = [
     "agents.provider", "agents.planner", "agents.executor",
     "relay.loopback", "clients.fake_mobile",
     "console.server",
+    "avatar.model", "avatar.protocol", "avatar.inbox",
+    "avatar.pack", "avatar.window",
 ]
 
 
@@ -145,13 +148,14 @@ def main(argv=None) -> int:
         cmd += ["--add-data", f"{os.path.join(ROOT, src)}{SEP}{dest}"]
     for mod in HIDDEN:
         cmd += ["--hidden-import", mod]
-    # Nothing here needs a GUI toolkit or a test runner baked in.
+    # Nothing here needs a test runner baked in. `tkinter` is NOT excluded
+    # since AV5: the desktop avatar is Tk, and it ships in the same exe.
     #
     # `email` and `xml` are NOT excluded, however tempting: `http.server`
     # imports `email`, and dropping it produced a binary that built cleanly,
     # reported success, and died on launch with ModuleNotFoundError. A build
     # that compiles is not a build that runs -- hence the smoke test below.
-    for junk in ("tkinter", "unittest", "pydoc", "doctest", "pytest", "sqlite3"):
+    for junk in ("unittest", "pydoc", "doctest", "pytest", "sqlite3"):
         cmd += ["--exclude-module", junk]
     cmd.append(os.path.join(ROOT, "console", "__main__.py"))
 

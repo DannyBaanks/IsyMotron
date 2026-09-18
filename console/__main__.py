@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 import threading
 import webbrowser
@@ -113,9 +114,18 @@ def main(argv=None) -> int:
     ap.add_argument("--grants", default=None, help="path to the grant file")
     ap.add_argument("--demo-host", action="store_true",
                     help="attach a simulated legacy host alongside the real one")
+    ap.add_argument("--avatar", action="store_true",
+                    help="also launch the floating desktop avatar (subprocess)")
+    ap.add_argument("--avatar-worker", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--url-file",
                     help="write the console URL here once serving (for scripts)")
     args = ap.parse_args(argv)
+
+    if args.avatar_worker:
+        # The avatar runs in its own process: Tk wants the main thread, and a
+        # dead pet must never take the console down (or vice versa).
+        from avatar.window import run_avatar_worker
+        return run_avatar_worker(port=args.port)
 
     print(BANNER)
     relay, awareness, grants_path = build_world(args)
@@ -156,6 +166,19 @@ def main(argv=None) -> int:
         print(f"  {DIM}avatar token {token_path}{OFF}")
     except OSError as exc:
         print(f"  {DIM}avatar token not written: {exc}{OFF}")
+
+    if args.avatar:
+        # A separate process, so closing the pet does not stop the console
+        # and vice versa. The pet reads the avatar token file (AV3); no token
+        # travels on the command line.
+        worker = ([sys.executable, "--avatar-worker", "--port", str(args.port)]
+                  if getattr(sys, "frozen", False)
+                  else [sys.executable, "-m", "console", "--avatar-worker",
+                        "--port", str(args.port)])
+        try:
+            subprocess.Popen(worker, cwd=ROOT)
+        except OSError as exc:
+            print(f"  {DIM}avatar could not be launched: {exc}{OFF}")
 
     try:
         httpd, url = serve(state, port=args.port, lan=args.lan)
