@@ -1,0 +1,18 @@
+IsyMotron avatar packs
+======================
+
+avatar/packs/malbolge-cat/
+--------------------------
+
+Copied from Companion (https://github.com/), repository
+"C:\Development\ISyCo Git\Companion", directory `packs/malbolge-cat/`,
+at source commit 0aae576 ("chore: ignore local worktrees").
+
+Companion is the author's prior MIT-licensed work. The pack is copied, not
+integrated: per the repo boundary rule, this copy is now IsyMotron's own
+code. The manifest maps animation states to GIF files; the avatar renderer
+consumes only those six states (idle, thinking, working, success, error,
+waiting), which are exactly the values of the protocol's STATES set.
+
+License: MIT (same as Companion). This file records the provenance; the
+pack's own license terms travel with Companion's LICENSE.

@@ -226,3 +226,28 @@ textarea{resize:vertical;line-height:1.6}
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
 }
+
+/* ---- avatar (AV4) -------------------------------------------------------
+   The host frame (solid border) is authority; the bubbles (dashed border)
+   are third party. Two visual languages, one pet. */
+.avatar{position:fixed;right:18px;bottom:18px;z-index:30;width:188px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.avatar img{width:136px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.55))}
+.avatar-frame{width:100%;background:rgba(16,16,19,.93);border:1px solid var(--line-hot);
+  border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.avatar-frame .badge{font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint)}
+.avatar-frame .verdict{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em}
+.avatar-frame .verdict.allow{color:var(--green)}
+.avatar-frame .verdict.deny{color:var(--red)}
+.avatar-frame .receipt{font-family:var(--mono);font-size:10px;color:var(--ink-dim);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar-frame .seal{font-size:10px;color:var(--ink-dim)}
+.avatar-frame .seal.bad{color:var(--red)}
+.avatar-frame .ftext{font-size:11px;color:var(--ink)}
+.bubbles{display:flex;flex-direction:column;gap:5px;width:100%}
+.bubble{background:rgba(23,23,27,.94);border:1px dashed var(--amber);
+  border-radius:9px;padding:5px 8px;font-size:11px;color:var(--ink)}
+.bubble .label{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:1px}
+.bubble .btext{word-break:break-word}

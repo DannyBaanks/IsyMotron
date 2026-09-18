@@ -113,6 +113,21 @@
 
 <div class="toast" id="toast" hidden></div>
 
+<!-- AVATAR (AV4): the host frame renders only from view.host_frame; inbox
+     lines render only as third-party bubbles (R1-R4). -->
+<div class="avatar" id="avatar">
+  <img id="avatar-gif" src="avatar/packs/malbolge-cat/idle.gif" alt="IsyMotron avatar">
+  <div class="avatar-frame" id="avatar-frame" hidden>
+    <span class="badge" id="avatar-badge"></span>
+    <span class="verdict" id="avatar-verdict"></span>
+    <span class="receipt mono" id="avatar-receipt"></span>
+    <span class="seal" id="avatar-seal"></span>
+    <span class="ftext" id="avatar-text"></span>
+  </div>
+  <div class="bubbles" id="avatar-bubbles"></div>
+</div>
+
 <script src="app.js"></script>
+<script src="avatar.js"></script>
 </body>
 </html>

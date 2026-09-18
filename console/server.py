@@ -41,6 +41,31 @@ from relay.loopback import LoopbackRelay
 
 STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
+#: The avatar pack root (AV4). Files under it are served ONLY through the
+#: exact-name allowlist built below; a directory walk here would be the same
+#: leak class as the static one above.
+PACK_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "avatar", "packs")
+PACK_MIME = {".gif": "image/gif", ".json": "application/json",
+             ".txt": "text/plain", ".png": "image/png"}
+
+PACK_SERVABLE: dict = {}
+
+
+def _load_pack_servable() -> None:
+    if not os.path.isdir(PACK_DIR):
+        return
+    for root, _dirs, files in os.walk(PACK_DIR):
+        for fn in sorted(files):
+            ext = os.path.splitext(fn)[1].lower()
+            if ext not in PACK_MIME:
+                continue
+            rel = os.path.relpath(os.path.join(root, fn), PACK_DIR).replace("\\", "/")
+            PACK_SERVABLE["avatar/packs/" + rel] = PACK_MIME[ext]
+
+
+_load_pack_servable()
+
 #: Served files, by exact name. An allowlist rather than a directory walk:
 #: this process has a grant file and a receipt store next to it, and a static
 #: handler that resolves paths is the classic way to leak them.
@@ -48,6 +73,7 @@ SERVABLE = {
     "index.html": "text/html; charset=utf-8",
     "app.css": "text/css; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
+    "avatar.js": "text/javascript; charset=utf-8",
     "favicon.svg": "image/svg+xml",
 }
 
@@ -293,6 +319,9 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
         name = path.lstrip("/")
         if name in SERVABLE:
             return self._static(name)
+        ctype = PACK_SERVABLE.get(name)
+        if ctype is not None:
+            return self._pack_static(name, ctype)
 
         if not path.startswith("/api/"):
             return self._deny("not found", 404)
@@ -375,6 +404,25 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
             return self._deny("not found", 404)
         try:
             with open(os.path.join(STATIC, name), "rb") as fh:
+                data = fh.read()
+        except OSError:
+            return self._deny("not found", 404)
+        self._send(200, data, ctype)
+
+    def _pack_static(self, name: str, ctype: str) -> None:
+        """Serve one pack file, by exact allowlist name only.
+
+        The name came from PACK_SERVABLE, so no traversal can reach this;
+        the containment check is belt and braces in case the allowlist is
+        ever built from something other than a walk of PACK_DIR.
+        """
+        rel = name[len("avatar/packs/"):]
+        full = os.path.normpath(os.path.join(PACK_DIR, rel))
+        base = os.path.normpath(PACK_DIR)
+        if not (full == base or full.startswith(base + os.sep)):
+            return self._deny("not found", 404)
+        try:
+            with open(full, "rb") as fh:
                 data = fh.read()
         except OSError:
             return self._deny("not found", 404)
