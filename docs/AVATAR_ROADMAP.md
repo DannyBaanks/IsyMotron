@@ -39,7 +39,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV1 | Pure avatar model (bus, channels, precedence) | **DONE** | AV0 |
 | AV2 | Open channel: inbox reader, companion-event-v1 | **DONE** | AV1 |
 | AV3 | Authority channel: producers + `/api/avatar` | **DONE** | AV1 |
-| AV4 | Web renderer in the console | IN_PROGRESS | AV2, AV3 |
+| AV4 | Web renderer in the console | **DONE** | AV2, AV3 |
 | AV5 | Desktop renderer (Companion window, adapted) | NOT_STARTED | AV2, AV3 |
 | AV6 | No-AI mode ("avatar" mode) | NOT_STARTED | AV3 |
 | AV7 | AI mode ("agent" mode) | NOT_STARTED | AV6 |
@@ -230,7 +230,21 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 - **Failure conditions:** any renderer path that styles an open event with
   host-frame classes.
 - **Commit boundary:** `AV4: web avatar -- the verdict has a frame no inbox line can reach`
-- **Result:** —
+- **Result:** `e034241`; 177 passed (173 + 4 new), `py -m pytest -q`. Live
+  acceptance evidence (`evidence/AV4/web_avatar.png`, captured in ONE
+  in-page run): `/api/execute` on `win98-retrobox` -> DOM read at +1.6 s:
+  gif `error.gif`, host frame VISIBLE with badge `win98-retrobox`,
+  verdict `DENY` (class `verdict deny`), receipt `rcpt_0789fb09710b4856`,
+  `seal ok`, text `The host refused: filesystem.read (OUT_OF_SCOPE)` — and,
+  at the same instant, third-party bubble `{label: "opencode", text:
+  "ALLOW ✅"}` verbatim. CSP: 0 errors / 0 warnings in the browser console.
+  Notes: (1) `avatar.js` initially 404'd (missing from `SERVABLE`; Chrome
+  refused the JSON-typed 404 as a script) — caught live and fixed. (2) The
+  DOM verification used a `say` with `ttl: 60` because tool-call latency
+  exceeded the plugin's `ttl: 8`; the first screenshot (taken 1.2 s after
+  the trigger) captured the ttl-8 moment. (3) The PNG was not visually
+  inspected by the coding agent (image input unsupported); the DOM-level
+  read in the same run is the executable verification.
 
 ---
 
