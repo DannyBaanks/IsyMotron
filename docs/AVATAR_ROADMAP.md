@@ -39,7 +39,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV1 | Pure avatar model (bus, channels, precedence) | **DONE** | AV0 |
 | AV2 | Open channel: inbox reader, companion-event-v1 | **DONE** | AV1 |
 | AV3 | Authority channel: producers + `/api/avatar` | **DONE** | AV1 |
-| AV4 | Web renderer in the console | NOT_STARTED | AV2, AV3 |
+| AV4 | Web renderer in the console | IN_PROGRESS | AV2, AV3 |
 | AV5 | Desktop renderer (Companion window, adapted) | NOT_STARTED | AV2, AV3 |
 | AV6 | No-AI mode ("avatar" mode) | NOT_STARTED | AV3 |
 | AV7 | AI mode ("agent" mode) | NOT_STARTED | AV6 |
