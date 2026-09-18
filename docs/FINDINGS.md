@@ -364,6 +364,22 @@ one variable that explained it was not visible from inside the process. This is
 the failure mode the whole evidence discipline exists to catch, and it caught
 it only because a human said what had actually happened.
 
+### Corroboration, found afterwards
+
+The Windows System log, read without elevation, holds the answer that was
+sitting on the machine the whole time:
+
+```
+21:51:44  Kernel-Power 506  entering modern standby
+22:04:59  Kernel-Power 507  exiting modern standby
+```
+
+**795 seconds.** The hung request measured **793.32 s**. Two independent
+sources agreeing within two seconds, both saying the machine was asleep.
+
+The evidence existed and nothing was reading it. That is what `docs/HOST_AWARENESS.md`
+and finding #8 are about.
+
 ### What survives, and what it changed
 
 7b is not evidence about NVIDIA. It is excellent evidence about **us**, and the
@@ -389,3 +405,55 @@ asked twice.
   that looked like throttling was not.
 - The real 503 rate over a realistic workload. Twelve calls is not a rate.
 - Nebius Token Factory's behaviour on both counts: entirely unmeasured.
+
+---
+
+## Finding 8 — Python's clocks cannot see a Windows suspend, and a second one can
+
+**Found:** 2026-09-17, building the fix for #7b.
+**Status:** fixed; `HostAwarenessEngine`, 21 tests, `docs/HOST_AWARENESS.md`.
+
+The obvious defence against #7b is to compare a wall clock with a monotonic
+clock: if wall advances much more than monotonic, the machine slept.
+
+**On Windows that detects nothing.** Measured here:
+
+```
+GetTickCount64      42365.203 s
+time.monotonic()    42365.203 s     <- the same counter
+```
+
+Python's `time.monotonic()` *is* `GetTickCount64()`, and both it and
+`time.time()` advance through suspend. The standard trick fails silently on the
+platform we ship on first.
+
+There is a third counter that does not:
+
+```
+GetTickCount64                42365.203 s  (11.77 h)   includes sleep
+QueryUnbiasedInterruptTime    35038.317 s  ( 9.73 h)   excludes sleep
+-------------------------------------------------------------------
+difference = suspend bias      7326.886 s  ( 2.04 h)   time spent asleep
+```
+
+The difference is monotonically non-decreasing, and any increase between two
+readings is exactly the time slept in between. Across a two-second awake
+interval it moved **2.2 ms**, so noise is milliseconds and a suspend is
+seconds. Two `ctypes` calls: no admin, no message pump, no thread, no polling.
+
+Both `QueryInterruptTime` and the `*Precise` variants turned out **not to be
+exported from `kernel32`** on this build (they live in `KernelBase.dll`), which
+is the kind of thing only a call discovers. `QueryUnbiasedInterruptTime` is in
+`kernel32` and is all that is needed.
+
+**What this changed.** Every provider call now takes a host snapshot before and
+after and compares epochs, and `attribute()` checks host continuity *before* it
+looks at the error — because a transport failure during a suspend is a suspend.
+`HOST_SUSPENDED` is never `PROVIDER_ERROR`, and a host-interrupted call is
+excluded from `fault_rate` explicitly rather than silently.
+
+The general lesson, and the reason this is architecture rather than a prompt:
+**a model asked to explain a 793-second call had no mechanism that could have
+known.** The answer was available on the machine, in a counter nothing was
+reading. Adding "remember that laptops sleep" to a prompt would have produced a
+plausible guess in place of a measurement.

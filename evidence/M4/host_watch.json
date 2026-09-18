@@ -1,0 +1,54 @@
+{
+  "describe": {
+    "contract": "HostAwareness/v0",
+    "host_id": "win11-danny",
+    "session_id": "sess_244e34d2606c4be2",
+    "boot_id": "sha256:ac1a97f8f405accb",
+    "power_provider": {
+      "provider": "windows-power-bias",
+      "mechanism": "GetTickCount64 minus QueryUnbiasedInterruptTime",
+      "unbiased_clock_available": true,
+      "network_probe": "wininet.InternetGetConnectedState",
+      "event_log": true,
+      "suspend_bias_since_boot_s": 7326.887,
+      "pre_suspend_notification": false
+    },
+    "observable": {
+      "suspend_retrospective": true,
+      "suspend_pre_notification": false,
+      "network": true
+    }
+  },
+  "health": {
+    "contract": "HostAwareness/v0",
+    "host_id": "win11-danny",
+    "power_state": "ACTIVE",
+    "power_epoch": 0,
+    "network_state": "UP",
+    "network_epoch": 0,
+    "events": 1,
+    "provider": "windows-power-bias",
+    "suspend_observable": true
+  },
+  "events": [
+    {
+      "event_id": "evt_3b83f191f1184277",
+      "host_id": "win11-danny",
+      "event_type": "PROCESS_STARTED",
+      "wall_time": 1789707859.7216675,
+      "source": "windows-power-bias",
+      "evidence": "DEMONSTRATED",
+      "monotonic_time": 44159.296,
+      "unbiased_time": 36832.410131,
+      "boot_id": "sha256:ac1a97f8f405accb",
+      "session_id": "sess_244e34d2606c4be2",
+      "power_epoch": 0,
+      "network_epoch": 0,
+      "detail": {
+        "pid": 4944
+      }
+    }
+  ],
+  "calls": null,
+  "reliability": null
+}

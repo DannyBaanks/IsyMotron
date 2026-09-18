@@ -28,6 +28,9 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
+from isymotron.attribution import OperationOutcome, attribute
+from isymotron.awareness import HostAwarenessEngine
+
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
 PRESETS: dict[str, dict[str, str]] = {
@@ -78,6 +81,9 @@ class ProviderError(Exception):
         self.body = body
         self.attempts = attempts
         self.transport = transport
+        #: Set by Provider.complete when host awareness is wired in. Without it
+        #: the caller is left guessing exactly as we were on 2026-09-17.
+        self.outcome = None
 
     @property
     def retryable(self) -> bool:
@@ -107,6 +113,7 @@ class Completion:
     finish_reason: str | None = None
     reasoning: str = ""
     attempts: int = 1
+    outcome: Any = None
     raw: Mapping[str, Any] = field(default_factory=dict, repr=False)
 
     @property
@@ -133,6 +140,7 @@ class Completion:
             "truncated": self.truncated,
             "reasoning_chars": len(self.reasoning),
             "attempts": self.attempts,
+            "outcome": self.outcome.to_dict() if self.outcome else None,
         }
 
 
@@ -141,7 +149,8 @@ class Provider:
 
     def __init__(self, name: str | None = None, model: str | None = None,
                  base_url: str | None = None, api_key: str | None = None,
-                 timeout_s: float = 120.0) -> None:
+                 timeout_s: float = 120.0,
+                 awareness: HostAwarenessEngine | None = None) -> None:
         self.name = (name or os.environ.get("ISYMOTRON_PROVIDER") or "nvidia").lower()
         preset = PRESETS.get(self.name)
         if preset is None:
@@ -158,6 +167,15 @@ class Provider:
         self.retries = 0
         self.deadline_s = float(os.environ.get("ISYMOTRON_DEADLINE_S", DEADLINE_S))
         self._last_call = 0.0
+        #: Optional, but strongly advised. Without it every failure below is
+        #: attributed from the error alone, which is how a closed laptop got
+        #: within minutes of being recorded as provider throttling.
+        self.awareness = awareness
+        #: Only outcomes that actually say something about the provider. Host
+        #: faults are excluded explicitly, and counted separately.
+        self.countable_calls = 0
+        self.provider_faults = 0
+        self.excluded_host_faults = 0
 
     # -- diagnostics --------------------------------------------------------
     def configured(self) -> bool:
@@ -193,12 +211,20 @@ class Provider:
         if stop:
             body["stop"] = list(stop)
 
+        before = self.awareness.snapshot() if self.awareness else None
         t0 = time.time()
         self.attempts_used = 1
-        payload = self._post("/chat/completions", body)
+        try:
+            payload = self._post("/chat/completions", body)
+        except ProviderError as exc:
+            exc.outcome = self._attribute(before, exc)
+            self._tally(exc.outcome)
+            raise
         latency = time.time() - t0
         if self.attempts_used > 1:
             self.retries += self.attempts_used - 1
+        outcome = self._attribute(before, None)
+        self._tally(outcome)
 
         try:
             choice = payload["choices"][0]
@@ -219,8 +245,61 @@ class Provider:
             # not evidence and it is not ours to store.
             reasoning=message.get("reasoning_content") or "",
             attempts=self.attempts_used,
+            outcome=outcome,
             raw=payload,
         )
+
+    # -- attribution --------------------------------------------------------
+    def _attribute(self, before, exc):
+        """Classify what just happened, using host facts around the error.
+
+        Returns None when no awareness engine is attached: an absent
+        attribution is honest, a guessed one is not.
+        """
+        if before is None or self.awareness is None:
+            return None
+        after = self.awareness.snapshot()
+        return attribute(
+            before, after,
+            error=exc,
+            http_status=exc.status if exc else None,
+            transport=bool(exc and exc.transport),
+            deadline_s=self.deadline_s,
+        )
+
+    def _tally(self, outcome):
+        """Keep provider-reliability counts clean.
+
+        A call the host interrupted is not a data point about the provider. It
+        is counted separately and visibly as excluded, never dropped silently
+        and never folded into the denominator.
+        """
+        if outcome is None:
+            return
+        if outcome.countable:
+            self.countable_calls += 1
+            if outcome.provider_fault:
+                self.provider_faults += 1
+        elif outcome.host_interruption:
+            self.excluded_host_faults += 1
+
+    def reliability(self):
+        """Measured provider reliability, with the exclusions stated."""
+        return {
+            "provider": self.name,
+            "model": self.model,
+            "countable_calls": self.countable_calls,
+            "provider_faults": self.provider_faults,
+            "excluded_host_faults": self.excluded_host_faults,
+            "retries": self.retries,
+            "fault_rate": (round(self.provider_faults / self.countable_calls, 4)
+                           if self.countable_calls else None),
+            "host_awareness": bool(self.awareness),
+            "note": ("host-interrupted calls are excluded from fault_rate"
+                     if self.awareness else
+                     "NO host awareness attached: fault_rate cannot tell a "
+                     "provider failure from a local suspend or network loss"),
+        }
 
     # -- transport ----------------------------------------------------------
     def _request(self, path: str, data: bytes | None) -> dict:
@@ -302,7 +381,12 @@ class ScriptedProvider(Provider):
     *model* are marked live and are skipped without a key.
     """
 
-    def __init__(self, replies: Sequence[str], model: str = "scripted/0") -> None:
+    #: pytest would otherwise try to collect this as a test class.
+    __test__ = False
+
+    def __init__(self, replies: Sequence[str], model: str = "scripted/0",
+                 awareness: HostAwarenessEngine | None = None,
+                 during: Any = None) -> None:
         self.name = "scripted"
         self.label = "scripted"
         self.base_url = "<none>"
@@ -312,6 +396,17 @@ class ScriptedProvider(Provider):
         self.timeout_s = 0.0
         self._replies = list(replies)
         self.calls: list[list[Mapping[str, str]]] = []
+        self.awareness = awareness
+        #: Called between the before and after snapshots, so a test can make
+        #: the machine suspend or lose its network *during* a call rather than
+        #: between two of them. Without this the deterministic provider cannot
+        #: reproduce the one scenario it exists for.
+        self.during = during
+        self.deadline_s = DEADLINE_S
+        self.countable_calls = 0
+        self.provider_faults = 0
+        self.excluded_host_faults = 0
+        self.retries = 0
 
     def configured(self) -> bool:
         return True
@@ -320,8 +415,13 @@ class ScriptedProvider(Provider):
         self.calls.append(list(messages))
         if not self._replies:
             raise ProviderError("scripted provider ran out of replies")
+        before = self.awareness.snapshot() if self.awareness else None
+        if self.during is not None:
+            self.during()
         reply = self._replies.pop(0)
         finish = "length" if reply.startswith("<TRUNCATED>") else "stop"
+        outcome = self._attribute(before, None)
+        self._tally(outcome)
         return Completion(text=reply.replace("<TRUNCATED>", "", 1),
                           model=self.model, provider="scripted", latency_s=0.0,
-                          finish_reason=finish)
+                          finish_reason=finish, outcome=outcome)

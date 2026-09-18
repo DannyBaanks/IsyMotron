@@ -27,7 +27,7 @@ There is no `SAFE`. There is no default-pass. An unmeasured claim is
 | **E** — a publicly accepted activity can still be denied locally | `NOT_DEMONSTRATED` | No marketplace. The mechanism that would enforce it (local grant beats everything) is `DEMONSTRATED` in isolation. |
 | **F** — two Windows generations serve the same contract via different engines | `NOT_DEMONSTRATED` | One **real** engine (`nt-real/0.1`, Windows build 10.0.26200) and two simulated ones now serve the contract. One real machine is not two generations. |
 | **G** — a verified activity reuses a fast path without repeating verification | `NOT_DEMONSTRATED` | No verification path of either speed. |
-| **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` | Spot numbers only, no workload. Round trip 0.75–6.16 s (median 1.56 s over 12); a two-host plan 4.6–22.4 s. **One HTTP 503 in 12 calls** — real, but n=12 is not a rate. A second run that looked like throttling was the laptop being closed mid-measurement, not the provider (FINDINGS.md #7b). Also: `nemotron-nano-3-30b-a3b` is listed by `/models` and returns 404 on invocation — listed is not servable. |
+| **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` (now measurable) | Spot numbers only, no workload. Round trip 0.75–6.16 s (median 1.56 s over 12); a two-host plan 4.6–22.4 s. **One HTTP 503 in 12 calls** — real, but n=12 is not a rate. A second run that looked like throttling was the laptop being closed mid-measurement, not the provider (FINDINGS.md #7b). Also: `nemotron-nano-3-30b-a3b` is listed by `/models` and returns 404 on invocation — listed is not servable. |
 | **I** — Windows 98 participates and launches an app from a mobile workflow | `NOT_DEMONSTRATED` | A simulated `dos-bridge/0.1` launches a simulated `DOOM.EXE`. That is a test fixture, not a Windows 98 machine. |
 
 **Two claims crossed on 2026-09-17: A and B.** Both are scoped, and the scope
@@ -149,10 +149,48 @@ Sealed receipts from real runs:
 - `evidence/M3/` — the provider probe, with measured latencies and the
   adversarial verdict
 
-Six findings came out of first contact with real hardware and a real model, and
-four of them changed the architecture: `docs/FINDINGS.md`. Two were bugs in our
-own verdict logic, which is the category worth watching — in both cases the
-defence worked and the *record* of the defence was wrong.
+Eight findings came out of first contact with real hardware and a real model,
+and six changed the architecture: `docs/FINDINGS.md`. Three were bugs in our own
+verdict or attribution logic, which is the category worth watching — in each
+case the defence worked and the *record* of the defence was wrong.
+
+**M4 scope:** host awareness and attribution (`tests/test_awareness.py`,
+21 passed). Deterministic: proving a suspend is attributed correctly never
+requires closing a laptop.
+
+| # | Claim | Test |
+|---|---|---|
+| 61 | A quiet host never changes its epochs | `test_a_quiet_host_never_changes_epoch` |
+| 62 | A suspend advances `power_epoch` and records the measured gap | `test_a_suspend_advances_power_epoch_and_records_the_gap` |
+| 63 | **Wall time advances through a suspend; awake time does not** | `test_wall_time_advances_through_a_suspend_but_awake_time_does_not` |
+| 64 | Millisecond bias drift is not a suspend | `test_sub_threshold_noise_is_not_a_suspend` |
+| 65 | **No mechanism means UNKNOWN, never ACTIVE** | `test_no_mechanism_means_unknown_not_active` |
+| 66 | A missing measurement is `None`, not zero | `test_elapsed_awake_is_none_without_an_unbiased_clock` |
+| 67 | A network change advances `network_epoch` | `test_network_change_advances_network_epoch` |
+| 68 | A reboot changes `boot_id` | `test_reboot_changes_boot_id` |
+| A | Provider 429 with the host awake → `PROVIDER_ERROR`, countable | `test_case_A_provider_error_with_the_host_awake` |
+| B | **Suspend mid-request → `HOST_SUSPENDED`, `provider_fault=False`** | `test_case_B_suspend_mid_request_is_not_a_provider_error` |
+| C | Network loss without suspend → `HOST_NETWORK_LOSS`, not `HOST_SUSPENDED` | `test_case_C_network_loss_without_suspend` |
+| D | Deadline exceeded with the host awake → `DEADLINE_EXCEEDED` | `test_case_D_deadline_exceeded_with_the_host_awake` |
+| E | Insufficient evidence → `UNKNOWN`, not a guess | `test_case_E_insufficient_evidence_is_unknown` |
+| F | A suspended measurement is excluded from provider stats, visibly | `test_case_F_a_suspended_measurement_is_excluded_from_provider_stats` |
+| G | A process restart is detected → `PROCESS_INTERRUPTED` | `test_case_G_process_restart_is_detected` |
+| H | **A model cannot manufacture a host event** | `test_case_H_a_model_cannot_manufacture_a_host_event` |
+| 69 | Reliability says plainly when it cannot tell | `test_reliability_says_so_when_it_cannot_tell` |
+| 70 | Awareness exposes no verb that could allow, execute or grant | `test_awareness_grants_nothing` |
+
+One claim of its own, and it is the reason the engine exists:
+
+> **An agent cannot reliably distinguish provider latency from local host
+> suspension without host evidence.** — `DEMONSTRATED` (2026-09-17). On this
+> machine `time.monotonic()` *is* `GetTickCount64()`, so both of Python's
+> clocks advance through suspend; a 793 s sleep and a 793 s call are identical
+> from inside the process. Corroborated by the Windows event log at 795 s.
+> See `docs/FINDINGS.md` #7, #8 and `docs/HOST_AWARENESS.md`.
+
+Platform status: Windows `DEMONSTRATED`; Linux `NOT_DEMONSTRATED` (documented
+seam, reports UNKNOWN); macOS `NOT_DEMONSTRATED` (no hardware, no stub);
+pre-suspend notification `NOT_DEMONSTRATED` (no message pump, never claimed).
 
 ---
 

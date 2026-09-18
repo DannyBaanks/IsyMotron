@@ -417,6 +417,7 @@ Para que no haya sorpresas al enseñarlo:
 - **No hay Doctor, ni sandbox, ni marketplace, ni login.**
 - **No hay app de móvil.** `clients/fake_mobile.py` es un objeto de Python.
 - **Sólo hay un Windows real.** Falta un host legacy de verdad.
+- **La conciencia del host sólo funciona en Windows.** Ver §12.7.
 
 Esto está en `docs/EVIDENCE.md` con la etiqueta que le corresponde a cada
 afirmación. Las nueve *Target Claims* del roadmap **siguen las nueve en
@@ -438,3 +439,113 @@ Está razonado en `docs/ROADMAP_DELTA.md`. El resumen:
 4. ~~Nemotron Intent + Planner.~~ **HECHO** — M3, plan validado y ejecutado.
 5. Consola web (no app nativa todavía).
 6. El Doctor. Es la tesis entera; que no sea lo último.
+
+---
+
+## 12. Conciencia del host (M4) — por qué tu tapa cerrada casi se convierte en un hallazgo falso
+
+### 12.1 Lo que pasó
+
+Cuando cerraste la laptop para salir con tus abuelos, mi medición vio esto:
+
+```
+7 llamadas limpias
+1 llamada colgada 793.32 s  (con timeout=120)
+18 fallos seguidos sin código HTTP
+recuperación limpia, 0.89 s
+```
+
+Iba a escribir "throttling del proveedor". Era coherente, específico y falso.
+
+### 12.2 Por qué el truco obvio no funciona en Windows
+
+Lo normal sería comparar el reloj de pared con el monótono: si uno avanza mucho
+más que el otro, la máquina durmió. **En Windows eso no detecta nada.** Medido
+en tu Victus:
+
+```
+GetTickCount64      42365.203 s
+time.monotonic()    42365.203 s     <- es el mismo contador
+```
+
+`time.monotonic()` de Python **es** `GetTickCount64()`, y los dos avanzan
+durante la suspensión. 793 s dormido y 793 s de llamada son idénticos desde
+dentro del proceso.
+
+### 12.3 El contador que sí lo sabe
+
+```
+GetTickCount64                42365.203 s  (11.77 h)   cuenta el sueño
+QueryUnbiasedInterruptTime    35038.317 s  ( 9.73 h)   NO cuenta el sueño
+-------------------------------------------------------------------
+diferencia = sesgo de suspensión 7326.886 s ( 2.04 h)  = lo dormido
+```
+
+Esa diferencia sólo crece, y cuanto crece entre dos lecturas **es exactamente**
+lo que la máquina durmió en medio. Despierta se mueve 2.2 ms. Dos llamadas
+`ctypes`, sin admin, sin bombeo de mensajes, sin hilos, sin polling.
+
+### 12.4 Y el Event Log lo confirma
+
+```
+21:51:44  Kernel-Power 506  entrando en espera moderna
+22:04:59  Kernel-Power 507  saliendo de espera moderna
+```
+
+**795 segundos.** Mi llamada colgada midió **793.32 s**. Dos fuentes
+independientes coincidiendo en dos segundos. La evidencia estaba en tu máquina
+todo el rato y nada la estaba leyendo.
+
+### 12.5 Verlo tú mismo
+
+```
+python tools/host_watch.py
+```
+
+Salida real:
+
+```
+{
+  "contract": "HostAwareness/v0",
+  "host_id": "win11-danny",
+  "observable": {
+    "suspend_retrospective": true,
+    "suspend_pre_notification": false,
+    "network": true
+  }
+}
+
+Windows event log, most recent power events (corroboration only):
+  21:51:44  HOST_SUSPEND_REQUESTED   [INFERRED]
+  22:04:59  HOST_RESUMED             [INFERRED]
+```
+
+**Cierra la tapa, espera un minuto, ábrela.** Verás el `DISCONTINUITY` con los
+segundos exactos que durmió. Con `--probe` además hace llamadas reales y verás
+que las interrumpidas se clasifican `HOST_SUSPENDED` y **se excluyen** de las
+estadísticas del proveedor.
+
+La herramienta **nunca suspende tu máquina**: te pide que lo hagas tú.
+
+### 12.6 La regla que queda congelada
+
+```
+HOST_SUSPENDED != PROVIDER_ERROR
+```
+
+Y el orden importa: primero se comprueba si la máquina siguió despierta,
+**después** habla el error. Un fallo de conexión durante una suspensión es una
+suspensión, no un fallo de conexión.
+
+Si no hay mecanismo para saberlo, la respuesta es `UNKNOWN` — nunca `ACTIVE`
+por defecto. Ausencia de evidencia no es evidencia de que todo iba bien.
+
+### 12.7 Lo que sigue sin poder hacer
+
+- **No hay aviso previo a la suspensión.** `SUSPENDING`/`SUSPENDED` nunca se
+  reportan en vivo, sólo se reconstruyen después. `NOT_DEMONSTRATED`.
+- **Linux es una costura documentada, no un backend.** El mecanismo está
+  escrito (`CLOCK_BOOTTIME − CLOCK_MONOTONIC`) pero reporta `UNKNOWN`.
+- **macOS no existe aquí.** Sin hardware para demostrarlo, no hay ni stub.
+- **Hibernación y pausa de VM sin medir.** Deberían mover el sesgo igual.
+  `UNKNOWN`, no "seguro que sí".

@@ -31,6 +31,9 @@ taught us that the design did not.
 | **Real Windows host** — NTFS, processes, app launch | `hosts/windows/win11.py` | working |
 | Local grant file — the local authority, deny-by-default | `hosts/windows/grants.py` | working |
 | Host CLI — grant, revoke, execute | `tools/host_cli.py` | working |
+| **HostAwarenessEngine** — deterministic suspend/network facts | `core/isymotron/awareness.py` | working |
+| Attribution — `HOST_SUSPENDED` is never `PROVIDER_ERROR` | `core/isymotron/attribution.py` | working |
+| Windows power provider — clock bias, no message pump | `hosts/windows/power.py` | working |
 | Provider seam — NVIDIA / Nebius, one env var apart | `agents/provider.py` | working |
 | Planner role — intent to a validated plan | `agents/planner.py` | working |
 | Executor — resolves `$from`, stops at the first DENY | `agents/executor.py` | working |
@@ -38,6 +41,7 @@ taught us that the design did not.
 | M1 real-hardware gate | `tests/test_win11_real.py` | 17 passed |
 | M3 planner gate (offline) | `tests/test_planner.py` | 29 passed |
 | M3 live gate (real Nemotron) | `tests/test_live_model.py` | 5 passed |
+| M4 host awareness gate | `tests/test_awareness.py` | 21 passed |
 | Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
 Not started: the Doctor, the sandbox, the marketplace, the identity seam, the
@@ -73,7 +77,7 @@ No dependencies beyond the standard library and `pytest`. No SDK.
 Spanish walkthrough, command by command, with the real output:
 [`docs/GUIA.es.md`](docs/GUIA.es.md).
 
-## The eight rules the code actually enforces
+## The nine rules the code actually enforces
 
 1. **No capability means no action.** `list_capabilities()` omits ungranted
    capabilities entirely. They are absent from the agent's world, not forbidden
@@ -99,6 +103,10 @@ Spanish walkthrough, command by command, with the real output:
 8. **A capability's result shape is part of its contract.** Two engines
    returned the same value under different names and a plan broke on it —
    `returns` is now declared and cross-step references are checked against it.
+9. **Never ask a model to infer host state the host can report.** A closed
+   laptop lid once looked exactly like provider throttling. The machine knows,
+   and `time.monotonic()` on Windows does not —
+   see [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md).
 
 ## Layout
 
@@ -121,6 +129,7 @@ docs/             Thesis, architecture, evidence, findings, prior art, Spanish g
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the contract and the L0/L1 boundary
 - [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — every claim, with its current status
 - [`docs/FINDINGS.md`](docs/FINDINGS.md) — what the code taught us that the design did not
+- [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md) — why a closed laptop looked like provider throttling, and the fix
 - [`docs/PRIOR_ART_ISYCO.md`](docs/PRIOR_ART_ISYCO.md) — what ISyCo already solved
 - [`docs/ROADMAP_DELTA.md`](docs/ROADMAP_DELTA.md) — where this repo departs from the roadmap, and why
 - [`docs/GUIA.es.md`](docs/GUIA.es.md) — guía en español
