@@ -36,7 +36,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | ID | Milestone | Status | Depends on |
 |---|---|---|---|
 | AV0 | Freeze architecture + contract | **DONE** | — |
-| AV1 | Pure avatar model (bus, channels, precedence) | NOT_STARTED | AV0 |
+| AV1 | Pure avatar model (bus, channels, precedence) | IN_PROGRESS | AV0 |
 | AV2 | Open channel: inbox reader, companion-event-v1 | NOT_STARTED | AV1 |
 | AV3 | Authority channel: producers + `/api/avatar` | NOT_STARTED | AV1 |
 | AV4 | Web renderer in the console | NOT_STARTED | AV2, AV3 |
