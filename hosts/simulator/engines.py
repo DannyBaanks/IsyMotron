@@ -16,30 +16,41 @@ from isymotron.contracts import CapabilityManifest, ExecutionRequest, HostIdenti
 from isymotron.host import Host
 from isymotron.policy import normalize_path
 
+
+def _sha(text: str) -> str:
+    import hashlib
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
 FS_READ = CapabilityManifest(
-    id="filesystem.read", version="0.1",
-    summary="Read file bytes and list directories inside granted roots.",
+    id="filesystem.read", version="0.2",
+    summary=("Read a file, or list a directory with each entry's size and "
+             "modification time, inside the granted roots."),
     params=("path",),
+    returns=("path", "kind", "bytes", "sha256", "text", "entries", "count", "order"),
 )
 FS_WRITE = CapabilityManifest(
     id="filesystem.write", version="0.1",
     summary="Create or overwrite a file inside granted roots.",
     params=("path", "content"),
+    returns=("path", "bytes", "overwrote", "sha256"),
 )
 APPS_LAUNCH = CapabilityManifest(
     id="apps.launch", version="0.1",
     summary="Launch an allowlisted local application.",
     params=("app",),
+    returns=("app", "pid"),
 )
 SYSTEM_INFO = CapabilityManifest(
     id="system.info", version="0.1",
     summary="Report non-identifying machine facts.",
     params=(),
+    returns=("os", "engine", "cores"),
 )
 PROCESS_INSPECT = CapabilityManifest(
     id="process.inspect", version="0.1",
     summary="List running processes. Read-only.",
     params=("mutate",),
+    returns=("processes",),
 )
 ADMIN_TASK = CapabilityManifest(
     id="system.admin_task", version="0.1",
@@ -49,10 +60,16 @@ ADMIN_TASK = CapabilityManifest(
 
 
 class _VirtualFS:
-    """In-memory tree. Keys are normalized, lowercased paths."""
+    """In-memory tree. Keys are normalized, lowercased paths.
+
+    Entries carry a fake but monotonic mtime so the fixture can answer
+    "the most recent one" the same way a real host does.
+    """
 
     def __init__(self, files: dict[str, str]) -> None:
         self.files = {normalize_path(k).lower(): v for k, v in files.items()}
+        self.mtimes = {k: f"2026-09-{10 + i:02d}T12:00:00Z"
+                       for i, k in enumerate(sorted(self.files))}
 
     def read(self, path: str) -> str:
         key = normalize_path(path).lower()
@@ -64,11 +81,23 @@ class _VirtualFS:
         key = normalize_path(path).lower()
         existed = key in self.files
         self.files[key] = content
+        self.mtimes[key] = "2026-09-17T23:59:00Z"
         return existed
 
-    def listdir(self, path: str) -> list[str]:
+    def isdir(self, path: str) -> bool:
         key = normalize_path(path).lower().rstrip("/")
-        return sorted(p for p in self.files if p.rsplit("/", 1)[0] == key)
+        return key not in self.files and any(
+            p.startswith(key + "/") for p in self.files)
+
+    def listdir(self, path: str) -> list[dict]:
+        key = normalize_path(path).lower().rstrip("/")
+        out = [
+            {"name": p.rsplit("/", 1)[1], "kind": "file",
+             "bytes": len(self.files[p]), "modified": self.mtimes.get(p, "")}
+            for p in self.files if p.rsplit("/", 1)[0] == key
+        ]
+        out.sort(key=lambda e: e["modified"], reverse=True)
+        return out
 
 
 class ModernHost(Host):
@@ -93,9 +122,16 @@ class ModernHost(Host):
     def run(self, req: ExecutionRequest) -> tuple[dict, list[dict]]:
         p = req.params
         if req.capability == "filesystem.read":
+            if self.fs.isdir(p["path"]):
+                entries = self.fs.listdir(p["path"])
+                return ({"path": normalize_path(p["path"]), "kind": "directory",
+                         "entries": entries, "count": len(entries),
+                         "order": "modified_desc"},
+                        [{"kind": "fs.list", "path": normalize_path(p["path"])}])
             data = self.fs.read(p["path"])
-            return ({"path": normalize_path(p["path"]), "bytes": len(data),
-                     "content": data}, [{"kind": "fs.read", "path": normalize_path(p["path"])}])
+            return ({"path": normalize_path(p["path"]), "kind": "file",
+                     "bytes": len(data), "text": data, "sha256": _sha(data)},
+                    [{"kind": "fs.read", "path": normalize_path(p["path"])}])
         if req.capability == "filesystem.write":
             existed = self.fs.write(p["path"], p["content"])
             return ({"path": normalize_path(p["path"]), "overwrote": existed},
@@ -137,10 +173,17 @@ class LegacyHost(Host):
     def run(self, req: ExecutionRequest) -> tuple[dict, list[dict]]:
         p = req.params
         if req.capability == "filesystem.read":
+            if self.fs.isdir(p["path"]):
+                entries = self.fs.listdir(p["path"])
+                return ({"path": normalize_path(p["path"]).upper().replace("/", "\\"),
+                         "kind": "directory", "entries": entries,
+                         "count": len(entries), "order": "modified_desc"},
+                        [{"kind": "fs.list", "path": normalize_path(p["path"])}])
             data = self.fs.read(p["path"])
             # Legacy engine reports paths the way the OS would print them.
             return ({"path": normalize_path(p["path"]).upper().replace("/", "\\"),
-                     "bytes": len(data), "content": data},
+                     "kind": "file", "bytes": len(data), "text": data,
+                     "sha256": _sha(data)},
                     [{"kind": "fs.read", "path": normalize_path(p["path"])}])
         if req.capability == "filesystem.write":
             existed = self.fs.write(p["path"], p["content"])

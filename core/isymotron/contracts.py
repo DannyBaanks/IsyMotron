@@ -42,11 +42,17 @@ class CapabilityManifest:
     scopes: Mapping[str, Any] = field(default_factory=dict)
     requires_admin: bool = False
     params: Sequence[str] = field(default_factory=tuple)
+    # The keys a successful result is guaranteed to carry. Added in v0 after
+    # two engines returned the same value under different names and a plan
+    # referencing one of them stopped at execution -- see docs/FINDINGS.md #5.
+    # Without this, a cross-step reference is a guess.
+    returns: Sequence[str] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
         d = asdict(self)
         d["scopes"] = dict(self.scopes)
         d["params"] = list(self.params)
+        d["returns"] = list(self.returns)
         return d
 
 

@@ -31,29 +31,35 @@ MAX_READ_BYTES = 8 * 1024 * 1024
 
 
 FS_READ = CapabilityManifest(
-    id="filesystem.read", version="0.1",
-    summary="Read a file or list a directory inside the granted roots.",
+    id="filesystem.read", version="0.2",
+    summary=("Read a file, or list a directory with each entry's size and "
+             "modification time, inside the granted roots."),
     params=("path",),
+    returns=("path", "kind", "bytes", "sha256", "text", "entries", "count", "order"),
 )
 FS_WRITE = CapabilityManifest(
     id="filesystem.write", version="0.1",
     summary="Create or overwrite a file inside the granted roots.",
     params=("path", "content"),
+    returns=("path", "bytes", "overwrote", "sha256"),
 )
 APPS_LAUNCH = CapabilityManifest(
     id="apps.launch", version="0.1",
     summary="Launch an allowlisted local application.",
     params=("app", "args"),
+    returns=("app", "exe", "pid", "args"),
 )
 SYSTEM_INFO = CapabilityManifest(
     id="system.info", version="0.1",
     summary="Report non-identifying machine facts.",
     params=(),
+    returns=("os", "build", "machine", "cores", "engine", "python"),
 )
 PROCESS_INSPECT = CapabilityManifest(
     id="process.inspect", version="0.1",
     summary="List running process names. Read-only.",
     params=("mutate",),
+    returns=("count", "processes"),
 )
 
 CAPABILITIES = [FS_READ, FS_WRITE, APPS_LAUNCH, SYSTEM_INFO, PROCESS_INSPECT]
@@ -123,9 +129,27 @@ class Win11Host(Host):
         if req.capability == "filesystem.read":
             real = self._resolve_inside(p["path"], "filesystem.read")
             if os.path.isdir(real):
-                names = sorted(os.listdir(real))
+                # Names alone are not enough to answer "the most recent one".
+                # The planner refused a legitimate request over exactly this
+                # gap on 2026-09-17 -- see docs/FINDINGS.md #4. Listings carry
+                # size and mtime, newest first.
+                entries = []
+                for name in sorted(os.listdir(real)):
+                    child = os.path.join(real, name)
+                    try:
+                        st = os.stat(child)
+                    except OSError:
+                        continue
+                    entries.append({
+                        "name": name,
+                        "kind": "directory" if os.path.isdir(child) else "file",
+                        "bytes": st.st_size,
+                        "modified": _iso(st.st_mtime),
+                    })
+                entries.sort(key=lambda e: e["modified"], reverse=True)
                 return ({"path": normalize_path(real), "kind": "directory",
-                         "entries": names, "count": len(names)},
+                         "entries": entries, "count": len(entries),
+                         "order": "modified_desc"},
                         [{"kind": "fs.list", "path": normalize_path(real)}])
             size = os.path.getsize(real)
             if size > MAX_READ_BYTES:
@@ -209,6 +233,13 @@ def _release_tag() -> str:
     if len(parts) > 2 and int(parts[2]) >= 22000:
         return f"11-build-{parts[2]}"
     return f"{ver[0]}-build-{parts[-1] if parts else '?'}"
+
+
+def _iso(ts: float) -> str:
+    """UTC, seconds, sortable as a string. One time grammar for every host."""
+    import datetime
+    return datetime.datetime.fromtimestamp(
+        ts, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _sha(data: bytes) -> str:

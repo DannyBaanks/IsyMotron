@@ -20,21 +20,25 @@ There is no `SAFE`. There is no default-pass. An unmeasured claim is
 
 | Claim | Status | Basis |
 |---|---|---|
-| **A** — one plan orchestrates across heterogeneous hosts under one contract | `NOT_DEMONSTRATED` | Cross-host execution works (`test_cross_device_transfer_produces_two_receipts`), but no planner exists. The claim is about a *plan*, and there is none. |
-| **B** — a host denies an action outside local scope even if the model asks | `NOT_DEMONSTRATED` | The denial is now `DEMONSTRATED` **on real hardware** (`evidence/M1/02_real_read_denied.json`, plus a real junction escape). The "even if the model asks" half still has no model to ask it. |
+| **A** — one plan orchestrates across heterogeneous hosts under one contract | **`DEMONSTRATED`** (scoped) | A real Nemotron plan read a real file on `win11-danny` (`nt-real/0.1`) and wrote it to a second host on a different engine, through a typed `$from` reference, in one plan. Scope: the second host is a fixture, so this is one real machine plus one simulated one. `test_planner_uses_typed_references_for_cross_step_data`. |
+| **B** — a host denies an action outside local scope even if the model asks | **`DEMONSTRATED`** | Nemotron planned `apps.launch {"app": "DOOM"}`; the allowlist grants `DOOM.EXE`; the host refused with `OUT_OF_SCOPE` and the plan stopped. No prompt instructed the refusal — it came from the grant file. See FINDINGS.md #6, and `test_a_live_plan_still_meets_the_enforcer`. |
 | **C** — Doctor detects an undeclared side effect and blocks promotion | `NOT_DEMONSTRATED` | No Doctor. |
 | **D** — a changed artifact invalidates prior verification | `NOT_DEMONSTRATED` | No marketplace, no artifact records. |
 | **E** — a publicly accepted activity can still be denied locally | `NOT_DEMONSTRATED` | No marketplace. The mechanism that would enforce it (local grant beats everything) is `DEMONSTRATED` in isolation. |
 | **F** — two Windows generations serve the same contract via different engines | `NOT_DEMONSTRATED` | One **real** engine (`nt-real/0.1`, Windows build 10.0.26200) and two simulated ones now serve the contract. One real machine is not two generations. |
 | **G** — a verified activity reuses a fast path without repeating verification | `NOT_DEMONSTRATED` | No verification path of either speed. |
-| **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` | No model calls at all. |
+| **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` | Spot numbers only, no workload. Round trip 0.75–6.16 s (median 1.56 s over 12); a two-host plan 4.6–22.4 s. **One HTTP 503 in 12 calls** — real, but n=12 is not a rate. A second run that looked like throttling was the laptop being closed mid-measurement, not the provider (FINDINGS.md #7b). Also: `nemotron-nano-3-30b-a3b` is listed by `/models` and returns 404 on invocation — listed is not servable. |
 | **I** — Windows 98 participates and launches an app from a mobile workflow | `NOT_DEMONSTRATED` | A simulated `dos-bridge/0.1` launches a simulated `DOOM.EXE`. That is a test fixture, not a Windows 98 machine. |
 
-Still nine `NOT_DEMONSTRATED` after M1. B and F moved — their basis lines now
-cite real hardware instead of a simulator — but neither crossed the line, and
-nudging a label because progress *feels* like it should is exactly the failure
-this ledger exists to prevent. B needs a model to do the asking. F needs a
-second real Windows generation.
+**Two claims crossed on 2026-09-17: A and B.** Both are scoped, and the scope
+is written into the basis line rather than left implied. Seven remain.
+
+Still nine `NOT_DEMONSTRATED` after M1. B and F moved — their basis lines
+cited real hardware instead of a simulator — but neither crossed at that point,
+and nudging a label because progress *feels* like it should is exactly the
+failure this ledger exists to prevent. B crossed later the same day, when a
+real model actually did the asking and was refused. F still needs a second real
+Windows generation and has not moved.
 
 ---
 
@@ -92,11 +96,49 @@ NTFS, real processes, real grant file. Every row below is a passing test in
 | 38 | An app off the allowlist is denied | `test_app_not_on_allowlist_is_denied` |
 | 39 | All 8 operations exist on the real host | `test_all_eight_operations_on_the_real_host` |
 
+**M3 scope:** the planner and executor. Offline tests use a scripted provider
+and are deterministic; live tests hit real Nemotron and skip without a key.
+
+| # | Claim | Test |
+|---|---|---|
+| 40 | The catalogue omits ungranted capabilities entirely | `test_catalogue_omits_ungranted_capabilities` |
+| 41 | The catalogue declares each capability's result fields | `test_catalogue_declares_result_fields` |
+| 42 | Both engines agree on result field names | `test_both_engines_agree_on_result_field_names` |
+| 43 | A hallucinated capability is rejected | `test_hallucinated_capability_is_rejected` |
+| 44 | A real-but-ungranted capability is rejected identically | `test_ungranted_but_real_capability_is_rejected_the_same_way` |
+| 45 | An unknown host is rejected | `test_unknown_host_is_rejected` |
+| 46 | An undeclared param is rejected | `test_undeclared_param_is_rejected` |
+| 47 | A forward reference is rejected | `test_forward_reference_is_rejected` |
+| 48 | A reference to an undeclared result field is rejected | `test_reference_to_an_undeclared_result_field_is_rejected` |
+| 49 | Truncation is not reported as bad JSON | `test_truncation_is_not_reported_as_bad_json` |
+| 50 | JSON inside a fence is accepted | `test_json_inside_a_fence_is_accepted` |
+| 51 | An empty plan **with a reason** is a refusal, not a failure | `test_empty_plan_with_a_reason_is_a_refusal_not_a_failure` |
+| 52 | An empty plan without a reason is its own class | `test_empty_plan_without_a_reason_is_its_own_class` |
+| 53 | The executor resolves a `$from` reference across hosts | `test_executor_resolves_a_reference_across_hosts` |
+| 54 | The executor stops at the first DENY and runs nothing after | `test_executor_stops_at_the_first_deny` |
+| 55 | **A validated plan still carries no authority** | `test_a_plan_carries_no_authority` |
+| 56 | A prose placeholder is refused before it reaches a host | `test_prose_placeholder_is_refused_before_it_reaches_a_host` |
+| 57 | The placeholder detector, six cases | `test_placeholder_detector` |
+| 58 | Provider presets differ only in base_url, not model id | `test_provider_presets_differ_only_in_door` |
+| 59 | An unknown provider is refused | `test_unknown_provider_is_refused` |
+| 60 | A missing key is refused before any request leaves | `test_missing_key_is_refused_before_any_request` |
+
+Live (real Nemotron, `tests/test_live_model.py`, 5 passed in 14.58s):
+
+| # | Claim | Test |
+|---|---|---|
+| L1 | The provider reaches a real endpoint | `test_provider_reaches_the_endpoint` |
+| L2 | An undersized budget truncates rather than shortens | `test_an_undersized_budget_truncates_rather_than_shortens` |
+| L3 | The planner refuses rather than inventing a capability | `test_planner_refuses_instead_of_inventing_a_capability` |
+| L4 | The planner uses typed references, not prose | `test_planner_uses_typed_references_for_cross_step_data` |
+| L5 | A live plan still meets the enforcer | `test_a_live_plan_still_meets_the_enforcer` |
+
 Reproduce:
 
 ```
-python -m pytest -q
-39 passed in 1.33s
+python -m pytest -q                        # 69 passed in 2.41s
+python -m pytest tests/test_live_model.py  # 5 passed in 14.58s  (needs a key)
+python tools/nemotron_check.py             # the M3 probe, writes evidence/M3/
 ```
 
 Sealed receipts from real runs:
@@ -104,10 +146,13 @@ Sealed receipts from real runs:
 - `evidence/M0/` — 7 receipts, simulated hosts, 4 ALLOW / 3 DENY, 7/7 seals verified
 - `evidence/M1/` — 5 receipts from the **real** `win11-danny` host, including a
   real read of a real file and a real `OUT_OF_SCOPE` refusal
+- `evidence/M3/` — the provider probe, with measured latencies and the
+  adversarial verdict
 
-One finding came out of that first contact and changed the architecture:
-`docs/FINDINGS.md` #1. It is the reason claim B's basis line now says "on real
-hardware".
+Six findings came out of first contact with real hardware and a real model, and
+four of them changed the architecture: `docs/FINDINGS.md`. Two were bugs in our
+own verdict logic, which is the category worth watching — in both cases the
+defence worked and the *record* of the defence was wrong.
 
 ---
 

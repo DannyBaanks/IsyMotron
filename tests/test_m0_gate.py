@@ -72,7 +72,7 @@ def test_gate_describe_request_receipt_roundtrip(world):
                      path="C:/Users/danny/Photos/shot-2026-09-17.png")
 
     assert rcpt.decision.decision is Decision.ALLOW
-    assert rcpt.result["content"] == "PNGDATA"
+    assert rcpt.result["text"] == "PNGDATA"
     assert rcpt.verify(), "receipt seal must validate"
     assert relay.receipt("win11-victus", rcpt.receipt_id).receipt_id == rcpt.receipt_id
 
@@ -260,7 +260,7 @@ def test_cross_device_transfer_produces_two_receipts(world):
     src = phone.act("win11-victus", "filesystem.read",
                     path="C:/Users/danny/Photos/shot-2026-09-17.png")
     dst = phone.act("win98-retrobox", "filesystem.write",
-                    path="C:/NEMO/INBOX/SHOT.PNG", content=src.result["content"])
+                    path="C:/NEMO/INBOX/SHOT.PNG", content=src.result["text"])
     assert src.decision.decision is dst.decision.decision is Decision.ALLOW
     assert src.host.host_id != dst.host.host_id
     assert all(r.verify() for r in (src, dst))

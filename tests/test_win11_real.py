@@ -155,12 +155,29 @@ def test_real_read_outside_scope(sandbox):
     assert r.result == {}
 
 
-def test_real_directory_listing(sandbox):
+def test_real_directory_listing_carries_size_and_mtime(sandbox):
+    """Regression for FINDINGS.md #4: names alone cannot answer 'the most
+    recent one', and the planner refused a legitimate request over it."""
     host = make_host(sandbox, ["filesystem.read"],
                      {"filesystem.read": {"roots": [str(sandbox / "granted")]}})
     r = act(host, "filesystem.read", path=str(sandbox / "granted"))
     assert r.result["kind"] == "directory"
-    assert "ok.txt" in r.result["entries"]
+    names = [e["name"] for e in r.result["entries"]]
+    assert "ok.txt" in names
+    entry = next(e for e in r.result["entries"] if e["name"] == "ok.txt")
+    assert entry["bytes"] == 4
+    assert entry["modified"].endswith("Z")
+
+
+def test_real_directory_listing_is_newest_first(sandbox):
+    import time as _t
+    host = make_host(sandbox, ["filesystem.read"],
+                     {"filesystem.read": {"roots": [str(sandbox / "granted")]}})
+    _t.sleep(1.1)  # the mtime grammar has one-second resolution
+    (sandbox / "granted" / "later.txt").write_text("nuevo", encoding="utf-8")
+    r = act(host, "filesystem.read", path=str(sandbox / "granted"))
+    assert r.result["order"] == "modified_desc"
+    assert r.result["entries"][0]["name"] == "later.txt"
 
 
 def test_real_write_creates_the_file(sandbox):

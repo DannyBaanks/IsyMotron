@@ -8,11 +8,12 @@ that the user has explicitly granted across their own phones and computers,
 while every grant, refusal and effect is enforced and recorded by machinery the
 model does not control.
 
-**Status: M1 — first real host.** The authority grammar exists, is tested, and
-now runs on an actual Windows machine. No model is wired in yet, deliberately.
+**Status: M3 — Nemotron plans, the host still decides.** The authority grammar
+runs on a real Windows machine, and a real Nemotron plan orchestrates work
+across two unlike hosts — while a host refuses a step the model asked for.
 See [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for what is demonstrated and what is
-not, and [`docs/FINDINGS.md`](docs/FINDINGS.md) for what real hardware taught us
-on day one.
+not, and [`docs/FINDINGS.md`](docs/FINDINGS.md) for the six things first contact
+taught us that the design did not.
 
 ---
 
@@ -30,12 +31,17 @@ on day one.
 | **Real Windows host** — NTFS, processes, app launch | `hosts/windows/win11.py` | working |
 | Local grant file — the local authority, deny-by-default | `hosts/windows/grants.py` | working |
 | Host CLI — grant, revoke, execute | `tools/host_cli.py` | working |
+| Provider seam — NVIDIA / Nebius, one env var apart | `agents/provider.py` | working |
+| Planner role — intent to a validated plan | `agents/planner.py` | working |
+| Executor — resolves `$from`, stops at the first DENY | `agents/executor.py` | working |
 | M0 acceptance gate | `tests/test_m0_gate.py` | 23 passed |
-| M1 real-hardware gate | `tests/test_win11_real.py` | 16 passed |
-| Sealed receipts from real runs | `evidence/M0/`, `evidence/M1/` | 12 receipts |
+| M1 real-hardware gate | `tests/test_win11_real.py` | 17 passed |
+| M3 planner gate (offline) | `tests/test_planner.py` | 29 passed |
+| M3 live gate (real Nemotron) | `tests/test_live_model.py` | 5 passed |
+| Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
-Not started: Nemotron roles, the Doctor, the sandbox, the marketplace, the
-identity seam, the mobile surface, a legacy Windows host.
+Not started: the Doctor, the sandbox, the marketplace, the identity seam, the
+mobile surface, a legacy Windows host.
 
 ## Run it
 
@@ -53,12 +59,21 @@ python tools/host_cli.py do filesystem.read --path "C:/Users/you/Pictures"
 python tools/host_cli.py do filesystem.read --path "C:/Users/you/Documents"   # DENY
 ```
 
-No dependencies beyond the standard library and `pytest`.
+Wire up a model (either provider — the model id string is the same on both):
+
+```
+setx NVIDIA_NIM_API_KEY nvapi-...        # or NEBIUS_API_KEY, with
+setx ISYMOTRON_PROVIDER nebius           # this
+python tools/nemotron_check.py           # eligibility + planner + adversarial
+python tools/nemotron_check.py --models  # what the key can actually serve
+```
+
+No dependencies beyond the standard library and `pytest`. No SDK.
 
 Spanish walkthrough, command by command, with the real output:
 [`docs/GUIA.es.md`](docs/GUIA.es.md).
 
-## The six rules the code actually enforces
+## The eight rules the code actually enforces
 
 1. **No capability means no action.** `list_capabilities()` omits ungranted
    capabilities entirely. They are absent from the agent's world, not forbidden
@@ -77,17 +92,25 @@ Spanish walkthrough, command by command, with the real output:
    the request as written; the engine re-checks what the OS actually resolves.
    A junction inside a granted root passes the first and is stopped by the
    second — see [`docs/FINDINGS.md`](docs/FINDINGS.md) #1.
+7. **A plan is a proposal.** The planner only ever sees granted capabilities,
+   its output is validated against the manifests, and every step is still
+   judged by the host. Nemotron asked to launch `DOOM`; the allowlist grants
+   `DOOM.EXE`; the host refused. No prompt made that happen.
+8. **A capability's result shape is part of its contract.** Two engines
+   returned the same value under different names and a plan broke on it —
+   `returns` is now declared and cross-step references are checked against it.
 
 ## Layout
 
 ```
 core/isymotron/   L0. Contract, policy, verdicts, canonical digests.
+agents/           L1. Provider seam, planner, executor. The only model code.
 hosts/windows/    The real Windows engine and the local grant file.
 hosts/simulator/  Two engines that serve the same contract differently.
 relay/            Transport. Holds no policy and cannot execute.
 clients/          Fake mobile surface.
 tests/            The M0 and M1 acceptance gates.
-tools/            m0_demo.py (simulated), host_cli.py (real machine).
+tools/            m0_demo.py, host_cli.py (real machine), nemotron_check.py.
 evidence/         Receipts produced by real runs, not by hand.
 docs/             Thesis, architecture, evidence, findings, prior art, Spanish guide.
 ```

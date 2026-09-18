@@ -1,0 +1,16 @@
+{
+  "provider": {
+    "provider": "nvidia",
+    "label": "NVIDIA NIM",
+    "base_url": "https://integrate.api.nvidia.com/v1",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "key_env": "NVIDIA_NIM_API_KEY"
+  },
+  "checks": {
+    "round_trip": {
+      "pass": false,
+      "error": "NVIDIA NIM returned HTTP 503",
+      "status": 503
+    }
+  }
+}
