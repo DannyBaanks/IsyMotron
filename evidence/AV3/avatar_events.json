@@ -1,0 +1,81 @@
+{
+  "events": [
+    {
+      "seq": 1,
+      "channel": "authority",
+      "kind": "mode",
+      "at": "2026-09-18T22:13:32.883629+00:00",
+      "state": "idle",
+      "provider": "NVIDIA NIM"
+    },
+    {
+      "seq": 2,
+      "channel": "authority",
+      "kind": "step",
+      "at": "2026-09-18T22:13:33.259838+00:00",
+      "index": 1,
+      "host_id": "win98-retrobox",
+      "capability": "filesystem.read",
+      "state": "working",
+      "text": "step 1: filesystem.read"
+    },
+    {
+      "seq": 3,
+      "channel": "authority",
+      "kind": "step",
+      "at": "2026-09-18T22:13:33.259838+00:00",
+      "index": 2,
+      "host_id": "win98-retrobox",
+      "capability": "system.info",
+      "state": "working",
+      "text": "step 2: system.info"
+    },
+    {
+      "seq": 4,
+      "channel": "authority",
+      "kind": "verdict",
+      "at": "2026-09-18T22:13:33.260837+00:00",
+      "ttl": 8.0,
+      "host_id": "win98-retrobox",
+      "capability": "filesystem.read",
+      "decision": "ALLOW",
+      "reason": null,
+      "detail": "filesystem.read on hostfs://games/DOOM/DOOM.EXE",
+      "receipt_id": "rcpt_3b11cb0a63ff4ebe",
+      "seal_ok": true,
+      "state": "success",
+      "text": "The host allowed: filesystem.read on hostfs://games/DOOM/DOOM.EXE"
+    },
+    {
+      "seq": 5,
+      "channel": "authority",
+      "kind": "verdict",
+      "at": "2026-09-18T22:13:33.260837+00:00",
+      "ttl": 8.0,
+      "host_id": "win98-retrobox",
+      "capability": "system.info",
+      "decision": "ALLOW",
+      "reason": null,
+      "detail": "system.info",
+      "receipt_id": "rcpt_a55460378dda48e0",
+      "seal_ok": true,
+      "state": "success",
+      "text": "The host allowed: system.info"
+    }
+  ],
+  "view": {
+    "state": "success",
+    "host_frame": {
+      "text": "The host allowed: system.info",
+      "host_id": "win98-retrobox",
+      "verdict": {
+        "decision": "ALLOW",
+        "reason": null,
+        "receipt_id": "rcpt_a55460378dda48e0",
+        "seal_ok": true,
+        "host_id": "win98-retrobox"
+      }
+    },
+    "third_party": []
+  }
+}

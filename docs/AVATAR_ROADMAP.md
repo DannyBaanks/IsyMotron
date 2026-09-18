@@ -38,7 +38,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV0 | Freeze architecture + contract | **DONE** | — |
 | AV1 | Pure avatar model (bus, channels, precedence) | **DONE** | AV0 |
 | AV2 | Open channel: inbox reader, companion-event-v1 | **DONE** | AV1 |
-| AV3 | Authority channel: producers + `/api/avatar` | IN_PROGRESS | AV1 |
+| AV3 | Authority channel: producers + `/api/avatar` | **DONE** | AV1 |
 | AV4 | Web renderer in the console | NOT_STARTED | AV2, AV3 |
 | AV5 | Desktop renderer (Companion window, adapted) | NOT_STARTED | AV2, AV3 |
 | AV6 | No-AI mode ("avatar" mode) | NOT_STARTED | AV3 |
@@ -192,7 +192,17 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 - **Failure conditions:** any verdict emitted from a code path that did not
   hold a real `ExecutionReceipt`.
 - **Commit boundary:** `AV3: authority channel -- verdicts come from receipts, over a token the avatar cannot write with`
-- **Result:** —
+- **Result:** `febd2d0`; 173 passed (166 + 7 new), `py -m pytest -q`. Live
+  evidence: console started with `--demo-host` (real process, port 8791),
+  one `/api/run` of two steps on `win98-retrobox` only -> 2 verdicts, both
+  `seal_ok=true`, detail logical (`filesystem.read on
+  hostfs://games/DOOM/DOOM.EXE`), scrub PASS (no `C:/Users`, no `\` in
+  `evidence/AV3/avatar_events.json`); events by kind: mode 1, step 2,
+  verdict 2; `view.host_frame` carries the verdict slot only from authority.
+  Note: a first evidence run executed the read on the REAL host
+  (`win11-danny`) by mistake in the selection logic of the evidence script
+  (read-only, denied OUT_OF_SCOPE with empty result); the script now selects
+  `win98-retrobox` explicitly. No unit test used the real host.
 
 ---
 
