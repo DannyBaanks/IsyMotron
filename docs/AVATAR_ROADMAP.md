@@ -40,7 +40,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV2 | Open channel: inbox reader, companion-event-v1 | **DONE** | AV1 |
 | AV3 | Authority channel: producers + `/api/avatar` | **DONE** | AV1 |
 | AV4 | Web renderer in the console | **DONE** | AV2, AV3 |
-| AV5 | Desktop renderer (Companion window, adapted) | IN_PROGRESS | AV2, AV3 |
+| AV5 | Desktop renderer (Companion window, adapted) | **DONE** | AV2, AV3 |
 | AV6 | No-AI mode ("avatar" mode) | NOT_STARTED | AV3 |
 | AV7 | AI mode ("agent" mode) | NOT_STARTED | AV6 |
 | AV8 | Adversarial suite | NOT_STARTED | AV4, AV5 |
@@ -279,7 +279,25 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
   reconsider: tk data files); Tk in the same process as the HTTP server
   (use a subprocess — Tk wants the main thread).
 - **Commit boundary:** `AV5: desktop avatar -- Companion's window, minus everything that could act`
-- **Result:** —
+- **Result:** `08773da`; 180 passed (177 + 3 new), `py -m pytest -q`; exe
+  rebuilt: **6.87 MB -> 12.04 MB** (< 20 MB), smoke test PASS (serves
+  /api/state, refuses 401 without token). Live evidence
+  (`evidence/AV5/desktop_avatar.png`): `dist\IsyMotron.exe --demo-host
+  --avatar` started console + pet subprocess (window "IsyMotron",
+  ~228x267); DENY via `/api/execute` on `win98-retrobox`; the view AT
+  CAPTURE TIME was `state=error` with host_frame
+  `{decision: DENY, receipt_id: rcpt_4b95e9636011422d, seal_ok: true}` —
+  the exact view the pet renders (poll 500 ms). Independence, both
+  directions: pet closed -> console still serves HTTP 200; console closed ->
+  a fresh `--avatar-worker` pet stayed alive. Notes: (1) the AV5 tests were
+  written after the implementation — a sequencing deviation from the
+  fail-first step, recorded here; (2) the PNG was not visually inspected by
+  the agent (no image input); the executable verification is the
+  view-at-capture-time plus the window rect; (3) an orphaned smoke-test
+  `IsyMotron.exe` (PID 15508, `--port 8799` signature) held the dist file
+  and was killed to rebuild; (4) `FindWindow` by title failed during the
+  one-file extraction window — the capture script enumerates windows with
+  an exact-title match instead.
 
 ---
 
