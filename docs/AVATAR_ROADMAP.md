@@ -36,7 +36,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | ID | Milestone | Status | Depends on |
 |---|---|---|---|
 | AV0 | Freeze architecture + contract | **DONE** | — |
-| AV1 | Pure avatar model (bus, channels, precedence) | IN_PROGRESS | AV0 |
+| AV1 | Pure avatar model (bus, channels, precedence) | **DONE** | AV0 |
 | AV2 | Open channel: inbox reader, companion-event-v1 | NOT_STARTED | AV1 |
 | AV3 | Authority channel: producers + `/api/avatar` | NOT_STARTED | AV1 |
 | AV4 | Web renderer in the console | NOT_STARTED | AV2, AV3 |
@@ -107,7 +107,10 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 - **Failure conditions:** any need to import from `console/` or
   `core/isymotron/policy.py` into `avatar/model.py` → design error, stop.
 - **Commit boundary:** `AV1: avatar model -- the channel is where it came from, not what it says`
-- **Result:** —
+- **Result:** `f79a37e`; 161 passed (151 baseline + 10 new), `py -m pytest -q`;
+  `git diff --stat` vs baseline shows only `avatar/` (protocol port from
+  Companion `0aae576`, model) and `tests/test_avatar_model.py`; no new
+  dependency; the 10 required tests all present and passing.
 
 ---
 
