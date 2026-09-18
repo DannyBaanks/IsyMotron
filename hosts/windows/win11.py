@@ -23,6 +23,7 @@ from typing import Any
 from isymotron.contracts import CapabilityManifest, ExecutionRequest, HostIdentity
 from isymotron.host import Host, ScopeViolation
 from isymotron.policy import normalize_path
+from isymotron.resources import app_entries, fs_roots
 from isymotron.verdicts import DenyReason
 
 from .grants import Grants
@@ -33,9 +34,12 @@ MAX_READ_BYTES = 8 * 1024 * 1024
 FS_READ = CapabilityManifest(
     id="filesystem.read", version="0.2",
     summary=("Read a file, or list a directory with each entry's size and "
-             "modification time, inside the granted roots."),
+             "modification time, inside the granted roots. A listing also "
+             "returns `newest` (the path of its most recently modified file) and "
+             "`newest_name` (that file's name)."),
     params=("path",),
-    returns=("path", "kind", "bytes", "sha256", "text", "entries", "count", "order"),
+    returns=("path", "kind", "bytes", "sha256", "text", "entries", "count", "order",
+             "newest", "newest_name"),
 )
 FS_WRITE = CapabilityManifest(
     id="filesystem.write", version="0.1",
@@ -95,7 +99,7 @@ class Win11Host(Host):
         followed. For a path that does not exist yet, the nearest existing
         ancestor is resolved instead, which is what the write will really use.
         """
-        roots = self.grants.scopes.get(capability, {}).get("roots") or []
+        roots = [r.path for r in fs_roots(self.grants.scopes.get(capability, {}))]
         if not roots:
             raise ScopeViolation(DenyReason.OUT_OF_SCOPE, "no roots granted")
 
@@ -213,7 +217,7 @@ class Win11Host(Host):
         Either way `Enforcer` already confirmed the entry is on the allowlist —
         this only turns it into something Popen accepts.
         """
-        allow = self.grants.scopes.get("apps.launch", {}).get("allowlist") or []
+        allow = [a.exe for a in app_entries(self.grants.scopes.get("apps.launch", {}))]
         for entry in allow:
             if entry.lower() == app.lower():
                 if os.path.isabs(entry):

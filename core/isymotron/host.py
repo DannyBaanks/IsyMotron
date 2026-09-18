@@ -20,6 +20,14 @@ from .contracts import (
     new_receipt_id,
 )
 from .policy import Enforcer
+from .resources import (
+    app_entries,
+    fs_roots,
+    logical_bounds,
+    resolve_app,
+    resolve_path,
+    to_uri,
+)
 from .verdicts import Decision, DenyReason, Evidence
 
 OPERATIONS = (
@@ -77,7 +85,9 @@ class Host(ABC):
 
     # -- 2 ------------------------------------------------------------------
     def describe(self) -> HostDescription:
-        return HostDescription(self._identity, list(self._capabilities), list(self._granted))
+        granted_scopes = {c: self._grant_scopes.get(c, {}) for c in self._granted}
+        return HostDescription(self._identity, list(self._capabilities),
+                               list(self._granted), logical_bounds(granted_scopes))
 
     # -- 3 ------------------------------------------------------------------
     def list_capabilities(self) -> list[CapabilityManifest]:
@@ -130,7 +140,8 @@ class Host(ABC):
         effects: list[dict[str, Any]] = []
         if decision.decision is Decision.ALLOW:
             try:
-                result, effects = self.run(req)
+                result, effects = self.run(_physical(req, lease.scope))
+                result = _logical(req.capability, result, lease.scope)
                 evidence = Evidence.DEMONSTRATED
             except ScopeViolation as exc:
                 # The engine overrides the enforcer's ALLOW. A refusal is a
@@ -188,6 +199,57 @@ class Host(ABC):
         and must never widen scope. It returns (result, effects), where effects
         are the observable side effects this engine believes it produced.
         """
+
+
+def _physical(req: ExecutionRequest, scope: Mapping[str, Any]) -> ExecutionRequest:
+    """The request an engine runs: logical names turned into what they name.
+
+    Only called after ALLOW, so every name here already resolved once in the
+    enforcer. The receipt keeps the request as the planner wrote it; the
+    engine alone sees where things physically are.
+    """
+    family = req.capability.split(".", 1)[0]
+    params = dict(req.params)
+    if family == "filesystem" and "path" in params:
+        physical = resolve_path(params["path"], fs_roots(scope))
+        if physical is None:
+            raise ScopeViolation(DenyReason.OUT_OF_SCOPE, f"{params['path']} names no granted resource")
+        params["path"] = physical
+    elif family == "apps" and "app" in params:
+        app = resolve_app(params["app"], app_entries(scope))
+        if app is None:
+            raise ScopeViolation(DenyReason.OUT_OF_SCOPE, f"'{params['app']}' is not in the app allowlist")
+        params["app"] = app.exe
+    else:
+        return req
+    from dataclasses import replace
+    return replace(req, params=params)
+
+
+def _logical(capability: str, result: dict, scope: Mapping[str, Any]) -> dict:
+    """Results name resources the way the planner does.
+
+    A later step references an earlier result (`{"$from": ...}`), so a result
+    that answered in physical paths would hand the plan a name it cannot use
+    -- and leak the folder layout the catalogue kept back. Listings gain a
+    `uri` per entry, `newest` and `newest_name`, which is what "the most recent one" means.
+    """
+    if not capability.startswith("filesystem.") or not isinstance(result, dict):
+        return result
+    roots = fs_roots(scope)
+    out = dict(result)
+    uri = to_uri(out.get("path"), roots)
+    if uri is not None:
+        out["path"] = uri
+    if out.get("kind") == "directory" and uri is not None:
+        entries = [dict(e, uri=f"{uri}/{e['name']}") for e in out.get("entries") or []]
+        out["entries"] = entries
+        files = [e for e in entries if e.get("kind") == "file"]
+        # By timestamp, not by position: the engine's sort order is its own.
+        newest = max(files, key=lambda e: e.get("modified") or "") if files else None
+        out["newest"] = newest["uri"] if newest else None
+        out["newest_name"] = newest["name"] if newest else None
+    return out
 
 
 def _narrow(granted: Mapping[str, Any], asked: Mapping[str, Any] | None) -> dict:

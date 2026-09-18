@@ -51,13 +51,26 @@ prose. Use a reference object as the parameter value:
 
   {"$from": {"step": 1, "field": "content"}}
 
+To build a string from pieces, join literals and references:
+
+  {"$join": ["hostfs://inbox/", {"$from": {"step": 1, "field": "newest_name"}}]}
+
 `step` is 1-based and must be earlier than the step using it. `field` must be
 one of the names in that capability's "returns" list -- never a name you guess. The system resolves references before execution; a
 placeholder written as ordinary text will be sent literally and is a bug.
 
+Resources are named, never guessed. Each capability lists its "bounds":
+- A path is always `hostfs://<root id>/<relative path>`, using a root listed
+  in THAT capability's bounds on THAT host, e.g. `hostfs://demo/nota.txt`.
+  Never write a drive letter or a physical path; you are not told them.
+- An app is always its `id` from the bounds, e.g. `"app": "doom"`.
+- To find "the newest/latest/most recent" file, list the root first
+  (`filesystem.read` on `hostfs://<id>`) and reference its `newest` field.
+
 Hard rules:
 - Use ONLY the capabilities listed in the catalogue below, on the hosts listed.
 - Use ONLY the parameter names each capability declares. Never add others.
+- Use ONLY the resources named in the bounds. Never invent a root or an app.
 - If the catalogue cannot serve the request, return "steps": [] and put the
   reason in "refused". Inventing a capability is a failure, not a fallback.
 - Never ask for administrator rights, wider paths, or a shell.
@@ -128,9 +141,8 @@ class Plan:
         out = []
         for i, s in enumerate(self.steps, 1):
             for key, value in s.params.items():
-                ref = _as_reference(value)
-                if ref is not None:
-                    out.append((i, key, ref[0], ref[1]))
+                for src, field_name in _references_in(value):
+                    out.append((i, key, src, field_name))
         return out
 
 
@@ -157,8 +169,11 @@ class Planner:
                 lines.append(f"      params: {params}")
                 if c.returns:
                     lines.append(f"      returns: {', '.join(c.returns)}")
-                if c.scopes:
-                    lines.append(f"      bounds: {json.dumps(c.scopes)}")
+                # Logical names only. The physical path behind `hostfs://demo`
+                # stays on the host; see isymotron/resources.py.
+                bounds = (d.bounds or {}).get(c.id)
+                if bounds:
+                    lines.append(f"      bounds: {json.dumps(bounds, ensure_ascii=False)}")
             lines.append("")
         return "\n".join(lines).rstrip()
 
@@ -226,29 +241,31 @@ class Planner:
                                    f"step {i}: {undeclared} on {cap}", text)
 
             for key, value in params.items():
-                ref = _as_reference(value)
-                if ref is None:
-                    continue
-                src, field_name = ref
-                if not isinstance(src, int) or not 1 <= src <= i:
-                    # i is 0-based here, so a valid source step is 1..i
-                    raise PlanRejected(
-                        "BAD_REFERENCE",
-                        f"step {i}: params.{key} refers to step {src}, which is "
-                        "not an earlier step", text)
-                if not isinstance(field_name, str) or not field_name:
+                try:
+                    refs = _references_in(value)
+                except ValueError as exc:
                     raise PlanRejected("BAD_REFERENCE",
-                                       f"step {i}: params.{key} has no field name", text)
-                src_step = steps[src - 1]
-                src_desc = by_host[src_step.host]
-                src_manifest = next(c for c in src_desc.capabilities
-                                    if c.id == src_step.capability)
-                if src_manifest.returns and field_name not in src_manifest.returns:
-                    raise PlanRejected(
-                        "UNKNOWN_RESULT_FIELD",
-                        f"step {i}: params.{key} reads {field_name!r} from step "
-                        f"{src} ({src_step.capability}), which returns "
-                        f"{list(src_manifest.returns)}", text)
+                                       f"step {i}: params.{key}: {exc}", text)
+                for src, field_name in refs:
+                    if not isinstance(src, int) or not 1 <= src <= i:
+                        # i is 0-based here, so a valid source step is 1..i
+                        raise PlanRejected(
+                            "BAD_REFERENCE",
+                            f"step {i}: params.{key} refers to step {src}, which is "
+                            "not an earlier step", text)
+                    if not isinstance(field_name, str) or not field_name:
+                        raise PlanRejected("BAD_REFERENCE",
+                                           f"step {i}: params.{key} has no field name", text)
+                    src_step = steps[src - 1]
+                    src_desc = by_host[src_step.host]
+                    src_manifest = next(c for c in src_desc.capabilities
+                                        if c.id == src_step.capability)
+                    if src_manifest.returns and field_name not in src_manifest.returns:
+                        raise PlanRejected(
+                            "UNKNOWN_RESULT_FIELD",
+                            f"step {i}: params.{key} reads {field_name!r} from step "
+                            f"{src} ({src_step.capability}), which returns "
+                            f"{list(src_manifest.returns)}", text)
 
             steps.append(PlanStep(host=host, capability=cap, params=params,
                                   why=str(s.get("why", ""))))
@@ -275,6 +292,40 @@ def _as_reference(value: Any) -> tuple[Any, Any] | None:
             return ref.get("step"), ref.get("field")
         return None, None
     return None
+
+
+def _as_join(value: Any) -> Any:
+    """Is this param value a `{"$join": [part, ...]}`? Returns the parts."""
+    if isinstance(value, dict) and "$join" in value:
+        return value["$join"]
+    return None
+
+
+def _references_in(value: Any) -> list[tuple[Any, Any]]:
+    """Every (step, field) a param value depends on.
+
+    A `$join` composes a string from literals and `$from` references, so a
+    plan can build `hostfs://inbox/<name of the newest file>` without a model
+    guessing the name. It is validated part by part, exactly like a bare
+    reference; anything else inside it is malformed, not ignored.
+    """
+    ref = _as_reference(value)
+    if ref is not None:
+        return [ref]
+    parts = _as_join(value)
+    if parts is None:
+        return []
+    if not isinstance(parts, list) or not parts:
+        raise ValueError("$join takes a non-empty list")
+    out = []
+    for part in parts:
+        if isinstance(part, str):
+            continue
+        ref = _as_reference(part)
+        if ref is None:
+            raise ValueError(f"$join parts are strings or $from references, not {part!r}")
+        out.append(ref)
+    return out
 
 
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.S)

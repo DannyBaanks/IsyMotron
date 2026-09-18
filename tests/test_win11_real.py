@@ -135,6 +135,36 @@ def test_junction_write_is_denied_too(sandbox):
     assert not (sandbox / "secret" / "planted.txt").exists()
 
 
+def test_junction_is_denied_through_a_logical_path_too(sandbox):
+    """A `hostfs://` name is translated before the engine runs, so it must meet
+    the same resolved-path check a physical path does (FINDINGS.md #1, #9)."""
+    link = str(sandbox / "granted" / "escape")
+    if not _junction(link, str(sandbox / "secret")):
+        pytest.skip("this environment cannot create a junction")
+    host = make_host(sandbox, ["filesystem.read"],
+                     {"filesystem.read": {"roots": [str(sandbox / "granted")]}})
+    r = act(host, "filesystem.read", path="hostfs://granted/escape/loot.txt")
+    assert r.decision.reason is DenyReason.OUT_OF_SCOPE
+    assert r.result == {}
+
+
+def test_real_listing_answers_in_logical_names_only(sandbox):
+    host = make_host(sandbox, ["filesystem.read"],
+                     {"filesystem.read": {"roots": [str(sandbox / "granted")]}})
+    newer = sandbox / "granted" / "newer.txt"
+    newer.write_text("fresh", encoding="utf-8")
+    os.utime(newer, (2_000_000_000, 2_000_000_000))
+
+    listing = act(host, "filesystem.read", path="hostfs://granted")
+    assert listing.decision.decision is Decision.ALLOW
+    assert listing.result["newest"] == "hostfs://granted/newer.txt"
+    assert str(sandbox).replace("\\", "/").lower() not in str(listing.result).replace("\\\\", "/").lower()
+
+    read = act(host, "filesystem.read", path=listing.result["newest"])
+    assert read.result["text"] == "fresh"
+    assert read.result["path"] == "hostfs://granted/newer.txt"
+
+
 # -- real filesystem behaviour ---------------------------------------------
 
 def test_real_read_inside_scope(sandbox):

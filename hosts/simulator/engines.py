@@ -24,9 +24,12 @@ def _sha(text: str) -> str:
 FS_READ = CapabilityManifest(
     id="filesystem.read", version="0.2",
     summary=("Read a file, or list a directory with each entry's size and "
-             "modification time, inside the granted roots."),
+             "modification time, inside the granted roots. A listing also "
+             "returns `newest` (the path of its most recently modified file) and "
+             "`newest_name` (that file's name)."),
     params=("path",),
-    returns=("path", "kind", "bytes", "sha256", "text", "entries", "count", "order"),
+    returns=("path", "kind", "bytes", "sha256", "text", "entries", "count", "order",
+             "newest", "newest_name"),
 )
 FS_WRITE = CapabilityManifest(
     id="filesystem.write", version="0.1",

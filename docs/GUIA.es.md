@@ -664,3 +664,76 @@ legales** de esas versiones para probar. No es que el contrato no llegue — un
 host de 8 operaciones es justo lo que sí llegaría. Un host sin probar habría
 que etiquetarlo `NOT_DEMONSTRATED` de todas formas, así que la honestidad y el
 alcance coinciden. Invariante 2.13 del roadmap: *unsupported != impossible*.
+
+---
+
+## 14. Nombres lógicos: el modelo nombra, el host sabe dónde está
+
+### 14.1 Qué cambió
+
+Antes el catálogo decía *"dentro de las raíces concedidas"* sin decir cuáles,
+así que Nemotron adivinaba rutas y el host las negaba. Ahora cada raíz y cada
+app concedida tiene un nombre, y **eso es lo único que sale hacia NVIDIA o
+Nebius**. Para ver exactamente lo que recibe el modelo:
+
+```
+python -c "import sys;sys.path[:0]=['.','core','hosts'];from windows.win11 import Win11Host;from agents.planner import Planner;print(Planner.catalogue([Win11Host().describe()]))"
+```
+
+Salida real en `win11-danny` (recortada):
+
+```
+  - filesystem.read: ...
+      bounds: {"roots": [{"id": "demo", "uri": "hostfs://demo", "label": "Demo"}]}
+  - filesystem.write: ...
+      bounds: {"roots": [{"id": "nemoinbox", "uri": "hostfs://nemoinbox", "label": "NemoInbox"}]}
+  - apps.launch: ...
+      bounds: {"apps": [{"id": "notepad", "label": "notepad", "canonical": "notepad.exe"}]}
+```
+
+Ni `C:/`, ni `Users`, ni tu usuario. El host es el único que sabe que
+`hostfs://demo` es `C:/Users/.../IsyMotron/Demo`.
+
+### 14.2 De dónde salen los nombres
+
+Si concedes con `--root` como siempre, el id se saca del nombre de la carpeta
+(`Demo` → `demo`) y el de la app del ejecutable (`DOOM.EXE` → `doom`). Si
+quieres otro nombre, edita `%LOCALAPPDATA%\IsyMotron\grants.json` y escribe la
+entrada como objeto:
+
+```json
+"filesystem.read": {"roots": [{"id": "fotos", "label": "Mis fotos", "path": "C:/Users/yo/Pictures"}]},
+"apps.launch": {"allowlist": [{"id": "doom", "label": "DOOM", "exe": "C:/Games/DOOM/DOOM.EXE"}]}
+```
+
+Las entradas de texto de siempre siguen funcionando.
+
+### 14.3 Usarlo desde el CLI
+
+El humano del teclado puede seguir usando rutas físicas, o los nombres lógicos:
+
+```
+python tools/host_cli.py do filesystem.read --path "hostfs://demo"
+```
+
+El listado trae `newest` y `newest_name`: el fichero modificado más
+recientemente. Así es como un plan resuelve *"el más reciente"* sin adivinar.
+
+### 14.4 Las negativas que sí prueban algo
+
+Con Nebius y tu host real, salida real del 2026-09-18:
+
+```
+"Abre el Buscaminas en mi PC."
+  refused: The Minesweeper application is not among the allowed apps on any host ...
+
+"Escribe un archivo hola.txt que diga hola dentro de mi carpeta Demo."
+  plan 1: win11-danny filesystem.write {"path": "hostfs://demo/hola.txt", "content": "hola"}
+  run 1: DENY OUT_OF_SCOPE hostfs://demo/hola.txt names no granted resource; granted: ['hostfs://nemoinbox']
+```
+
+La segunda es la buena para la demo: el modelo **sabía** que solo puede
+escribir en `hostfs://nemoinbox`, lo intentó en `demo` igual, y el host lo
+paró. No es trampa de información: es la autoridad funcionando. Es
+no determinista — a veces el modelo se niega él solo, y eso también está bien.
+Ver `docs/FINDINGS.md` #9.

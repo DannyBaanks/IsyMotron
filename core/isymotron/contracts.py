@@ -83,12 +83,16 @@ class HostDescription:
     identity: HostIdentity
     capabilities: Sequence[CapabilityManifest]
     granted: Sequence[str]
+    # Per granted capability, the resources a planner may name: logical ids
+    # and `hostfs://` URIs, never a physical path (see isymotron.resources).
+    bounds: Mapping[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
             "identity": self.identity.to_dict(),
             "capabilities": [c.to_dict() for c in self.capabilities],
             "granted": list(self.granted),
+            "bounds": dict(self.bounds),
         }
 
 

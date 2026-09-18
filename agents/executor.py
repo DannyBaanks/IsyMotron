@@ -18,7 +18,7 @@ from typing import Any, Mapping
 from isymotron.contracts import ExecutionReceipt, ExecutionRequest
 from isymotron.verdicts import Decision
 
-from .planner import Plan, _as_reference
+from .planner import Plan, _as_join, _as_reference
 
 # Phrases a model reaches for when the schema gives it nowhere to express a
 # data dependency. Sending any of these to a host means silently writing
@@ -129,15 +129,20 @@ class Executor:
         for key, value in params.items():
             ref = _as_reference(value)
             if ref is not None:
-                src, field_name = ref
-                if src not in results:
-                    raise UnresolvedReference(
-                        f"step {current}.{key} needs step {src}, which did not run")
-                if field_name not in results[src]:
-                    raise UnresolvedReference(
-                        f"step {current}.{key} needs field {field_name!r} of step "
-                        f"{src}, which returned {sorted(results[src])}")
-                out[key] = results[src][field_name]
+                out[key] = self._lookup(ref, results, current, key)
+                continue
+            parts = _as_join(value)
+            if parts is not None:
+                pieces = []
+                for part in parts:
+                    got = part if isinstance(part, str) else \
+                        self._lookup(_as_reference(part), results, current, key)
+                    if isinstance(got, bool) or not isinstance(got, (str, int, float)):
+                        raise UnresolvedReference(
+                            f"step {current}.{key} joins a {type(got).__name__}, "
+                            "not a string")
+                    pieces.append(str(got))
+                out[key] = "".join(pieces)
                 continue
 
             mark = looks_like_a_placeholder(value)
@@ -149,3 +154,15 @@ class Executor:
                     f"({mark!r}); use {{\"$from\": {{...}}}} instead")
             out[key] = value
         return out
+
+    @staticmethod
+    def _lookup(ref, results: Mapping[int, Mapping[str, Any]], current: int, key: str) -> Any:
+        src, field_name = ref
+        if src not in results:
+            raise UnresolvedReference(
+                f"step {current}.{key} needs step {src}, which did not run")
+        if field_name not in results[src]:
+            raise UnresolvedReference(
+                f"step {current}.{key} needs field {field_name!r} of step "
+                f"{src}, which returned {sorted(results[src])}")
+        return results[src][field_name]

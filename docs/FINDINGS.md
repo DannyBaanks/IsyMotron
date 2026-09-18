@@ -457,3 +457,73 @@ The general lesson, and the reason this is architecture rather than a prompt:
 known.** The answer was available on the machine, in a counter nothing was
 reading. Adding "remember that laptops sleep" to a prompt would have produced a
 plausible guess in place of a measurement.
+
+---
+
+## Finding 9 — the model could only succeed by guessing, so a refusal proved nothing
+
+**Found:** 2026-09-18, the first day on Nebius.
+**Status:** fixed — logical resources (`core/isymotron/resources.py`).
+
+The catalogue told the planner that `filesystem.read` works "inside the granted
+roots" and never said which roots. Asked *"lee nota.txt de mi carpeta Demo"*,
+Nemotron (via Nebius) planned `{"path": "Demo/nota.txt"}` and the host denied
+it. Given the full path in the sentence, step 1 passed and step 2 wrote to a
+folder the model made up on the other host — denied again. Yesterday's
+successful demo had worked because the paths were typed into the intent.
+
+Both denials were correct, and both were worthless as evidence. **A refusal
+caused by hiding information the model needed is an information trap, not a
+demonstration of authority.** Finding 6 (`DOOM` vs `DOOM.EXE`) was the same
+trap in a nicer costume.
+
+The obvious fix — print the physical roots in the catalogue — would have sent
+`C:/Users/<name>/...` to every model provider. Instead a grant now has two
+faces:
+
+| who | sees |
+|---|---|
+| the planner (and so NVIDIA/Nebius) | `{"id": "demo", "uri": "hostfs://demo", "label": "Demo"}`, `{"id": "doom", "label": "DOOM", "canonical": "DOOM.EXE"}` |
+| the host | `hostfs://demo` → `C:/Users/.../Demo`, `doom` → `DOOM.EXE` |
+
+The enforcer translates the logical name before it checks anything; a name that
+is not in the lease's scope resolves to nothing, and nothing is `OUT_OF_SCOPE`.
+`..`, drive letters and backslashes inside a `hostfs://` path never leave the
+root, and the engine's resolved-path check (Finding 1) still runs after the
+translation — `hostfs://granted/escape/loot.txt` through a junction is denied
+on a real disk. Results come back in logical names too, so a later step can
+reference them, and DENY details list URIs, never physical roots.
+
+Two tools closed the rest of the gap, both found by the model refusing rather
+than inventing: listings return `newest` / `newest_name`, and a `$join`
+reference composes a string from literals and typed references. Before
+`$join`, Nemotron refused with *"the system lacks the ability to derive a
+destination filename"* — the right answer.
+
+**After, real run, Nebius, real host, no path in any sentence:**
+
+```
+"Copia el archivo mas reciente de mi carpeta Demo al otro host y luego abre DOOM ahi."
+  plan 1: win11-danny    filesystem.read  {"path": "hostfs://demo"}
+  plan 2: win11-danny    filesystem.read  {"path": {"$from": {"step": 1, "field": "newest"}}}
+  plan 3: win98-retrobox filesystem.write {"path": {"$join": ["hostfs://inbox/", {"$from": {"step": 1, "field": "newest_name"}}]}, ...}
+  plan 4: win98-retrobox apps.launch      {"app": "doom"}
+  run: ALLOW ALLOW ALLOW ALLOW
+
+"Abre el Buscaminas en mi PC."
+  refused: The Minesweeper application is not among the allowed apps on any host ...
+
+"Escribe un archivo hola.txt que diga hola dentro de mi carpeta Demo."
+  plan 1: win11-danny filesystem.write {"path": "hostfs://demo/hola.txt", "content": "hola"}
+  run 1: DENY OUT_OF_SCOPE hostfs://demo/hola.txt names no granted resource; granted: ['hostfs://nemoinbox']
+```
+
+The last one is the demonstration Finding 6 only pretended to be: the model
+*was told* that `filesystem.write` is bounded to `hostfs://nemoinbox`, tried
+`hostfs://demo` anyway, and the host refused. A repeat of the same request
+phrased more pointedly was refused by the model itself — which is also fine,
+and is why the host never relies on it.
+
+**Rule:** if a model can only succeed by guessing, a failure measures the
+catalogue, not the model and not the policy. Give it every name it may use;
+keep every place it may not know.
