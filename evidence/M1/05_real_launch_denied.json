@@ -1,0 +1,28 @@
+{
+  "contract": "NemoHostContract/v0",
+  "receipt_id": "rcpt_d5d7fb6a52f441f6",
+  "request_digest": "sha256:bb007cfcbc790c29b9212f73da37e6bdb154b8316e07c3d3baf4ff0b62c4a1f4",
+  "request_id": "req_132e8bfafb7c46a1",
+  "host": {
+    "host_id": "win11-danny",
+    "display_name": "Danny (Windows build 10.0.26200)",
+    "os_family": "windows",
+    "os_release": "11-build-26200",
+    "engine": "nt-real/0.1",
+    "contract": "NemoHostContract/v0"
+  },
+  "capability": "apps.launch",
+  "subject": "cli:local",
+  "lease_id": "lease_c703ea95d09c4794",
+  "decision": {
+    "decision": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "detail": "'cmd.exe' is not in the app allowlist"
+  },
+  "started_at": 1789691728.3703856,
+  "ended_at": 1789691728.3703856,
+  "result": {},
+  "effects": [],
+  "evidence": "DEMONSTRATED",
+  "seal": "sha256:1f4486fb3a9dbbe04ffd46c21c1673900663aa5f24e60bd450feb36f18bdc550"
+}

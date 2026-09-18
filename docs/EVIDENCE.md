@@ -21,25 +21,27 @@ There is no `SAFE`. There is no default-pass. An unmeasured claim is
 | Claim | Status | Basis |
 |---|---|---|
 | **A** — one plan orchestrates across heterogeneous hosts under one contract | `NOT_DEMONSTRATED` | Cross-host execution works (`test_cross_device_transfer_produces_two_receipts`), but no planner exists. The claim is about a *plan*, and there is none. |
-| **B** — a host denies an action outside local scope even if the model asks | `NOT_DEMONSTRATED` | The denial is `DEMONSTRATED` (`test_outside_scope_is_denied_and_still_receipted`). The "even if the model asks" half has no model to ask it. |
+| **B** — a host denies an action outside local scope even if the model asks | `NOT_DEMONSTRATED` | The denial is now `DEMONSTRATED` **on real hardware** (`evidence/M1/02_real_read_denied.json`, plus a real junction escape). The "even if the model asks" half still has no model to ask it. |
 | **C** — Doctor detects an undeclared side effect and blocks promotion | `NOT_DEMONSTRATED` | No Doctor. |
 | **D** — a changed artifact invalidates prior verification | `NOT_DEMONSTRATED` | No marketplace, no artifact records. |
 | **E** — a publicly accepted activity can still be denied locally | `NOT_DEMONSTRATED` | No marketplace. The mechanism that would enforce it (local grant beats everything) is `DEMONSTRATED` in isolation. |
-| **F** — two Windows generations serve the same contract via different engines | `NOT_DEMONSTRATED` | Two *simulated* engines do (`test_same_workflow_on_two_unlike_engines`). Zero real Windows machines. Simulation cannot establish this claim; see below. |
+| **F** — two Windows generations serve the same contract via different engines | `NOT_DEMONSTRATED` | One **real** engine (`nt-real/0.1`, Windows build 10.0.26200) and two simulated ones now serve the contract. One real machine is not two generations. |
 | **G** — a verified activity reuses a fast path without repeating verification | `NOT_DEMONSTRATED` | No verification path of either speed. |
 | **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` | No model calls at all. |
 | **I** — Windows 98 participates and launches an app from a mobile workflow | `NOT_DEMONSTRATED` | A simulated `dos-bridge/0.1` launches a simulated `DOOM.EXE`. That is a test fixture, not a Windows 98 machine. |
 
-Nine claims, nine `NOT_DEMONSTRATED`. That is the correct reading of a repo on
-day one, and it is worth writing down precisely so that the first one to flip
-is visible.
+Still nine `NOT_DEMONSTRATED` after M1. B and F moved — their basis lines now
+cite real hardware instead of a simulator — but neither crossed the line, and
+nudging a label because progress *feels* like it should is exactly the failure
+this ledger exists to prevent. B needs a model to do the asking. F needs a
+second real Windows generation.
 
 ---
 
 ## What *is* demonstrated
 
-Scope: in-process Python, simulated engines, no real filesystem, no network, no
-model. Every row below is a passing test in `tests/test_m0_gate.py`.
+**M0 scope:** in-process Python, simulated engines, no real filesystem, no
+network, no model. Every row below is a passing test in `tests/test_m0_gate.py`.
 
 | # | Claim | Test |
 |---|---|---|
@@ -67,15 +69,45 @@ model. Every row below is a passing test in `tests/test_m0_gate.py`.
 | 22 | An engine error yields ALLOW + `UNKNOWN`, never ALLOW + `DEMONSTRATED` | `test_error_inside_the_engine_is_unknown_not_allow` |
 | 23 | No verdict vocabulary contains `SAFE` | `test_no_verdict_vocabulary_contains_safe` |
 
+**M1 scope:** one real Windows host (`nt-real/0.1`, build 10.0.26200), real
+NTFS, real processes, real grant file. Every row below is a passing test in
+`tests/test_win11_real.py`.
+
+| # | Claim | Test |
+|---|---|---|
+| 24 | A host with no grant file boots inert and denies everything | `test_missing_grant_file_yields_an_inert_host` |
+| 25 | A grant file that fails to parse yields **no** authority, not unrestricted | `test_unparseable_grant_file_yields_an_inert_host` |
+| 26 | A capability granted with an empty scope still denies | `test_a_grant_with_no_scope_still_denies` |
+| 27 | Grants round-trip through the file on disk | `test_grant_roundtrips_through_the_file` |
+| 28 | **A real NTFS junction inside a granted root is denied** | `test_junction_inside_a_granted_root_is_denied` |
+| 29 | ...and a write through one plants nothing in the target | `test_junction_write_is_denied_too` |
+| 30 | A real in-scope read returns content and a content hash | `test_real_read_inside_scope` |
+| 31 | A real out-of-scope read is denied with no payload | `test_real_read_outside_scope` |
+| 32 | A real directory listing works | `test_real_directory_listing` |
+| 33 | A real write creates the file and reports `overwrote` | `test_real_write_creates_the_file` |
+| 34 | A write to a path that does not exist yet is still scope-checked | `test_write_to_a_nonexistent_path_outside_scope_is_denied` |
+| 35 | `..` on a real tree is denied | `test_dotdot_on_a_real_tree` |
+| 36 | Real `system.info` reports the real machine | `test_real_system_info` |
+| 37 | Real `process.inspect` lists processes and rejects `mutate` | `test_real_process_inspect_is_read_only` |
+| 38 | An app off the allowlist is denied | `test_app_not_on_allowlist_is_denied` |
+| 39 | All 8 operations exist on the real host | `test_all_eight_operations_on_the_real_host` |
+
 Reproduce:
 
 ```
-python -m pytest tests/ -q
-23 passed in 0.37s
+python -m pytest -q
+39 passed in 1.33s
 ```
 
-Seven sealed receipts from a real run are in `evidence/M0/`, produced by
-`python tools/m0_demo.py` — 4 ALLOW, 3 DENY, 7/7 seals verified.
+Sealed receipts from real runs:
+
+- `evidence/M0/` — 7 receipts, simulated hosts, 4 ALLOW / 3 DENY, 7/7 seals verified
+- `evidence/M1/` — 5 receipts from the **real** `win11-danny` host, including a
+  real read of a real file and a real `OUT_OF_SCOPE` refusal
+
+One finding came out of that first contact and changed the architecture:
+`docs/FINDINGS.md` #1. It is the reason claim B's basis line now says "on real
+hardware".
 
 ---
 
@@ -98,6 +130,14 @@ simulation erases by construction.
 So: claim F and claim I stay `NOT_DEMONSTRATED` until a receipt comes off real
 hardware. The simulated ones are labelled as fixtures in the code and in the
 test names, so no future reader can mistake them for the thing.
+
+**This was not a hypothetical.** The section above was written before the first
+real host existed. Within hours of writing it, first contact with NTFS produced
+exactly the predicted failure: a directory junction inside a granted root, which
+no Python dict can represent, defeated a scope check that twenty-three tests
+called correct. See `docs/FINDINGS.md` #1. The prediction is now `DEMONSTRATED`
+in the most expensive possible way, which is the cheap way compared to finding
+it in a demo.
 
 ---
 

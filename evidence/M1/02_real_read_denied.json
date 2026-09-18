@@ -1,0 +1,28 @@
+{
+  "contract": "NemoHostContract/v0",
+  "receipt_id": "rcpt_6059029b1fff435e",
+  "request_digest": "sha256:e8b35d369e42508d802f8d3292e2386b2a14ff8995702c0dc80d786feabb0a0f",
+  "request_id": "req_cc59ebe5435a452f",
+  "host": {
+    "host_id": "win11-danny",
+    "display_name": "Danny (Windows build 10.0.26200)",
+    "os_family": "windows",
+    "os_release": "11-build-26200",
+    "engine": "nt-real/0.1",
+    "contract": "NemoHostContract/v0"
+  },
+  "capability": "filesystem.read",
+  "subject": "cli:local",
+  "lease_id": "lease_16467e51c511436a",
+  "decision": {
+    "decision": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "detail": "C:/Users/progr/IsyMotron/no-concedido.txt is outside ['C:/Users/progr/IsyMotron/Demo']"
+  },
+  "started_at": 1789691433.752497,
+  "ended_at": 1789691433.752497,
+  "result": {},
+  "effects": [],
+  "evidence": "DEMONSTRATED",
+  "seal": "sha256:a190afb220fe00adb9917d494a7cdcb988e88f892eea4858349dfe20c1b7238f"
+}

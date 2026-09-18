@@ -1,0 +1,40 @@
+{
+  "contract": "NemoHostContract/v0",
+  "receipt_id": "rcpt_cc21bad5909c4f4c",
+  "request_digest": "sha256:cc2161983b8fa3e2781db12584699ce1f26a87385f63ca2d8100083ef6047ac6",
+  "request_id": "req_9eeb5b20c7a14882",
+  "host": {
+    "host_id": "win11-danny",
+    "display_name": "Danny (Windows build 10.0.26200)",
+    "os_family": "windows",
+    "os_release": "11-build-26200",
+    "engine": "nt-real/0.1",
+    "contract": "NemoHostContract/v0"
+  },
+  "capability": "filesystem.write",
+  "subject": "cli:local",
+  "lease_id": "lease_39d6b63f0f76447d",
+  "decision": {
+    "decision": "ALLOW",
+    "reason": null,
+    "detail": ""
+  },
+  "started_at": 1789691728.216374,
+  "ended_at": 1789691728.2173755,
+  "result": {
+    "path": "C:/Users/progr/IsyMotron/NemoInbox/copia.txt",
+    "bytes": 41,
+    "overwrote": false,
+    "sha256": "sha256:b63efae6b6e0744208327a0de36cb209b58e3a198074ed65998c7c30aa2df7b3"
+  },
+  "effects": [
+    {
+      "kind": "fs.write",
+      "path": "C:/Users/progr/IsyMotron/NemoInbox/copia.txt",
+      "bytes": 41,
+      "overwrote": false
+    }
+  ],
+  "evidence": "DEMONSTRATED",
+  "seal": "sha256:b3a1768cc5cdd98ed9b0a01a6e3311f0d25a4441b4e0461d2050242826771b79"
+}

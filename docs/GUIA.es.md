@@ -179,21 +179,145 @@ quedar bloqueado por intentarlo.
 
 ---
 
-## 8. Qué NO hace todavía
+## 8. Tu máquina como host de verdad (M1)
+
+Esto ya no es simulación. Toca disco real.
+
+### 8.1 Ver qué es esta máquina
+
+```
+python tools/host_cli.py status
+```
+
+Salida real la primera vez, **antes de conceder nada**:
+
+```
+host      win11-danny  (Danny (Windows build 10.0.26200))
+engine    nt-real/0.1   contract NemoHostContract/v0
+grants    <inert: no grant file at C:\Users\progr\AppData\Local\IsyMotron\grants.json>
+admin     not granted
+lease cap 900s
+
+capability             state        scope
+filesystem.read        -
+filesystem.write       -
+apps.launch            -
+system.info            -
+process.inspect        -
+
+Nothing is granted. The host is inert: every request returns DENY.
+```
+
+**Arranca inerte.** Sin fichero de grants no hay cero restricciones: hay cero
+autoridad. Y si el fichero existe pero está corrupto, igual — un JSON que no
+parsea significa *ningún permiso*, nunca *todos*.
+
+### 8.2 Conceder permisos (esto eres tú, el humano)
+
+```
+python tools/host_cli.py grant filesystem.read  --root "C:/Users/progr/IsyMotron/Demo"
+python tools/host_cli.py grant filesystem.write --root "C:/Users/progr/IsyMotron/NemoInbox"
+python tools/host_cli.py grant system.info
+python tools/host_cli.py grant apps.launch --app notepad.exe
+```
+
+Salida real:
+
+```
+granted filesystem.read -> {"roots": ["C:/Users/progr/IsyMotron/Demo"]}
+written to C:\Users\progr\AppData\Local\IsyMotron\grants.json
+```
+
+Ese fichero **es** la autoridad local. Nada remoto lo puede ampliar.
+
+### 8.3 Ejecutar de verdad
+
+```
+python tools/host_cli.py do filesystem.read --path "C:/Users/progr/IsyMotron/Demo/nota.txt"
+python tools/host_cli.py do filesystem.read --path "C:/Users/progr/IsyMotron/no-concedido.txt"
+python tools/host_cli.py do system.info
+```
+
+Salida real:
+
+```
+[ALLOW] filesystem.read on win11-danny
+       {"path": "C:/Users/progr/IsyMotron/Demo/nota.txt", "kind": "file", "bytes": 76,
+        "sha256": "sha256:a9fe636ee278b0158f5fe0ad85d22cea...", "text": "Hola desde el host real..."}
+       evidence=DEMONSTRATED  seal_ok=True
+
+[DENY OUT_OF_SCOPE] filesystem.read on win11-danny
+       C:/Users/progr/IsyMotron/no-concedido.txt is outside ['C:/Users/progr/IsyMotron/Demo']
+       evidence=DEMONSTRATED  seal_ok=True
+
+[ALLOW] system.info on win11-danny
+       {"os": "Windows 10", "build": "10.0.26200", "machine": "AMD64", "cores": 12,
+        "engine": "nt-real/0.1", "python": "3.10.11"}
+       evidence=DEMONSTRATED  seal_ok=True
+```
+
+Los recibos quedan en `evidence/M1/`. Para quitar un permiso:
+
+```
+python tools/host_cli.py revoke filesystem.write
+```
+
+### 8.4 Lo que nos enseñó el disco real el primer día
+
+Está entero en `docs/FINDINGS.md`, pero el resumen importa.
+
+Creamos un **junction** (`mklink /J`, no hace falta admin) dentro de la carpeta
+concedida, apuntando fuera:
+
+```
+C:/.../granted/escape  -->  C:/.../secret
+```
+
+La ruta `C:/.../granted/escape/loot.txt` es **léxicamente perfecta**: cada
+carácter está dentro de la raíz concedida. El `Enforcer` dijo **ALLOW**.
+
+Los 23 tests de M0 no podían encontrar esto, porque el sistema de ficheros
+simulado era un diccionario de Python, y nada dentro de un diccionario puede
+apuntar fuera de sí mismo. **Eso es exactamente lo que `docs/EVIDENCE.md` decía
+que la simulación borra — escrito antes de encontrarlo.**
+
+Y había un segundo fallo peor: el motor sí lo paró, pero como lanzaba una
+excepción normal, el recibo quedaba como `ALLOW` con `evidence=UNKNOWN`. **Una
+fuga bloqueada quedaba registrada como acción permitida.** La defensa funcionó
+y el registro de la defensa estaba mal, que es la mitad más peligrosa: un
+ataque frenado que se apunta como permitido no te enseña nada para la próxima.
+
+Arreglado: ahora el motor puede *denegar*, no sólo fallar, y su DENY manda
+sobre el ALLOW del enforcer. Salida real después del arreglo:
+
+```
+junction  DENY | OUT_OF_SCOPE | evidence= DEMONSTRATED
+          result: {}
+          seal ok: True
+legitimo  ALLOW | -            | evidence= DEMONSTRATED
+```
+
+Regla nueva del contrato: **la comprobación es de dos etapas y las dos pueden
+decir DENY.** La léxica no ve el sistema de ficheros; la que resuelve no puede
+resolver lo que aún no existe. Corren las dos, siempre.
+
+## 9. Qué NO hace todavía
 
 Para que no haya sorpresas al enseñarlo:
 
 - **No hay modelo.** Ni Nemotron, ni ningún otro. Cero llamadas a ninguna API.
-- **No hay Windows real.** Los dos hosts son simulados, en memoria. No tocan el
-  disco.
 - **No hay Doctor, ni sandbox, ni marketplace, ni login.**
 - **No hay app de móvil.** `clients/fake_mobile.py` es un objeto de Python.
+- **Sólo hay un Windows real.** Falta un host legacy de verdad.
 
 Esto está en `docs/EVIDENCE.md` con la etiqueta que le corresponde a cada
-afirmación. Las nueve *Target Claims* del roadmap están las nueve en
-`NOT_DEMONSTRATED`, que es lo correcto para el día uno.
+afirmación. Las nueve *Target Claims* del roadmap **siguen las nueve en
+`NOT_DEMONSTRATED`** después de M1. La B y la F se movieron —ahora citan
+hardware real en vez de un simulador— pero ninguna cruzó la línea, y mover una
+etiqueta porque el progreso *parece* que lo merece es justo lo que este fichero
+existe para impedir.
 
-## 9. Lo siguiente, por orden de riesgo
+## 10. Lo siguiente, por orden de riesgo
 
 Está razonado en `docs/ROADMAP_DELTA.md`. El resumen:
 
@@ -202,7 +326,7 @@ Está razonado en `docs/ROADMAP_DELTA.md`. El resumen:
    para el día 17. Si falla el 1 de octubre, no hay entrega.
 2. **Hoy mismo:** confirmar la fecha exacta de cierre en Devpost. El roadmap
    dice "finales de octubre" y pide reconfirmarlo.
-3. Host real de Windows 11.
+3. ~~Host real de Windows 11.~~ **HECHO** — M1, 16 tests sobre disco real.
 4. Consola web (no app nativa todavía).
 5. Nemotron Intent + Planner, **después** de que la gramática exista.
 6. El Doctor. Es la tesis entera; que no sea lo último.

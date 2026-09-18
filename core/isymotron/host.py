@@ -28,6 +28,26 @@ OPERATIONS = (
 )
 
 
+class ScopeViolation(Exception):
+    """An engine refused on *authority* grounds after the enforcer said ALLOW.
+
+    This exists because `Enforcer` decides on the request as written, and some
+    scope facts are only knowable once the OS resolves it — a junction inside a
+    granted root, a case-folding collision, a device path. The engine is
+    therefore the second half of enforcement, and it needs a way to say DENY
+    rather than a way to fail.
+
+    Raising a plain exception instead would record the refusal as ALLOW with an
+    UNKNOWN outcome, which reads as an allowed action in the receipt ledger.
+    See docs/FINDINGS.md, finding 1.
+    """
+
+    def __init__(self, reason: DenyReason, detail: str = "") -> None:
+        super().__init__(detail or reason.value)
+        self.reason = reason
+        self.detail = detail
+
+
 class Host(ABC):
     """A participation surface on one device.
 
@@ -112,8 +132,15 @@ class Host(ABC):
             try:
                 result, effects = self.run(req)
                 evidence = Evidence.DEMONSTRATED
+            except ScopeViolation as exc:
+                # The engine overrides the enforcer's ALLOW. A refusal is a
+                # refusal wherever it is discovered, and it carries no payload.
+                decision = PolicyDecision(Decision.DENY, exc.reason, exc.detail)
+                result, effects = {}, []
+                evidence = Evidence.DEMONSTRATED
             except Exception as exc:  # engine failure is not a policy verdict
                 result = {"error": type(exc).__name__, "message": str(exc)}
+                effects = []
                 evidence = Evidence.UNKNOWN
         else:
             evidence = Evidence.DEMONSTRATED  # the refusal itself is demonstrated

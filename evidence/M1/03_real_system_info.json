@@ -1,0 +1,35 @@
+{
+  "contract": "NemoHostContract/v0",
+  "receipt_id": "rcpt_6db777c0c59f4422",
+  "request_digest": "sha256:e60e758b3aa0624c3b28c894345daa6e963c52fe5daa39f2dd991d6ebeeeef99",
+  "request_id": "req_ecdf533781a6404e",
+  "host": {
+    "host_id": "win11-danny",
+    "display_name": "Danny (Windows build 10.0.26200)",
+    "os_family": "windows",
+    "os_release": "11-build-26200",
+    "engine": "nt-real/0.1",
+    "contract": "NemoHostContract/v0"
+  },
+  "capability": "system.info",
+  "subject": "cli:local",
+  "lease_id": "lease_a3a8cd03b7d64e13",
+  "decision": {
+    "decision": "ALLOW",
+    "reason": null,
+    "detail": ""
+  },
+  "started_at": 1789691433.9201403,
+  "ended_at": 1789691433.949679,
+  "result": {
+    "os": "Windows 10",
+    "build": "10.0.26200",
+    "machine": "AMD64",
+    "cores": 12,
+    "engine": "nt-real/0.1",
+    "python": "3.10.11"
+  },
+  "effects": [],
+  "evidence": "DEMONSTRATED",
+  "seal": "sha256:baaa8f85c6fb54623b8552cd68f0c8b9b0a1791f26ec11ce3a21b06078d06449"
+}
