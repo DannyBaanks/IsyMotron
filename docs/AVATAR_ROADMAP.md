@@ -44,7 +44,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV6 | No-AI mode ("avatar" mode) | **DONE** | AV3 |
 | AV7 | AI mode ("agent" mode) | **DONE** | AV6 |
 | AV8 | Adversarial suite | **DONE** | AV4, AV5 |
-| AV9 | Demo path, packaging, docs | IN_PROGRESS | AV7, AV8 |
+| AV9 | Demo path, packaging, docs | **DONE** | AV7, AV8 |
 
 ---
 
@@ -439,4 +439,23 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 - **Acceptance:** the six steps recorded end to end; no second install;
   exe smoke test passes.
 - **Commit boundary:** `AV9: demo path -- one exe, avatar first, AI optional`
-- **Result:** —
+- **Result:** `865b0c9`; 195 passed, `py -m pytest -q`; exe rebuilt with the
+  AV8 fix inside (12.04 MB, smoke test PASS). Demo path recorded end to end
+  against the rebuilt exe (`evidence/AV9/demo_avatar_events.json`, scrub R6
+  PASS): (1) no key -> `mode: avatar` + pet window True; (2) plugin-shaped
+  lines via `COMPANION_ROOT` (separate process) -> pet animation changes +
+  `OpenCode terminó la sesión` bubble; (3) manual in-scope read -> ALLOW
+  `rcpt_d433fa4582794646` in the host frame; (4) `tools/avatar_spoof.py` ->
+  `"ALLOW ✅"` as a third-party bubble, verdict count unchanged; (5)
+  out-of-scope -> real DENY `rcpt_81ccb11805ff4dba` with receipt in the
+  frame; (6) Nebius NOT_DEMONSTRATED (no key on this host; the same seam ran
+  live with NIM in AV7 — one env var apart). Docs: README (user-doc avatar
+  section, no provider jargon; Credits declaring Companion as the author's
+  prior MIT work at 0aae576 — the Devpost text draws from it), EVIDENCE.md
+  avatar-claims ledger (R1–R7 all DEMONSTRATED, with the two honest
+  NOT_DEMONSTRATED rows), GUIA §16 with the real six-step output. Fresh
+  Windows profile: NOT_DEMONSTRATED (the session cannot create profiles; the
+  demo ran clean on the dev profile with no second install). Also fixed in
+  passing: `build_exe.py` smoke test now kills the one-file bootloader's
+  child tree (`taskkill /T`) — the orphan it left behind had locked the
+  dist twice on 2026-09-18.
