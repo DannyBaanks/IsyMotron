@@ -1,5 +1,13 @@
 # IsyMotron
 
+```
+ ### ##### #   # #   # ###### ##### ####  ###### #   #
+  #  #      # #  ## ## #    #   #   #  #  #    # #  ##
+  #  #####   #   # # # #    #   #   ####  #    # # # #
+  #      #   #   #   # #    #   #   #  #  #    # ##  #
+ ### #####   #   #   # ######   #   #   # ###### #   #
+```
+
 > One AI, many hosts, one capability fabric.
 > Any machine, only the authority you grant.
 
@@ -8,12 +16,12 @@ that the user has explicitly granted across their own phones and computers,
 while every grant, refusal and effect is enforced and recorded by machinery the
 model does not control.
 
-**Status: M5 + the avatar track (AV0–AV9).** The authority grammar runs on a
-real Windows machine, a real Nemotron plan orchestrates work across two unlike
-hosts while a host refuses a step the model asked for, and all of it ships as a
-single 12 MB binary with a console you can open on your phone — plus a floating
-desktop pet that shows what the host decided, and can be talked about, but
-never talked into anything.
+**Status: M5 + the avatar track (AV0–AV9), shipped behind one command.** The
+authority grammar runs on a real Windows machine, a real Nemotron plan
+orchestrates work across two unlike hosts while a host refuses a step the model
+asked for, and all of it ships as a single 12 MB binary with a console you can
+open on your phone — plus a floating desktop pet that shows what the host
+decided, and can be talked about, but never talked into anything.
 See [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for what is demonstrated and what is
 not, and [`docs/FINDINGS.md`](docs/FINDINGS.md) for the six things first contact
 taught us that the design did not.
@@ -34,15 +42,17 @@ taught us that the design did not.
 | **Real Windows host** — NTFS, processes, app launch | `hosts/windows/win11.py` | working |
 | Local grant file — the local authority, deny-by-default | `hosts/windows/grants.py` | working |
 | Host CLI — grant, revoke, execute | `tools/host_cli.py` | working |
-| **Console** — local web UI, dark/green, phone-ready | `console/` | working |
+| **Console** — local web UI, dark surface, brand-green accents, phone-ready | `console/` | working |
 | **`IsyMotron.exe`** — one file, no runtime dependencies | `build_exe.py` | 12 MB |
+| **`isymotron` CLI** — clap-style help, rustc-style errors, ANSI truecolor | `isymotron.ps1` | working |
 | **Avatar model** — two trust channels, precedence, no I/O | `avatar/model.py` | working |
 | **Open channel** — inbox reader, companion-event-v1 | `avatar/inbox.py` | working |
 | **Authority channel** — producers + `/api/avatar`, read-only avatar token | `console/server.py` | working |
 | **Web avatar** — host frame + third-party bubbles, no innerHTML | `console/static/avatar.js` | working |
-| **Desktop pet** — transparent Tk window, `--avatar` | `avatar/window.py` | working |
+| **Desktop pet** — transparent Tk window; idles alone, follows the console | `avatar/window.py` | working |
 | **Avatar pack** — Malbolge Cat, copied from Companion (see Credits) | `avatar/packs/` | shipped |
 | Avatar adversarial gate — talking grants nothing | `tests/test_avatar_adversarial.py` | 10 passed |
+| Pet offline-render regression — a window is not visibility | `tests/test_avatar_window.py` | 4 passed |
 | **HostAwarenessEngine** — deterministic suspend/network facts | `core/isymotron/awareness.py` | working |
 | Attribution — `HOST_SUSPENDED` is never `PROVIDER_ERROR` | `core/isymotron/attribution.py` | working |
 | Windows power provider — clock bias, no message pump | `hosts/windows/power.py` | working |
@@ -50,15 +60,15 @@ taught us that the design did not.
 | Planner role — intent to a validated plan | `agents/planner.py` | working |
 | Executor — resolves `$from`, stops at the first DENY | `agents/executor.py` | working |
 | M0 acceptance gate | `tests/test_m0_gate.py` | 23 passed |
-| M1 real-hardware gate | `tests/test_win11_real.py` | 17 passed |
+| M1 real-hardware gate | `tests/test_win11_real.py` | 19 passed |
 | M3 planner gate (offline) | `tests/test_planner.py` | 29 passed |
 | M3 live gate (real Nemotron) | `tests/test_live_model.py` | 5 passed |
 | M4 host awareness gate | `tests/test_awareness.py` | 21 passed |
-| M5 console surface gate | `tests/test_console.py` | 17 passed |
+| M5 console surface gate | `tests/test_console.py` | 23 passed |
 | Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
-Not started: the Doctor, the sandbox, the marketplace, the identity seam, a
-legacy Windows host.
+**196 tests, all passing.** Not started: the Doctor, the sandbox, the
+marketplace, the identity seam, a legacy Windows host.
 
 **Windows 7 and earlier are out of product scope.** Not because the contract
 could not reach them — the whole point of an 8-operation surface is that it
@@ -71,34 +81,50 @@ Roadmap invariant 2.13: unsupported != impossible.
 One command for everything (install once, then it works from any new shell):
 
 ```
-.\isymotron.ps1 install     # adds this folder to the user PATH
-isymotron help              # verbs: start console pet test build spoof host
-isymotron start --demo-host # console + floating pet, opens the browser
+.\isymotron.ps1 install      # adds this folder to the user PATH
+isymotron help               # the full clap-style help, with the banner
+isymotron start --demo-host  # console + floating pet, opens the browser
+```
+
+The CLI is a pass-through surface over commands that already exist in this
+repository — it holds no authority of its own:
+
+```
+isymotron start              console + floating pet + browser (adds --avatar)
+isymotron console --lan      the web console, reachable from your phone
+isymotron pet                only the pet: idles alone, attaches to a console
+isymotron test               the acceptance suite
+isymotron build              rebuild IsyMotron.exe (smoke test included)
+isymotron host status        what THIS machine is, and what it grants
+isymotron host grant filesystem.read --root "C:/Users/you/Pictures"
+isymotron spoof --inbox <f>  append the hostile demo lines to an inbox
+isymotron where              print the repository this CLI belongs to
 ```
 
 Build the binary (PyInstaller is a build-time dependency only):
 
 ```
-python build_exe.py            # dist/IsyMotron.exe, 12 MB, self-smoke-tested
-IsyMotron.exe                  # opens the console on localhost
-IsyMotron.exe --lan            # also reachable from your phone
-IsyMotron.exe --avatar         # ...plus the floating desktop pet
+isymotron build              # dist/IsyMotron.exe, 12 MB, self-smoke-tested
+IsyMotron.exe                # opens the console on localhost
+IsyMotron.exe --lan          # also reachable from your phone
+IsyMotron.exe --avatar       # ...plus the floating desktop pet
 ```
 
-Or from source:
+Or from source (`py` is the Windows launcher; no dependencies beyond the
+standard library and `pytest`, no SDK):
 
 ```
-python -m pytest -q             # 39 passed in 1.33s
-python tools/m0_demo.py         # simulated walkthrough, writes evidence/M0/
-python tools/host_cli.py status # what THIS machine is, and what it grants
+py -m pytest -q              # 196 passed
+py tools/m0_demo.py          # simulated walkthrough, writes evidence/M0/
+isymotron host status        # what THIS machine is, and what it grants
 ```
 
 Make your own machine a host (it boots inert until you do):
 
 ```
-python tools/host_cli.py grant filesystem.read --root "C:/Users/you/Pictures"
-python tools/host_cli.py do filesystem.read --path "C:/Users/you/Pictures"
-python tools/host_cli.py do filesystem.read --path "C:/Users/you/Documents"   # DENY
+isymotron host grant filesystem.read --root "C:/Users/you/Pictures"
+isymotron host do filesystem.read --path "C:/Users/you/Pictures"
+isymotron host do filesystem.read --path "C:/Users/you/Documents"   # DENY
 ```
 
 Wire up a model (either provider — the model id string is the same on both):
@@ -106,18 +132,23 @@ Wire up a model (either provider — the model id string is the same on both):
 ```
 setx NVIDIA_NIM_API_KEY nvapi-...        # or NEBIUS_API_KEY, with
 setx ISYMOTRON_PROVIDER nebius           # this
-python tools/nemotron_check.py           # eligibility + planner + adversarial
-python tools/nemotron_check.py --models  # what the key can actually serve
+py tools/nemotron_check.py               # eligibility + planner + adversarial
+py tools/nemotron_check.py --models       # what the key can actually serve
 ```
 
-No dependencies beyond the standard library and `pytest`. No SDK.
+No model key is needed for any of the authority surfaces — the pet, the
+inbox, grants and sealed receipts are the product; a key only adds a planner,
+never a permission.
 
 ## The avatar (the part a person sees)
 
 A small transparent cat floats on your desktop and mirrors what the host
 decided: a red frame with the verdict, the receipt id and the seal when
 something was allowed or refused; a calm animation the rest of the time. It
-lives in the console page too, so the phone sees the same pet.
+renders its idle body with or without a console running (`isymotron pet`
+works standalone) and attaches to the console's view within half a second of
+one coming up. It lives in the console page too, so the phone sees the same
+pet.
 
 Two channels feed it, and they are not equal:
 
@@ -128,9 +159,6 @@ Two channels feed it, and they are not equal:
   third-party bubble, labelled with who wrote it, verbatim, never filtered.
   A line that *claims* to be a verdict loses those fields before it exists:
   talking grants nothing, and the frame cannot be talked into.
-
-No model key is needed for any of it — the pet, the inbox, grants and sealed
-receipts are the product; a key only adds a planner, never a permission.
 
 See [`docs/AVATAR_CONTRACT.md`](docs/AVATAR_CONTRACT.md) for the frozen rules
 (R1–R7) and [`docs/AVATAR_ROADMAP.md`](docs/AVATAR_ROADMAP.md) for how each
@@ -143,6 +171,11 @@ adapted from **Companion**, the author's own prior MIT-licensed work
 (repository `Companion`, commit `0aae576`), copied into this repository and
 reused under the terms of the MIT license. The companion-event-v1 inbox
 protocol is Companion's transport, unchanged. (Devpost text: declare it.)
+
+The CLI banner is a deterministic render by **GlyphFuck**, the author's own
+MIT-licensed ASCII geometry DSL (repository `GlyphFuck`), generated from
+[`tools/cli-banner.gf`](tools/cli-banner.gf) once and embedded as static art;
+the CLI never imports glyphfuck at runtime.
 
 Spanish walkthrough, command by command, with the real output:
 [`docs/GUIA.es.md`](docs/GUIA.es.md).
@@ -184,15 +217,17 @@ Spanish walkthrough, command by command, with the real output:
 ## Layout
 
 ```
+isymotron.ps1     The CLI. Pass-through surface; holds no authority.
 core/isymotron/   L0. Contract, policy, verdicts, canonical digests.
 agents/           L1. Provider seam, planner, executor. The only model code.
 console/          The web surface and its static files. Holds no authority.
+avatar/           Model, inbox, window and packs for the desktop pet.
 hosts/windows/    The real Windows engine and the local grant file.
 hosts/simulator/  Two engines that serve the same contract differently.
 relay/            Transport. Holds no policy and cannot execute.
 clients/          Fake mobile surface.
-tests/            The M0 and M1 acceptance gates.
-tools/            m0_demo.py, host_cli.py (real machine), nemotron_check.py.
+tests/            The acceptance gates: M0, M1, M3, M4, M5, avatar.
+tools/            m0_demo.py, host_cli.py, nemotron_check.py, cli-banner.gf.
 evidence/         Receipts produced by real runs, not by hand.
 docs/             Thesis, architecture, evidence, findings, prior art, Spanish guide.
 ```
@@ -206,7 +241,8 @@ docs/             Thesis, architecture, evidence, findings, prior art, Spanish g
 - [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md) — why a closed laptop looked like provider throttling, and the fix
 - [`docs/PRIOR_ART_ISYCO.md`](docs/PRIOR_ART_ISYCO.md) — what ISyCo already solved
 - [`docs/ROADMAP_DELTA.md`](docs/ROADMAP_DELTA.md) — where this repo departs from the roadmap, and why
-- [`docs/GUIA.es.md`](docs/GUIA.es.md) — guía en español
+- [`docs/AVATAR_CONTRACT.md`](docs/AVATAR_CONTRACT.md) — the frozen avatar rules (R1–R7)
+- [`docs/GUIA.es.md`](docs/GUIA.es.md) — guía en español, con la salida real de cada comando
 
 ## License
 
