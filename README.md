@@ -68,6 +68,14 @@ Roadmap invariant 2.13: unsupported != impossible.
 
 ## Run it
 
+One command for everything (install once, then it works from any new shell):
+
+```
+.\isymotron.ps1 install     # adds this folder to the user PATH
+isymotron help              # verbs: start console pet test build spoof host
+isymotron start --demo-host # console + floating pet, opens the browser
+```
+
 Build the binary (PyInstaller is a build-time dependency only):
 
 ```

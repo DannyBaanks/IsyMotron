@@ -866,3 +866,88 @@ Escribe seis líneas: un `"ALLOW ✅"` inocente, un DENY falsificado, un receipt
 falsificado, una firma prestada (`IsyMotron`), una línea con la forma exacta
 de un evento de autoridad (§3.1) y una línea rota. Las seis terminan en
 burbujas de tercero o en el contador de malformadas. Ninguna toca el frame.
+
+---
+
+## 17. El CLI: `isymotron` (2026-09-19)
+
+Un solo comando para todo el producto. Instálalo una vez:
+
+```
+.\isymotron.ps1 install
+```
+
+Salida real:
+
+```
+installed: C:\Development\ISyCo Git\ISyMotron added to the user PATH
+open a NEW PowerShell window, then:  isymotron help
+```
+
+Abre una ventana **nueva** de PowerShell y ya funciona desde cualquier
+carpeta:
+
+```
+isymotron --help
+```
+
+Salida real (completa):
+
+```
+isymotron -- one command for the whole product.
+
+  usage: isymotron <verb> [options]
+         isymotron [console flags]      flags go straight to the console
+
+  verbs:
+    start   [flags]     console + floating pet + browser (adds --avatar)
+    console [flags]     the local web console (--lan --demo-host --port N
+                        --no-browser --grants <path> ...)
+    pet     [--port N]  only the floating desktop pet (reads avatar.token;
+                        default port 8760, the console's own default)
+    test    [args]      the acceptance suite (default: -q)
+    build   [args]      rebuild IsyMotron.exe (smoke test included)
+    spoof   [--inbox <path>]  append the hostile demo lines to an inbox
+    host    <args>      tools/host_cli.py: status | grant | revoke | do
+    demo                the M0 walkthrough (writes evidence/M0/)
+    install             make `isymotron` work from any new shell
+    where               print the repository this CLI belongs to
+    help                this help
+
+  examples:
+    isymotron start --demo-host
+    isymotron console --lan --no-browser
+    isymotron --lan                     # same thing: flags pass through
+    isymotron host status
+    isymotron spoof --inbox "$env:LOCALAPPDATA\IsyMotron\avatar\inbox.jsonl"
+```
+
+Verbos ejecutados de verdad en esta pasada:
+
+| Comando | Salida real (recortada) |
+|---|---|
+| `isymotron where` | `C:\Development\ISyCo Git\ISyMotron` |
+| `isymotron host status` | `host win11-danny (Danny — Windows 11)` · `engine nt-real/0.1 contract NemoHostContract/v0` · `admin not granted` |
+| `isymotron spoof --inbox <temp>` | `6 hostile lines appended to …` |
+| `isymotron test` | `195 passed in 46.23s` |
+| `isymotron console --no-browser --port 8802 --url-file <f>` | consola arriba; `GET /api/state` → **HTTP 200** |
+| `isymotron pet --port 8804` | ventana de la mascota: **True** (EnumWindows) |
+| `isymotron zzz` | `isymotron: unknown command 'zzz'` + help + exit 1 |
+
+**NO PROBADO en esta pasada:** `demo` (reescribe `evidence/M0/`; su última
+salida real documentada está en §2) y `start` tal cual (abría tu navegador;
+es exactamente `console --avatar`, ambos probados por separado).
+
+Trampas del CLI (2026-09-19):
+
+- **El banner no aparece si la salida va a un pipe.** La consola bloquea el
+  stdout con buffer cuando no es una terminal; el **URL file** es la fuente
+  de verdad para scripts (`--url-file`), igual que en `build_exe.py`.
+- **`FindWindow` no ve la ventana de la mascota** en esta máquina (Tk con
+  `overrideredirect`); usa `EnumWindows` con comparación exacta de título.
+  Ya había pasado exactamente igual en AV5.
+- **`install` solo afecta a ventanas nuevas.** La sesión actual no recarga
+  el PATH del usuario.
+- El script no declara `param()` a propósito: un CLI de paso-through debe
+  aceptar cualquier flag del subcomando (`--lan`, `--port`, `--help`), y un
+  bloque de parámetros los rechazaría antes de que el cuerpo corra.
