@@ -1,0 +1,29 @@
+﻿
+  malbolge-cat À Malbolge lesson 1 ù source encoding: from opcode to character
+  ------------------------------------------------------------
+
+  Classic Malbolge stores one printable ASCII character (33..126) per
+  memory cell. At load position c, that character decodes to a normalized
+  opcode:  op = (ASCII(char) + c) mod 94.
+
+  The eight classic normalized opcodes:
+      4  jmp    5  out    23 in     39 rot
+      40 movd   62 opr    68 nop    81 end
+
+  To WRITE a chosen instruction at position c, invert the decode:
+      r = (op - c) mod 94
+      ASCII = r   when 33 <= r <= 93
+      ASCII = r + 94   when 0 <= r <= 32     (fold into the printable range)
+      source character = chr(ASCII)
+
+  worked example: nop at position 3:  r = (68 - 3) mod 94 = 65 -> ASCII 65 -> 'A'.
+  worked example: nop at position 17: r = (68 - 17) mod 94 = 51 -> ASCII 51 -> '3'.
+
+  Exercise 1 (malbolge-nop-17)
+  The cat wants NOP at position 17. Which single printable character produces it?
+  your answer: 4
+  expected: opcode 68 (nop) ù reference instruction 'o'
+  observed: opcode 69 (invalid) ù reference instruction '['
+  execution: 19-cell program, halted=True reason=halt_opcode steps=19 (expected 19)
+  VERDICT: FAIL   (verdict_source: machine; receipt rcpt_e5ada8d037c3469b; seal ok)
+

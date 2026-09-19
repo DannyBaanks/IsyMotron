@@ -47,6 +47,8 @@ taught us that the design did not.
 | **Console** — local web UI, dark surface, brand-green accents, phone-ready | `console/` | working |
 | **`IsyMotron.exe`** — one file, no runtime dependencies | `build_exe.py` | 12 MB |
 | **`isymotron` CLI** — clap-style help, rustc-style errors, ANSI truecolor | `isymotron.ps1` | working |
+| **Learning seam** — lessons, machine verdicts, sealed lesson receipts | `learning/` | working |
+| **Malbolge pack** — source encoding lesson over vendored real tooling | `learning/packs/malbolge/` | working |
 | **Avatar model** — two trust channels, precedence, no I/O | `avatar/model.py` | working |
 | **Open channel** — inbox reader, companion-event-v1 | `avatar/inbox.py` | working |
 | **Authority channel** — producers + `/api/avatar`, read-only avatar token | `console/server.py` | working |
@@ -142,6 +144,31 @@ No model key is needed for any of the authority surfaces — the pet, the
 inbox, grants and sealed receipts are the product; a key only adds a planner,
 never a permission.
 
+## Learn Malbolge with Malbolge Cat
+
+The first learning pack teaches Malbolge source encoding the way authority
+works in the rest of the product: the cat explains, you answer, **real
+vendored tooling decides**, and the sealed receipt says which machinery
+produced the verdict. No model is involved in a verdict — without tooling
+there is no PASS, only UNAVAILABLE.
+
+```
+isymotron learn malbolge                     # the lesson, interactive
+isymotron learn malbolge --exercise 1 --answer 3
+```
+
+```
+  expected: opcode 68 (nop) — reference instruction 'o'
+  observed: opcode 68 (nop) — reference instruction 'o'
+  execution: 19-cell program, halted=True reason=halt_opcode steps=19
+  VERDICT: PASS   (verdict_source: machine; receipt rcpt_84c5a2fcc8724542; seal ok)
+```
+
+If the console and the pet are up, the cat announces the machine's verdict
+live through the open channel — a bubble it can speak but never forge.
+Verdicts, provenance and the capability roadmap:
+[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md).
+
 ## The avatar (the part a person sees)
 
 A small transparent cat floats on your desktop and mirrors what the host
@@ -224,6 +251,7 @@ core/isymotron/   L0. Contract, policy, verdicts, canonical digests.
 agents/           L1. Provider seam, planner, executor. The only model code.
 console/          The web surface and its static files. Holds no authority.
 avatar/           Model, inbox, window and packs for the desktop pet.
+learning/         The learning seam; packs teach, tooling verifies.
 hosts/windows/    The real Windows engine and the local grant file.
 hosts/simulator/  Two engines that serve the same contract differently.
 relay/            Transport. Holds no policy and cannot execute.

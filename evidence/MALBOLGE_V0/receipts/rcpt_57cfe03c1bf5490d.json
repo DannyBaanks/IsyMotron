@@ -1,0 +1,46 @@
+{
+  "contract": "learning-receipt-v1",
+  "receipt_id": "rcpt_57cfe03c1bf5490d",
+  "lesson_id": "malbolge-source-encoding-1",
+  "exercise_id": "malbolge-out-0",
+  "learner_input": "c",
+  "verdict": "PASS",
+  "verdict_source": "machine",
+  "expected": {
+    "opcode": 5,
+    "opcode_name": "out",
+    "reference_instruction": "<"
+  },
+  "observed": {
+    "decoded_opcode": 5,
+    "decoded_opcode_name": "out",
+    "reference_instruction": "<",
+    "reference_instruction_of_target": "<"
+  },
+  "execution": {
+    "program_cells": 2,
+    "halted": true,
+    "halt_reason": "halt_opcode",
+    "steps": 2,
+    "expected_steps": 2,
+    "accumulator": 0,
+    "output": "\u0000"
+  },
+  "verified_by": [
+    "classic_codec.decode (vendored, MALBOLGE 82076be)",
+    "malbolge-oracle XLAT1 reference witness (vendored, fc3daa7, MIT)",
+    "classic_encoder.encode + Oracle execution witness (vendored)"
+  ],
+  "provenance": [
+    "learning.packs.malbolge.vendor.classic_encoder — MALBOLGE repository, HEAD 82076be",
+    "learning.packs.malbolge.vendor.classic_codec — MALBOLGE repository, HEAD 82076be",
+    "learning.packs.malbolge.vendor.oracle — malbolge-oracle repository, HEAD fc3daa7, MIT",
+    "pedagogical source: C:\\Development\\clasesbolge.md (owner material), semantics verified against the tooling before use"
+  ],
+  "notes": [
+    "execution witness: the composed program runs on reference semantics; a no-op-equivalent wrong character can also halt cleanly, so the verdict comes from the positional codec + reference letter, not the halt alone"
+  ],
+  "started_at": 1789858825.8132257,
+  "ended_at": 1789858825.969177,
+  "seal": "sha256:9e4f15f88c289883e9be12b09dbfdb3a5c8407cb64fd9395baa3d88c2f13a1c0"
+}

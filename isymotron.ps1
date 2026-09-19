@@ -69,6 +69,7 @@ $Verbs = [ordered]@{
     'spoof'   = 'append the hostile demo lines to an inbox'
     'host'    = 'tools/host_cli.py: status | grant | revoke | do'
     'demo'    = 'the M0 walkthrough (writes evidence/M0/)'
+    'learn'   = 'a verified lesson from a learning pack (malbolge)'
     'install' = 'make `isymotron` work from any new shell'
     'where'   = 'print the repository this CLI belongs to'
     'help'    = 'this help'
@@ -162,6 +163,7 @@ elseif ($Command -eq 'host')    {
     else { Invoke-InRepo @('tools\host_cli.py', 'status') }
 }
 elseif ($Command -eq 'demo')    { Invoke-InRepo (@('tools\m0_demo.py') + $Rest) }
+elseif ($Command -eq 'learn')   { Invoke-InRepo (@('-m', 'learning') + $Rest) }
 elseif ($Command -eq 'where')   { Write-Output $repo }
 elseif ($Command -eq 'install') {
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')

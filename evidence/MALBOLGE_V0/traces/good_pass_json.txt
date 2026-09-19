@@ -1,0 +1,76 @@
+﻿
+  malbolge-cat À Malbolge lesson 1 ù source encoding: from opcode to character
+  ------------------------------------------------------------
+
+  Classic Malbolge stores one printable ASCII character (33..126) per
+  memory cell. At load position c, that character decodes to a normalized
+  opcode:  op = (ASCII(char) + c) mod 94.
+
+  The eight classic normalized opcodes:
+      4  jmp    5  out    23 in     39 rot
+      40 movd   62 opr    68 nop    81 end
+
+  To WRITE a chosen instruction at position c, invert the decode:
+      r = (op - c) mod 94
+      ASCII = r   when 33 <= r <= 93
+      ASCII = r + 94   when 0 <= r <= 32     (fold into the printable range)
+      source character = chr(ASCII)
+
+  worked example: nop at position 3:  r = (68 - 3) mod 94 = 65 -> ASCII 65 -> 'A'.
+  worked example: nop at position 17: r = (68 - 17) mod 94 = 51 -> ASCII 51 -> '3'.
+
+  Exercise 1 (malbolge-nop-17)
+  The cat wants NOP at position 17. Which single printable character produces it?
+  your answer: 3
+  expected: opcode 68 (nop) ù reference instruction 'o'
+  observed: opcode 68 (nop) ù reference instruction 'o'
+  execution: 19-cell program, halted=True reason=halt_opcode steps=19 (expected 19)
+  note: execution witness: the composed program runs on reference semantics; a no-op-equivalent wrong character can also halt cleanly, so the verdict comes from the positional codec + reference letter, not the halt alone
+  VERDICT: PASS   (verdict_source: machine; receipt rcpt_72743e3340c04e6d; seal ok)
+
+{
+  "contract": "learning-receipt-v1",
+  "receipt_id": "rcpt_72743e3340c04e6d",
+  "lesson_id": "malbolge-source-encoding-1",
+  "exercise_id": "malbolge-nop-17",
+  "learner_input": "3",
+  "verdict": "PASS",
+  "verdict_source": "machine",
+  "expected": {
+    "opcode": 68,
+    "opcode_name": "nop",
+    "reference_instruction": "o"
+  },
+  "observed": {
+    "decoded_opcode": 68,
+    "decoded_opcode_name": "nop",
+    "reference_instruction": "o",
+    "reference_instruction_of_target": "o"
+  },
+  "execution": {
+    "program_cells": 19,
+    "halted": true,
+    "halt_reason": "halt_opcode",
+    "steps": 19,
+    "expected_steps": 19,
+    "accumulator": 0,
+    "output": ""
+  },
+  "verified_by": [
+    "classic_codec.decode (vendored, MALBOLGE 82076be)",
+    "malbolge-oracle XLAT1 reference witness (vendored, fc3daa7, MIT)",
+    "classic_encoder.encode + Oracle execution witness (vendored)"
+  ],
+  "provenance": [
+    "learning.packs.malbolge.vendor.classic_encoder ù MALBOLGE repository, HEAD 82076be",
+    "learning.packs.malbolge.vendor.classic_codec ù MALBOLGE repository, HEAD 82076be",
+    "learning.packs.malbolge.vendor.oracle ù malbolge-oracle repository, HEAD fc3daa7, MIT",
+    "pedagogical source: C:\\Development\\clasesbolge.md (owner material), semantics verified against the tooling before use"
+  ],
+  "notes": [
+    "execution witness: the composed program runs on reference semantics; a no-op-equivalent wrong character can also halt cleanly, so the verdict comes from the positional codec + reference letter, not the halt alone"
+  ],
+  "started_at": 1789858825.195566,
+  "ended_at": 1789858825.3290632,
+  "seal": "sha256:74a3d46125e868a22035ad7f9d2c1f11cbfae627e63c669e11cf94ac0a7e0a84"
+}

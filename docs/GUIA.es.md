@@ -918,6 +918,7 @@ Commands:
   spoof     append the hostile demo lines to an inbox
   host      tools/host_cli.py: status | grant | revoke | do
   demo      the M0 walkthrough (writes evidence/M0/)
+  learn     a verified lesson from a learning pack (malbolge)
   install   make `isymotron` work from any new shell
   where     print the repository this CLI belongs to
   help      this help
@@ -969,6 +970,100 @@ tu navegador; todo lo demás del verbo está probado vía `--no-browser`).
 
 **Volver a la versión simple:** el estado anterior está etiquetado —
 `git checkout cli-plain-bf7bcae -- isymotron.ps1`.
+
+---
+
+## 19. Aprender Malbolge con el gato: `isymotron learn` (2026-09-19)
+
+El primer pack de aprendizaje enseña la **codificación de fuente de Malbolge
+clásico**: dado un opcode normalizado y una posición, derivar el carácter
+imprimible que lo produce (`r = (op - c) mod 94`, pliegue al rango
+imprimible). La regla del producto es la misma de siempre: **el gato
+explica, la maquinaria verifica** — ningún modelo participa en un veredicto,
+y sin tooling no hay PASS, solo UNAVAILABLE.
+
+La lección interactiva:
+
+```
+isymotron learn malbolge
+```
+
+Salida real (modo script, `--exercise 1 --answer 3`):
+
+```
+  Exercise 1 (malbolge-nop-17)
+  The cat wants NOP at position 17. Which single printable character produces it?
+  your answer: 3
+  expected: opcode 68 (nop) — reference instruction 'o'
+  observed: opcode 68 (nop) — reference instruction 'o'
+  execution: 19-cell program, halted=True reason=halt_opcode steps=19 (expected 19)
+  note: execution witness: the composed program runs on reference semantics; a no-op-equivalent wrong character can also halt cleanly, so the verdict comes from the positional codec + reference letter, not the halt alone
+  VERDICT: PASS   (verdict_source: machine; receipt rcpt_b43adcfca3d6478d; seal ok)
+```
+
+Salidas reales de los otros veredictos:
+
+| Respuesta | Veredicto | Salida real |
+|---|---|---|
+| `3` (nop@17) | **PASS** | `receipt rcpt_70a00e1131d049b8; seal ok` |
+| `4` (decodifica a op 69) | **FAIL** | `receipt rcpt_e5ada8d037c3469b; seal ok` |
+| `zz` (fuera de contrato) | **INVALID** | `receipt rcpt_eaa6d8cffa3e411f; seal ok` |
+| tooling no cargable | **UNAVAILABLE** | `verified_by: []` + "an unavailable verifier never produces PASS" |
+
+Exit codes con semántica de veredicto: `0` PASS · `1` FAIL · `2` INVALID ·
+`3` UNAVAILABLE · `4` pack no encontrado.
+
+El veredicto sale de tooling real **vendorizado con procedencia**
+(`learning/packs/malbolge/vendor/PROVENANCE.md`): el codec posicional del repo
+MALBOLGE (`classic_codec`, paridad exhaustiva en su repo), el encoder
+(`classic_encoder`) y el **malbolge-oracle** — un control de ejecución
+transcrito del intérprete de referencia sin consultar ninguna otra
+implementación (MIT). Los tres se copiaron byte por byte con SHA-256
+registrado; la única adaptación es un import relativo documentado.
+
+**El gato proyecta el veredicto**: si la consola y la mascota están arriba,
+el CLI anuncia la lección y el veredicto por el canal abierto (líneas
+companion-event-v1 al inbox). Salida real de `GET /api/avatar` con la
+consola viva:
+
+```
+third_party bubbles:
+  [3] malbolge-nop-17: PASS - nop decoded from '3'. Receipt rcpt_84c5a2fcc8724542.
+```
+
+Es una burbuja de tercero: el gato **habla** del veredicto, nunca lo fabrica
+— la suite adversarial ya prueba que una línea que dice "PASS" se queda en
+burbuja, y el gate nuevo prueba que avatar/console ni siquiera pueden
+construir un `LessonReceipt`.
+
+Cómo correr el gate del pack (25 tests):
+
+```
+isymotron test tests\test_learning_malbolge.py
+```
+
+Salida real: `25 passed in 5.11s` (y la suite completa: `221 passed in
+143.28s`).
+
+Trampas de esta sección (2026-09-19):
+
+- **El testigo de ejecución no es el veredicto.** Un carácter incorrecto que
+  decodifique a un no-op en runtime (p.ej. `movd` en este programa, que
+  nunca lee `d` después) también halta limpio. Por eso el veredicto viene
+  del codec posicional + la letra de referencia del oracle, y el receipt lo
+  dice en `notes`. No "refuerces" el trail para que distinga: la pregunta de
+  la lección es sobre codificación, no sobre no-opness.
+- **El inbox y el backlog**: el CLI proyecta con `--inbox <archivo>`; si
+  apuntas a un archivo nuevo, **créalo antes** de arrancar la consola (o el
+  tail arrancará en el EOF y tu línea será backlog que nunca se repite —
+  contrato §1, la misma trampa de §15).
+- **El receipt distingue quién dijo qué**: `verdict_source: "machine"` +
+  `verified_by` con los módulos vendorizados. Si algún día un modelo
+  "ayuda" a explicar, esa explicación jamás puede entrar en `verified_by`.
+- **La suite viva puede parpadear**: un run completo dio 1 failed en
+  `test_live_model` (presupuesto de tokens de un modelo razonador real);
+  re-corrido aislado y por módulo pasó (5 passed). No es código — es el
+  proveedor remoto. El CI corre sin clave y esos 5 se saltan.
 
 Trampas del CLI (2026-09-19):
 
