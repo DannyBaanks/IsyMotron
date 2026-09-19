@@ -29,10 +29,17 @@ STALENESS_SECONDS = 60.0   # contract §5: 60 s past or future is dropped
 RING_SIZE = 200            # contract §5: in-memory ring buffer
 REPLAY_WINDOW = 1000       # contract §5: ids seen in the last 1000 events
 RESERVED_AGENTS = frozenset({"isymotron", "host", "system", "authority"})
-# R1: an inbox line never keeps these; the rest of the payload passes
-# through verbatim so unknown fields stay framed, not filtered (R3).
+# R1: an inbox line never keeps these seven — the names the rule spells out.
 FORBIDDEN_FIELDS = ("channel", "decision", "receipt_id", "seal_ok", "host_id", "badge", "verified")
-DROP_FIELDS = FORBIDDEN_FIELDS + ("id", "version", "created_at")
+# The REST of the authority-event shape (contract §3.1), found by the AV8
+# adversarial suite: `kind`/`seq`/`at`/`state` (and friends) survived the
+# seven above, so a forged line could pose as a verdict in the event stream
+# or poison a renderer's `since` cursor. `text` is NOT here: it is the open
+# channel's own field as much as the authority's. Everything not in these
+# lists passes through verbatim, so unknown fields stay framed, not
+# filtered (R3).
+SHAPE_FIELDS = ("seq", "kind", "at", "capability", "reason", "detail", "state")
+DROP_FIELDS = FORBIDDEN_FIELDS + SHAPE_FIELDS + ("id", "version", "created_at")
 
 
 def _iso(epoch: float) -> str:
