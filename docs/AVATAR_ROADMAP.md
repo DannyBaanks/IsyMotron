@@ -44,7 +44,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV6 | No-AI mode ("avatar" mode) | **DONE** | AV3 |
 | AV7 | AI mode ("agent" mode) | **DONE** | AV6 |
 | AV8 | Adversarial suite | **DONE** | AV4, AV5 |
-| AV9 | Demo path, packaging, docs | NOT_STARTED | AV7, AV8 |
+| AV9 | Demo path, packaging, docs | IN_PROGRESS | AV7, AV8 |
 
 ---
 

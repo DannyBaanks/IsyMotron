@@ -106,11 +106,17 @@ def smoke_test(exe: str) -> bool:
             print(f"  FAILED: {type(exc).__name__}: {exc}")
             return False
         finally:
+            # A one-file exe is a bootloader plus a child. `terminate()` kills
+            # the bootloader and leaves the child serving the port forever —
+            # measured twice on 2026-09-18, both times locking the next build
+            # with PermissionError on dist/IsyMotron.exe. Kill the TREE.
             proc.terminate()
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                proc.kill()
+                pass
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def main(argv=None) -> int:
