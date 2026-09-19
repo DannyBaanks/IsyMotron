@@ -41,7 +41,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV3 | Authority channel: producers + `/api/avatar` | **DONE** | AV1 |
 | AV4 | Web renderer in the console | **DONE** | AV2, AV3 |
 | AV5 | Desktop renderer (Companion window, adapted) | **DONE** | AV2, AV3 |
-| AV6 | No-AI mode ("avatar" mode) | IN_PROGRESS | AV3 |
+| AV6 | No-AI mode ("avatar" mode) | **DONE** | AV3 |
 | AV7 | AI mode ("agent" mode) | NOT_STARTED | AV6 |
 | AV8 | Adversarial suite | NOT_STARTED | AV4, AV5 |
 | AV9 | Demo path, packaging, docs | NOT_STARTED | AV7, AV8 |
@@ -318,7 +318,19 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 - **Evidence:** GUIA section run with keys unset.
 - **Failure conditions:** any authority path that checks for a provider.
 - **Commit boundary:** `AV6: avatar mode -- no key is a complete product, not a crippled one`
-- **Result:** —
+- **Result:** `20d0f36`; 183 passed (180 + 3 new), `py -m pytest -q`.
+  The `mode` event is now emitted by `ConsoleState` itself (where the
+  provider is known), `/api/state` gains `mode`, the 503 carries a human
+  message, and the console header shows "avatar mode · no model configured".
+  Live no-key run (GUIA §15, real output): keys unset -> `mode: avatar`,
+  execute ALLOW + seal, grant/revoke 200, `/api/plan` 503 with the human
+  message, avatar events `[mode(none), verdict, say]`, bubble rendered,
+  backlog not replayed. Incident during evidence (fixed same day): a
+  first evidence run POSTed `/api/grant` against the user's REAL grants file
+  (no `--grants` flag) and added `C:/GAMES` to `filesystem.read` roots;
+  detected and repaired with `Grants.load/save`; every later run passes
+  `--grants <temp>`. Also caught: inbox lines appended before the tail's
+  first sighting are backlog by contract §1 — the GUIA documents the trap.
 
 ---
 
