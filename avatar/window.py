@@ -203,12 +203,12 @@ class AvatarWindow:
             self.image = AnimatedAsset(self.image_path)
         except (OSError, ValueError, tk.TclError):
             self.image = None
-        self.image_label = tk.Label(self.root, bg="magenta", fg="#a9ffcb",
+        self.image_label = tk.Label(self.root, bg="magenta", fg="#A7A7A7",
                                     bd=0, highlightthickness=0)
         self.image_label.pack()
-        self.frame_label = tk.Label(self.root, text="", bg="#10151b", fg="#f4f4f5",
+        self.frame_label = tk.Label(self.root, text="", bg="#161616", fg="#FFFFFF",
                                     padx=8, pady=5, wraplength=260, justify="left")
-        self.bubble = tk.Label(self.root, text="", bg="#10151b", fg="#ffb020",
+        self.bubble = tk.Label(self.root, text="", bg="#161616", fg="#FCDE7B",
                                padx=8, pady=5, wraplength=260, justify="left")
         self.context_menu = self._build_context_menu()
         self._drag_origin: tuple[int, int] | None = None
@@ -329,7 +329,7 @@ class AvatarWindow:
                          + ("seal ok" if v.get("seal_ok") else "seal FAILED"))
         elif frame.get("text"):
             lines.append(str(frame["text"]))
-        color = {"DENY": "#ff5257", "ALLOW": "#76b900"}.get(v.get("decision"), "#f4f4f5")
+        color = {"DENY": "#E52020", "ALLOW": "#76B900"}.get(v.get("decision"), "#FFFFFF")
         self.frame_label.configure(text="\n".join(lines), fg=color)
         if not self.frame_label.winfo_ismapped():
             self.frame_label.pack()
