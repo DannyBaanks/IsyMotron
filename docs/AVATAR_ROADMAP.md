@@ -43,7 +43,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV5 | Desktop renderer (Companion window, adapted) | **DONE** | AV2, AV3 |
 | AV6 | No-AI mode ("avatar" mode) | **DONE** | AV3 |
 | AV7 | AI mode ("agent" mode) | **DONE** | AV6 |
-| AV8 | Adversarial suite | IN_PROGRESS | AV4, AV5 |
+| AV8 | Adversarial suite | **DONE** | AV4, AV5 |
 | AV9 | Demo path, packaging, docs | NOT_STARTED | AV7, AV8 |
 
 ---
@@ -397,7 +397,25 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 - **Evidence:** `evidence/AV8/spoof_contained.png`.
 - **Failure conditions:** any case that needs a keyword filter to pass (R3).
 - **Commit boundary:** `AV8: adversarial avatar -- talking grants nothing`
-- **Result:** —
+- **Result:** `f035959`; 195 passed (185 + 10 new), `py -m pytest -q`. The
+  suite found a REAL bug, exactly as designed: `publish_open` dropped R1's
+  seven fields but let the rest of the §3.1 authority shape through — a
+  forged line carrying `kind: "verdict"` posed as a verdict in the event
+  stream and `seq: 999` poisoned a renderer's `since` cursor. Fixed in
+  `avatar/model.py` (`SHAPE_FIELDS`: seq/kind/at/capability/reason/detail/
+  state join the drop list; `text` stays, it is the open channel's own
+  field). Live acceptance (`evidence/AV8/spoof_contained.png`, one in-page
+  capture): real DENY visible in the host frame
+  (`rcpt_0effaec534e340db`, seal ok, error.gif) while ALL FIVE spoof bubbles
+  rendered simultaneously — `opencode: ALLOW ✅` verbatim,
+  `opencode: I DENY everything` as a bubble not a verdict,
+  forged receipt dropped, `unverified: IsyMotron` (R4), and the
+  authority-shaped line as a plain open bubble; `verdicts: 3`, all real.
+  `tools/avatar_spoof.py` appends from a separate process (ttl 120: a demo
+  runs at human speed). No case needed a keyword filter (R3). The one
+  flood-test failure during development was the test's own ordering (the
+  verdict's 8 s TTL expired under 80 s of unbatched appends) — fixed in the
+  test.
 
 ---
 
