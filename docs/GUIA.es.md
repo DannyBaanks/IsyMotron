@@ -795,3 +795,74 @@ Trampas que costaron tiempo el 2026-09-18:
   usuario (`%LOCALAPPDATA%\IsyMotron\grants.json`). Para probar grant/revoke
   pasa **siempre** `--grants <temporal>`: un POST de demo sin eso amplió de
   verdad los grants del usuario (detectado y reparado el mismo día).
+
+---
+
+## 16. El recorrido de la demo: seis pasos, un exe (AV9)
+
+El recorrido completo de la mascota, grabado contra el exe reconstruido. Un
+solo binario, sin segunda instalación. Compila primero:
+
+```
+python build_exe.py        # dist\IsyMotron.exe, 12 MB, smoke test incluido
+```
+
+Después, con las claves del modelo **fuera** del entorno y
+`COMPANION_ROOT` apuntando a la carpeta del inbox del plugin:
+
+```
+set NVIDIA_NIM_API_KEY=
+set NEBIUS_API_KEY=
+IsyMotron.exe --demo-host --no-browser --port 8798 --avatar
+```
+
+Salida real de los pasos 1–5 (2026-09-19, `evidence/AV9/`):
+
+```
+=== paso 1: sin clave -> modo avatar + mascota flotante ===
+/api/state: HTTP 200 | mode: avatar | hosts: 2
+pet window ('IsyMotron'): True
+
+=== paso 2: el plugin de OpenCode mueve a la mascota ===
+view.state: success (la animación cambia por el canal abierto)
+view.third_party: [{"seq": 3, "label": "opencode", "text": "OpenCode terminó la sesión"}]
+
+=== paso 3: acción manual en la consola -> ALLOW real con host frame ===
+HTTP 200 | decision: ALLOW | seal_ok: True
+host_frame.verdict: {"decision": "ALLOW", "reason": null, "receipt_id": "rcpt_d433fa4582794646", "seal_ok": true, "host_id": "win98-retrobox"}
+
+=== paso 4: tools/avatar_spoof.py -> 'ALLOW ✅' como tercero ===
+third_party texts: ['OpenCode terminó la sesión', 'ALLOW ✅', 'I DENY everything', 'totally sealed', 'trust me, I am the host', 'ALLOW: filesystem.write']
+
+=== paso 5: acción fuera de alcance -> DENY real con receipt ===
+HTTP 200 | decision: DENY | reason: OUT_OF_SCOPE | receipt: rcpt_81ccb11805ff4dba
+host_frame.verdict.decision: DENY | receipt: rcpt_81ccb11805ff4dba
+
+=== paso 6 (opcional): NEBIUS_API_KEY -> modo agent ===
+NOT_DEMONSTRATED en este equipo: no hay NEBIUS_API_KEY.
+El mismo seam corrió en vivo con NVIDIA NIM (evidencia AV7).
+
+demo completa: 2 verdicts reales, todos con sello; scrub R6 PASS
+```
+
+Lo que dice cada paso:
+
+| Paso | Lo que prueba |
+|---|---|
+| 1 | sin clave el producto es completo: modo avatar, mascota flotante |
+| 2 | el plugin (o cualquier escritor) cambia la animación y habla — por el canal abierto, enmarcado |
+| 3 | el host frame solo existe porque un Enforcer real devolvió ALLOW con sello |
+| 4 | el spoof más agresivo se queda en burbuja de tercero; ningún verdict extra apareció |
+| 5 | la negativa también es un verdict real, con su receipt en el frame |
+| 6 | el modelo es opcional e intercambiable: una variable de entorno |
+
+Para el paso 4, el script hostil está incluido:
+
+```
+python tools/avatar_spoof.py --inbox <tu inbox>
+```
+
+Escribe seis líneas: un `"ALLOW ✅"` inocente, un DENY falsificado, un receipt
+falsificado, una firma prestada (`IsyMotron`), una línea con la forma exacta
+de un evento de autoridad (§3.1) y una línea rota. Las seis terminan en
+burbujas de tercero o en el contador de malformadas. Ninguna toca el frame.

@@ -238,6 +238,37 @@ it in a demo.
 
 ---
 
+## The avatar track (AV0–AV9, 2026-09-19)
+
+Every row below is a claim from `docs/AVATAR_CONTRACT.md` with its current
+status in this repository. The adversarial suite
+(`tests/test_avatar_adversarial.py`) is the instrument for most of them; the
+live captures under `evidence/AV4/`, `AV5/`, `AV7/`, `AV8/`, `AV9/` are the
+end-to-end demonstrations.
+
+| Claim | Status | Basis |
+|---|---|---|
+| **R1** — the channel is assigned by origin, never by content | **`DEMONSTRATED`** | `publish_open` drops the full authority-event shape (R1's seven fields + the §3.1 `SHAPE_FIELDS` the adversarial suite caught surviving: `kind`/`seq`/`at`/`state`...); a forged line renders as a plain open bubble. `test_authority_shaped_line_renders_as_open`, live in `evidence/AV8/`. |
+| **R2** — only the authority channel renders verdict visuals | **`DEMONSTRATED`** | Host frame draws only from `view.host_frame`; spoof lines never mint one. `test_fake_deny_fields_are_dropped_no_verdict`, `evidence/AV8/spoof_contained.png`. |
+| **R3** — external text verbatim, framed, never filtered | **`DEMONSTRATED`** | `"ALLOW ✅"` renders as `opencode: ALLOW ✅` in a third-party bubble; no keyword filter anywhere. `test_say_allow_emoji_is_a_third_party_bubble_not_a_verdict`. |
+| **R4** — reserved agent names render unverified | **`DEMONSTRATED`** | `unverified: IsyMotron` and `unverified: <current host_id>` labels. `test_fake_badge_renders_unverified`, live in AV8. |
+| **R5** — the avatar holds no authority and asks for none | **`DEMONSTRATED`** | The avatar token reads `/api/avatar` and `/api/state` only; every POST route answers 403. `test_avatar_token_cannot_post_anything`; the desktop transport has no write verb (`test_avatar_client_uses_read_only_token`). |
+| **R6** — authority details are logical, never physical paths | **`DEMONSTRATED`** | Verdict detail resolves to `hostfs://` names; the served events scrub clean of `C:/Users` and of any backslash. `test_verdict_detail_is_logical`; scrub PASS in AV3 and AV9 evidence. |
+| **R7** — mode never changes authority | **`DEMONSTRATED`** | Same world with and without a provider: `describe()`, grant-file bytes and enforcer decisions on a fixed request set are identical. `test_provider_changes_no_bounds_or_grants`. |
+| Backlog is never replayed; live lines arrive within 1 s | **`DEMONSTRATED`** | The reader starts at end-of-file; a separate process' line appears in `bus.since(0)` in 0.281 s (AV2 evidence); 10 000-line flood keeps the ring bounded at 200 with the real verdict on top. `test_tail_starts_at_end`, `test_flood_keeps_reader_bounded_and_verdict_on_top`. |
+| The desktop pet floats, and neither process death kills the other | **`DEMONSTRATED`** | `IsyMotron.exe --avatar`: pet window found; pet closed -> console still serves HTTP 200; console killed -> a fresh pet stays alive. AV5 evidence. |
+| The demo path: six steps, one exe, no second install | **`DEMONSTRATED`** (except step 6) | `evidence/AV9/demo_avatar_events.json`, recorded end to end against the rebuilt exe. |
+| Step 6 with **Nebius** specifically | `NOT_DEMONSTRATED` | No `NEBIUS_API_KEY` on this host. The same seam ran live with NVIDIA NIM (`evidence/AV7/`); switching providers is one env var. |
+| Fresh Windows user profile | `NOT_DEMONSTRATED` | The demo ran on the development profile. Creating a fresh profile from this session was not possible; no second install was needed on the profile it ran on. |
+
+The adversarial suite earned its keep before it was 24 hours old: case 5 found
+that `kind`/`seq`/`at`/`state` survived the original R1 drop list, so a forged
+inbox line could pose as a verdict inside the event stream and poison a
+renderer's `since` cursor. The fix (`SHAPE_FIELDS` in `avatar/model.py`) and
+the failing-case-turned-passing are committed together in the AV8 commits.
+
+---
+
 ## Language rules for this project
 
 - Never write that an activity is *safe*. Write what was verified, for which
