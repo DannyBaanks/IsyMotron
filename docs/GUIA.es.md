@@ -880,63 +880,88 @@ Un solo comando para todo el producto. Instálalo una vez:
 Salida real:
 
 ```
-installed: C:\Development\ISyCo Git\ISyMotron added to the user PATH
+installed: C:\Development\ISyCo Git\IsyMotron added to the user PATH
 open a NEW PowerShell window, then:  isymotron help
 ```
 
 Abre una ventana **nueva** de PowerShell y ya funciona desde cualquier
-carpeta:
+carpeta. La ayuda es estilo clap (la misma forma que produce Rust): banner,
+`Usage:`, secciones `Commands:`/`Options:`/`Examples:`/`Notes:`, y errores
+`error:` + uso + "For more information" con **exit 2**. En una terminal
+interactiva lleva color ANSI truecolor (verde de marca `#76B900`, rojo
+rustc `#FE3F3F`); redirigido a un pipe, sale limpio (como rustc). El banner
+es un render de **GlyphFuck** (`tools/cli-banner.gf`, reproducible; glyphfuck
+no es dependencia del CLI).
 
 ```
 isymotron --help
 ```
 
-Salida real (completa):
+Salida real (completa, forma redirigida — sin colores):
 
 ```
-isymotron -- one command for the whole product.
+ ### ##### #   # #   # ###### ##### ####  ###### #   #
+  #  #      # #  ## ## #    #   #   #  #  #    # #  ##
+  #  #####   #   # # # #    #   #   ####  #    # # # #
+  #      #   #   #   # #    #   #   #  #  #    # ##  #
+ ### #####   #   #   # ######   #   #   # ###### #   #
+  capability fabric -- one command for the whole product
 
-  usage: isymotron <verb> [options]
-         isymotron [console flags]      flags go straight to the console
+Usage: isymotron [OPTIONS] [COMMAND] [ARGS]...
 
-  verbs:
-    start   [flags]     console + floating pet + browser (adds --avatar)
-    console [flags]     the local web console (--lan --demo-host --port N
-                        --no-browser --grants <path> ...)
-    pet     [--port N]  only the floating desktop pet (reads avatar.token;
-                        default port 8760, the console's own default)
-    test    [args]      the acceptance suite (default: -q)
-    build   [args]      rebuild IsyMotron.exe (smoke test included)
-    spoof   [--inbox <path>]  append the hostile demo lines to an inbox
-    host    <args>      tools/host_cli.py: status | grant | revoke | do
-    demo                the M0 walkthrough (writes evidence/M0/)
-    install             make `isymotron` work from any new shell
-    where               print the repository this CLI belongs to
-    help                this help
+Commands:
+  start     console + floating pet + browser (adds --avatar)
+  console   the local web console (--lan --demo-host --port N ...)
+  pet       only the floating desktop pet (reads avatar.token)
+  test      the acceptance suite (default: -q)
+  build     rebuild IsyMotron.exe (smoke test included)
+  spoof     append the hostile demo lines to an inbox
+  host      tools/host_cli.py: status | grant | revoke | do
+  demo      the M0 walkthrough (writes evidence/M0/)
+  install   make `isymotron` work from any new shell
+  where     print the repository this CLI belongs to
+  help      this help
 
-  examples:
-    isymotron start --demo-host
-    isymotron console --lan --no-browser
-    isymotron --lan                     # same thing: flags pass through
-    isymotron host status
-    isymotron spoof --inbox "$env:LOCALAPPDATA\IsyMotron\avatar\inbox.jsonl"
+Options:
+  -h, --help
+          Print help (short; --help adds examples and notes)
+
+  -V, --version
+          Print version
+
+Examples:
+  isymotron start --demo-host
+  isymotron console --lan --no-browser
+  isymotron --lan                     # bare console flags pass through
+  isymotron host status
+  isymotron spoof --inbox "C:\Users\progr\AppData\Local\IsyMotron\avatar\inbox.jsonl"
+
+Notes:
+  - install only affects new shells; the user PATH is not reloaded live.
+  - Colours render on an interactive terminal; redirected output is plain.
+  - Banner: GlyphFuck render of tools/cli-banner.gf (MIT, same author).
 ```
 
-Verbos ejecutados de verdad en esta pasada:
+Más salidas reales de esta pasada:
 
-| Comando | Salida real (recortada) |
+| Comando | Salida real |
 |---|---|
-| `isymotron where` | `C:\Development\ISyCo Git\ISyMotron` |
-| `isymotron host status` | `host win11-danny (Danny — Windows 11)` · `engine nt-real/0.1 contract NemoHostContract/v0` · `admin not granted` |
-| `isymotron spoof --inbox <temp>` | `6 hostile lines appended to …` |
-| `isymotron test` | `195 passed in 46.23s` |
+| `isymotron -h` | la forma corta: `Usage:` + `Commands:` + `Options:`, sin banner ni ejemplos |
+| `isymotron -V` | `isymotron 1.0.0 (bf7bcae)` |
+| `isymotron where` | `C:\Development\ISyCo Git\IsyMotron` |
+| `isymotron host status` | `host win11-danny (Danny — Windows 11)` · `engine nt-real/0.1 contract NemoHostContract/v0` |
+| `isymotron test` | `195 passed in 46.23s` (verbo probado en la pasada anterior; lógica intacta) |
 | `isymotron console --no-browser --port 8802 --url-file <f>` | consola arriba; `GET /api/state` → **HTTP 200** |
 | `isymotron pet --port 8804` | ventana de la mascota: **True** (EnumWindows) |
-| `isymotron zzz` | `isymotron: unknown command 'zzz'` + help + exit 1 |
+| `isymotron zzz` | `error: unknown command 'zzz'` + uso + "For more information, try 'isymotron --help'." — **exit 2** (semántica clap) |
+| colores | con `FORCE_COLOR=1`, la salida lleva ESC `\e[38;2;…m` verificado (verde marca y dim); `NO_COLOR` los apaga |
 
 **NO PROBADO en esta pasada:** `demo` (reescribe `evidence/M0/`; su última
 salida real documentada está en §2) y `start` tal cual (abría tu navegador;
 es exactamente `console --avatar`, ambos probados por separado).
+
+**Volver a la versión simple:** el estado anterior está etiquetado —
+`git checkout cli-plain-bf7bcae -- isymotron.ps1`.
 
 Trampas del CLI (2026-09-19):
 
@@ -951,3 +976,6 @@ Trampas del CLI (2026-09-19):
 - El script no declara `param()` a propósito: un CLI de paso-through debe
   aceptar cualquier flag del subcomando (`--lan`, `--port`, `--help`), y un
   bloque de parámetros los rechazaría antes de que el cuerpo corra.
+- **Colores solo en terminal interactiva** (como rustc): si stdout es un
+  pipe, o hay `NO_COLOR`, la salida sale plana. `FORCE_COLOR=1` los fuerza
+  (para depurar).
