@@ -368,6 +368,17 @@ class AvatarWindow:
                                            padx=12, pady=12)
             self._render_frame(view.get("host_frame"))
             self._render_bubbles(view.get("third_party") or [])
+        else:
+            # No console answering (or no token yet): the pet still renders
+            # its own idle body. Before this branch, a label left unconfigured
+            # collapsed the window to a 2x17 sliver -- a fully invisible pet
+            # (`isymotron pet` with no console, 2026-09-19).
+            if self.image:
+                self._render_current_frame()
+                self.image.advance()
+            else:
+                self.image_label.configure(image="", text=f"{self.name}\n[offline]",
+                                           padx=12, pady=12)
         self.root.after(POLL_MS, self._refresh)
 
     def show(self) -> None:
@@ -386,5 +397,15 @@ def run_avatar_worker(port: int, *, pack_root: Path | None = None) -> int:
     root = pack_root or _pack_root()
     pack = AssetPack.load(root / "malbolge-cat")
     client = AvatarClient(port)
+    try:
+        online = client.view() is not None
+    except (OSError, ValueError, KeyError):
+        online = False
+    if not online:
+        # True for a standalone `isymotron pet` AND for the first beat after
+        # `--avatar` spawns us (the server binds right after the Popen): the
+        # window renders either way and attaches on the next poll.
+        print(f"avatar: console not answering yet on port {port} -- "
+              f"the pet idles and attaches when it comes up.")
     AvatarWindow(client, pack).show()
     return 0

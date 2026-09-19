@@ -942,29 +942,44 @@ Notes:
   - Banner: GlyphFuck render of tools/cli-banner.gf (MIT, same author).
 ```
 
-Más salidas reales de esta pasada:
+Más salidas reales — auditoría de TODOS los verbos (2026-09-19, tras el
+bug del pet reportado por Danny):
 
 | Comando | Salida real |
 |---|---|
 | `isymotron -h` | la forma corta: `Usage:` + `Commands:` + `Options:`, sin banner ni ejemplos |
-| `isymotron -V` | `isymotron 1.0.0 (bf7bcae)` |
-| `isymotron where` | `C:\Development\ISyCo Git\IsyMotron` |
+| `isymotron -V` | `isymotron 1.0.0 (8ee054f)` |
+| `isymotron where` | `C:\Development\ISyCo Git\ISyMotron` |
+| `isymotron install` (2.ª vez) | `already installed: … is on the user PATH` (idempotente) |
+| `isymotron test` | **`196 passed in 43.92s`**, exit 0 (195 + el test de regresión del pet) |
+| `isymotron spoof --inbox <temp>` | `6 hostile lines appended to …` — el inbox de verdad nunca se toca |
 | `isymotron host status` | `host win11-danny (Danny — Windows 11)` · `engine nt-real/0.1 contract NemoHostContract/v0` |
-| `isymotron test` | `195 passed in 46.23s` (verbo probado en la pasada anterior; lógica intacta) |
+| `isymotron host --grants <temp> …` | ciclo completo verificado: status inerte → `do` → **DENY exit 1** → `grant system.info` → `do` → **ALLOW** → `revoke` → inerte. Grants reales intactos |
 | `isymotron console --no-browser --port 8802 --url-file <f>` | consola arriba; `GET /api/state` → **HTTP 200** |
-| `isymotron pet --port 8804` | ventana de la mascota: **True** (EnumWindows) |
+| `isymotron --lan --no-browser --port 8805` | passthrough de flags sueltos; url `http://192.168.1.102:8805/…` → **HTTP 200** |
+| `isymotron pet` (sin consola) | ventana del pet: **192×208 px** con el gato idle (antes del fix: colapsaba a **2×17 px**, invisible); el worker imprime `avatar: console not answering yet on port 8760 -- the pet idles and attaches when it comes up.` |
+| `isymotron start --no-browser` | consola **HTTP 200** + worker vivo + ventana **192×208** (probado vía `console --avatar`, que es exactamente lo que `start` ejecuta) |
+| `isymotron build` | exit 0; exe reconstruido (incluye el fix del pet) + smoke: `serves /api/state, 1 host(s), tier local` / `refuses /api/state without a token (401)` |
 | `isymotron zzz` | `error: unknown command 'zzz'` + uso + "For more information, try 'isymotron --help'." — **exit 2** (semántica clap) |
 | colores | con `FORCE_COLOR=1`, la salida lleva ESC `\e[38;2;…m` verificado (verde marca y dim); `NO_COLOR` los apaga |
 
 **NO PROBADO en esta pasada:** `demo` (reescribe `evidence/M0/`; su última
-salida real documentada está en §2) y `start` tal cual (abría tu navegador;
-es exactamente `console --avatar`, ambos probados por separado).
+salida real documentada está en §2) y el `webbrowser.open` de `start` (abría
+tu navegador; todo lo demás del verbo está probado vía `--no-browser`).
 
 **Volver a la versión simple:** el estado anterior está etiquetado —
 `git checkout cli-plain-bf7bcae -- isymotron.ps1`.
 
 Trampas del CLI (2026-09-19):
 
+- **Que la ventana exista no significa que se vea.** El bug de `isymotron
+  pet` sin consola: la ventana EXISTÍA (AV5 lo verificó con EnumWindows) pero
+  el body nunca se renderizaba sin una vista → el label vacío colapsaba la
+  ventana a **2×17 px** = invisible; lo único visible era el flash de
+  creación. Fix: el pet renderiza su idle también offline
+  (`avatar/window.py`, test de regresión
+  `test_pet_body_renders_without_console`). Lección: para "se ve", mide el
+  RECT de la ventana, no su existencia.
 - **El banner no aparece si la salida va a un pipe.** La consola bloquea el
   stdout con buffer cuando no es una terminal; el **URL file** es la fuente
   de verdad para scripts (`--url-file`), igual que en `build_exe.py`.
@@ -979,3 +994,7 @@ Trampas del CLI (2026-09-19):
 - **Colores solo en terminal interactiva** (como rustc): si stdout es un
   pipe, o hay `NO_COLOR`, la salida sale plana. `FORCE_COLOR=1` los fuerza
   (para depurar).
+- **`Select-Object -First N` corta el pipeline y mata el script mid-flight**
+  — si sondeas `isymotron zzz | Select-Object -First 2`, el `exit 2` nunca
+  se ejecuta y ves un exit code falso. Captura TODO el output y filtra
+  después.

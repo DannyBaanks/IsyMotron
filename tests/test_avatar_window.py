@@ -84,3 +84,39 @@ def test_avatar_client_uses_read_only_token(tmp_path, console):
     src = WINDOW_SRC.read_text(encoding="utf-8")
     assert "POST" not in src, "the pet's transport never writes"
     assert not hasattr(client, "post")
+
+
+def test_pet_body_renders_without_console():
+    """The 2x17 bug (2026-09-19): `isymotron pet` with no console running
+    showed nothing -- the window collapsed to a 2x17 sliver because the body
+    label was never configured with an image or a text when no view arrived.
+    With a dead client the pet must render its own offline body.
+
+    Run in a subprocess (the module-Import pattern above) because this opens
+    a real Tk root; the window is withdrawn before it can paint to screen.
+    """
+    try:
+        import tkinter  # noqa: F401
+    except ImportError:
+        pytest.skip("no tkinter on this host")
+    repo = Path(__file__).resolve().parents[1]
+    code = (
+        "from avatar.window import AvatarWindow, _pack_root\n"
+        "from avatar.pack import AssetPack\n"
+        "class DeadClient:\n"
+        "    def view(self):\n"
+        "        return None\n"
+        "w = AvatarWindow(DeadClient(), AssetPack.load(_pack_root() / 'malbolge-cat'))\n"
+        "w.root.withdraw()\n"
+        "w.root.update_idletasks()\n"
+        "label = w.image_label\n"
+        "body = bool(label.cget('image')) or bool(label.cget('text'))\n"
+        "print('REQ %d %d BODY %s' % (label.winfo_reqwidth(), label.winfo_reqheight(), body))\n"
+        "print('OK' if body and label.winfo_reqwidth() > 8 else 'DEGENERATE')\n"
+        "w.root.destroy()\n"
+    )
+    r = subprocess.run([sys.executable, "-c", code], cwd=str(repo),
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert "DEGENERATE" not in r.stdout, r.stdout
+    assert "BODY True" in r.stdout, r.stdout
