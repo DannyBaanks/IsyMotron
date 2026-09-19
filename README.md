@@ -1,5 +1,7 @@
 # IsyMotron
 
+![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)
+
 ```
  ### ##### #   # #   # ###### ##### ####  ###### #   #
   #  #      # #  ## ## #    #   #   #  #  #    # #  ##

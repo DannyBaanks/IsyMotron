@@ -1,0 +1,48 @@
+# CI for a Windows-first product: the real host engine IS the point, so the
+# gates run on a real Windows machine (a GitHub-hosted runner) -- the M1
+# gate exercises actual NTFS, junctions and process state against tmp dirs.
+#
+# Two jobs:
+#   gates   -- the acceptance suite. The live-model gate self-skips when no
+#             provider key is present, so CI is green without secrets and
+#             richer with them (NVIDIA_NIM_API_KEY / NEBIUS_API_KEY).
+#   binary  -- build IsyMotron.exe from a clean machine and run its
+#             self-smoke (serves /api/state, 401 without the token).
+#
+# Windows runners bill 2x minutes on private repos; keep the suite lean.
+
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  gates:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - name: The acceptance suite
+        run: python -m pytest -q
+        env:
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
+          ISYMOTRON_PROVIDER: ${{ vars.ISYMOTRON_PROVIDER || 'nvidia' }}
+
+  binary:
+    runs-on: windows-latest
+    needs: gates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyinstaller
+      - name: Build the exe and smoke it
+        run: python build_exe.py

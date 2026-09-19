@@ -101,22 +101,29 @@ def test_pet_body_renders_without_console():
         pytest.skip("no tkinter on this host")
     repo = Path(__file__).resolve().parents[1]
     code = (
+        "import tkinter\n"
         "from avatar.window import AvatarWindow, _pack_root\n"
         "from avatar.pack import AssetPack\n"
         "class DeadClient:\n"
         "    def view(self):\n"
         "        return None\n"
-        "w = AvatarWindow(DeadClient(), AssetPack.load(_pack_root() / 'malbolge-cat'))\n"
-        "w.root.withdraw()\n"
-        "w.root.update_idletasks()\n"
-        "label = w.image_label\n"
-        "body = bool(label.cget('image')) or bool(label.cget('text'))\n"
-        "print('REQ %d %d BODY %s' % (label.winfo_reqwidth(), label.winfo_reqheight(), body))\n"
-        "print('OK' if body and label.winfo_reqwidth() > 8 else 'DEGENERATE')\n"
-        "w.root.destroy()\n"
+        "try:\n"
+        "    w = AvatarWindow(DeadClient(), AssetPack.load(_pack_root() / 'malbolge-cat'))\n"
+        "except tkinter.TclError:\n"
+        "    print('NO_DISPLAY')\n"
+        "else:\n"
+        "    w.root.withdraw()\n"
+        "    w.root.update_idletasks()\n"
+        "    label = w.image_label\n"
+        "    body = bool(label.cget('image')) or bool(label.cget('text'))\n"
+        "    print('REQ %d %d BODY %s' % (label.winfo_reqwidth(), label.winfo_reqheight(), body))\n"
+        "    print('OK' if body and label.winfo_reqwidth() > 8 else 'DEGENERATE')\n"
+        "    w.root.destroy()\n"
     )
     r = subprocess.run([sys.executable, "-c", code], cwd=str(repo),
                        capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, r.stderr
+    if "NO_DISPLAY" in r.stdout:
+        pytest.skip("no display for Tk on this host")
     assert "DEGENERATE" not in r.stdout, r.stdout
     assert "BODY True" in r.stdout, r.stdout
