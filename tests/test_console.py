@@ -249,3 +249,39 @@ def test_the_avatar_token_reads_the_state(console):
     state, base = console
     s = get(base, "/api/state", token=state.avatar_token)
     assert s["tier"] == "local"
+
+
+# -- no-key world (AV6): no key is a complete product, not a crippled one ---
+
+def test_no_key_everything_but_plan_works(console):
+    state, base = console
+    s = get(base, "/api/state", token=state.token)
+    assert s["mode"] == "avatar"
+    r = post(base, "/api/execute",
+             {"host": "win11-victus", "capability": "system.info", "params": {}},
+             token=state.token)
+    assert r["decision"]["decision"] == "ALLOW"
+    post(base, "/api/grant", {"capability": "filesystem.read",
+                              "roots": ["C:/Photos"]}, token=state.token)
+    post(base, "/api/revoke", {"capability": "filesystem.read"},
+         token=state.token)
+    get(base, "/api/avatar", token=state.avatar_token)
+    r = post(base, "/api/plan", {"intent": "do something"},
+             token=state.token, expect=503)
+    assert "NEBIUS_API_KEY" in r["error"]
+
+
+def test_plan_is_503_without_provider(console):
+    state, base = console
+    r = post(base, "/api/plan", {"intent": "do something"},
+             token=state.token, expect=503)
+    assert "no model provider configured" in r["error"]
+
+
+def test_mode_event_at_start(console):
+    state, _ = console
+    events = state.avatar.since(0)
+    assert events[0]["kind"] == "mode"
+    assert events[0]["channel"] == "authority"
+    assert events[0]["state"] == "idle"
+    assert events[0]["provider"] == "none"

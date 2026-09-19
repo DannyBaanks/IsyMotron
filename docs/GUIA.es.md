@@ -737,3 +737,61 @@ escribir en `hostfs://nemoinbox`, lo intentó en `demo` igual, y el host lo
 paró. No es trampa de información: es la autoridad funcionando. Es
 no determinista — a veces el modelo se niega él solo, y eso también está bien.
 Ver `docs/FINDINGS.md` #9.
+
+---
+
+## 15. Modo avatar: sin modelo, producto completo (AV6)
+
+Sin `NVIDIA_NIM_API_KEY` ni `NEBIUS_API_KEY`, todo funciona igual — conceder,
+revocar, ejecutar, sellos, avatar, inbox — salvo planear, que responde 503 con
+un mensaje humano. La clave añade un planificador, nunca permisos (regla R7
+del contrato del avatar).
+
+Salida real ejecutada el 2026-09-18 (claves removidas del entorno; grants de
+la demo a un archivo temporal con `--grants`; inbox con
+`ISYMOTRON_AVATAR_INBOX` apuntando a un archivo con una línea vieja):
+
+```
+keys unset: NIM = True | Nebius = True
+== GET /api/state ==
+HTTP 200 | mode: avatar | tier: local | hosts: 2
+== POST /api/execute (host demo) ==
+HTTP 200 | decision: ALLOW | seal_ok: True | receipt: rcpt_36a373c32d4f46cd
+== POST /api/grant (grants de la demo, archivo temporal) ==
+HTTP 200 | ok: True | granted: ['filesystem.read']
+== POST /api/revoke ==
+HTTP 200 | ok: True | granted: []
+== POST /api/plan ==
+HTTP 503 | error: no model provider configured: set NVIDIA_NIM_API_KEY or NEBIUS_API_KEY and restart the console
+== GET /api/avatar ==
+HTTP 200 | events: [('mode', 1, 'none'), ('verdict', 2, 'The host allowed: filesystem.read on hos'), ('say', 3, 'todo bien sin modelo')]
+view.state: success | view.third_party: [{"seq": 3, "label": "opencode", "text": "todo bien sin modelo"}]
+backlog (linea vieja) replayed: False
+OK: sin clave, todo funciona salvo /api/plan (503 con mensaje humano).
+```
+
+Qué prueba cada línea:
+
+| Señal | Significado |
+|---|---|
+| `mode: avatar` | la consola reporta su modo en `/api/state`; el evento `mode` (con `provider: none`) es lo primero que ve el avatar |
+| `decision: ALLOW … seal_ok: True` | la autoridad no depende del modelo: Enforcer + sello |
+| `plan → 503` | sin clave no hay adivinanza: un mensaje humano y nada más |
+| `view.third_party` | la línea viva del inbox se enmarca como tercero (`opencode:`) |
+| `backlog replayed: False` | el lector arranca en el EOF del inbox: lo viejo no se repite (contrato §1) |
+
+Trampas que costaron tiempo el 2026-09-18:
+
+- **"El inbox no funciona"** — era el contrato. Si el archivo del inbox no
+  existe cuando arranca la consola, la primera línea que escribas se convierte
+  en *backlog* en el primer avistamiento del lector y NO se muestra. El lector
+  arranca en el final del archivo por diseño (§1 del contrato). Crea el
+  archivo — o escribe una línea de descarte — **antes** de arrancar si
+  quieres ver la siguiente en vivo.
+- **`"$env:LOCALAPPDATA%\…"` en PowerShell**: la `%` es literal y creó una
+  carpeta paralela `Local%\IsyMotron\…` que la consola nunca miró. Usar
+  `Join-Path` o interpolar sin `%`.
+- **Los grants**: la consola usa por defecto el archivo REAL de grants del
+  usuario (`%LOCALAPPDATA%\IsyMotron\grants.json`). Para probar grant/revoke
+  pasa **siempre** `--grants <temporal>`: un POST de demo sin eso amplió de
+  verdad los grants del usuario (detectado y reparado el mismo día).

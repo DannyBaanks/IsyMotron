@@ -146,17 +146,10 @@ def main(argv=None) -> int:
 
     state = ConsoleState(relay, awareness, grants_path, factory)
 
-    # The authority channel (AV3). One `mode` event at start; the open channel
-    # reader as a daemon thread. The avatar token goes to a file only local
-    # processes read -- never argv, never a printed URL (R5).
-    provider_label = "none"
-    if factory is not None:
-        try:
-            provider_label = factory().label
-        except Exception:
-            provider_label = "unknown"
-    state.avatar.publish_authority("mode", state="idle", provider=provider_label)
-
+    # The authority channel (AV3). The `mode` event is emitted by
+    # ConsoleState itself (AV6); here: the open channel reader as a daemon
+    # thread, and the avatar token to a file only local processes read --
+    # never argv, never a printed URL (R5).
     inbox_path = resolve_inbox_path()
     spawn_poller(InboxTail(state.avatar, inbox_path))
     print(f"  {DIM}avatar inbox {inbox_path}{OFF}")

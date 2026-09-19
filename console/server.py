@@ -127,6 +127,15 @@ class ConsoleState:
         self.avatar_token = secrets.token_urlsafe(24)
         self._lock = threading.Lock()
         self._emitted_awareness: set[str] = set()
+        # AV6: the mode is a fact of configuration, never of authority (R7).
+        # One `mode` event at start, with the provider label when there is one.
+        provider_label = "none"
+        if provider_factory is not None:
+            try:
+                provider_label = provider_factory().label
+            except Exception:
+                provider_label = "unknown"
+        self.avatar.publish_authority("mode", state="idle", provider=provider_label)
 
     # -- reads --------------------------------------------------------------
     def snapshot(self) -> dict:
@@ -333,6 +342,7 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
                 **self.state.snapshot(),
                 "tier": "local" if self._is_loopback() else "lan",
                 "can_grant": self._is_loopback(),
+                "mode": "agent" if self.state.provider_factory else "avatar",
             })
         if path == "/api/events":
             block = self.state._awareness_block()
@@ -464,7 +474,8 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
 
     def _plan(self, body: dict) -> None:
         if self.state.provider_factory is None:
-            return self._deny("no model provider configured", 503)
+            return self._deny("no model provider configured: set NVIDIA_NIM_API_KEY "
+                              "or NEBIUS_API_KEY and restart the console", 503)
         from agents.planner import PlanRejected, Planner
         from agents.provider import ProviderError
 

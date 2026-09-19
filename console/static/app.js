@@ -58,7 +58,9 @@ function renderTop(s) {
 
   const tier = $("#tier");
   tier.className = "tier " + (CAN_GRANT ? "local" : "lan");
-  $("#tier-label").textContent = CAN_GRANT ? "local authority" : "remote · read & run";
+  const mode = s.mode || "avatar";
+  $("#tier-label").textContent = (CAN_GRANT ? "local authority" : "remote · read & run")
+    + " · " + (mode === "agent" ? "agent mode" : "avatar mode");
   $("#lan-warning").hidden = CAN_GRANT;
 
   if (!a) {
@@ -325,6 +327,9 @@ async function refresh() {
     const s = await api("/api/state");
     STATE = s;
     CAN_GRANT = !!s.can_grant;
+    $("#intent-hint").textContent = (s.mode === "agent")
+      ? "the model sees only granted capabilities"
+      : "no model configured — everything else works; set NVIDIA_NIM_API_KEY or NEBIUS_API_KEY to enable planning";
     renderTop(s);
     renderDevices(s);
     renderAuthority(s);
