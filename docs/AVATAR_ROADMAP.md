@@ -42,7 +42,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV4 | Web renderer in the console | **DONE** | AV2, AV3 |
 | AV5 | Desktop renderer (Companion window, adapted) | **DONE** | AV2, AV3 |
 | AV6 | No-AI mode ("avatar" mode) | **DONE** | AV3 |
-| AV7 | AI mode ("agent" mode) | IN_PROGRESS | AV6 |
+| AV7 | AI mode ("agent" mode) | **DONE** | AV6 |
 | AV8 | Adversarial suite | NOT_STARTED | AV4, AV5 |
 | AV9 | Demo path, packaging, docs | NOT_STARTED | AV7, AV8 |
 
@@ -351,7 +351,25 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
   showing thinking → working → verdicts (screenshot).
 - **Failure conditions:** any difference in the equality test above.
 - **Commit boundary:** `AV7: agent mode -- a key adds a planner, not a permission`
-- **Result:** —
+- **Result:** `e09e1f7`; 185 passed (183 + 2 new), `py -m pytest -q`;
+  `test_provider_changes_no_bounds_or_grants` proves R7: same world with a
+  ScriptedProvider and without -> `describe()` of every host, the grant file
+  bytes, and the enforcer's decisions on a fixed 4-request set are identical
+  (the mode event differs only in its provider label and clock stamp).
+  Live run (`evidence/AV7/agent_mode.png`, real model, one in-page capture):
+  `/api/plan` -> PLANNED by `nvidia/nemotron-3-super-120b-a12b` (NVIDIA NIM,
+  8.8 s, attribution OK), 2 steps against `win98-retrobox` only
+  (`hostfs://games/DOOM.EXE` + `system.info`); `/api/run` completed; avatar
+  event chain `mode -> planning(thinking) -> planned(waiting) ->
+  step(working) -> step(working) -> verdict(success) -> verdict(success)`;
+  DOM at capture: success.gif, ALLOW, receipt `rcpt_783f8147b9ac4c5b`,
+  seal ok. NOT_DEMONSTRATED: the *Nebius-specific* live run — no
+  `NEBIUS_API_KEY` on this host; the provider is one env var
+  (`ISYMOTRON_PROVIDER=nebius`), and the NIM run above exercised the same
+  seam. Note: AV7's implementation (planning events, provider label in the
+  mode event) was carried by AV3/AV6; AV7 adds the invariant tests and the
+  live evidence. The one test failure during development was the test's own
+  equality over the event's `at` timestamp — fixed in the test, not the code.
 
 ---
 
