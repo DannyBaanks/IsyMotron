@@ -912,7 +912,7 @@ Usage: isymotron [OPTIONS] [COMMAND] [ARGS]...
 Commands:
   start     console + floating pet + browser (adds --avatar)
   console   the local web console (--lan --demo-host --port N ...)
-  pet       only the floating desktop pet (reads avatar.token)
+  pet       only the floating desktop pet (idles alone; follows the console)
   test      the acceptance suite (default: -q)
   build     rebuild IsyMotron.exe (smoke test included)
   spoof     append the hostile demo lines to an inbox
@@ -998,3 +998,88 @@ Trampas del CLI (2026-09-19):
   — si sondeas `isymotron zzz | Select-Object -First 2`, el `exit 2` nunca
   se ejecuta y ves un exit code falso. Captura TODO el output y filtra
   después.
+
+---
+
+## 18. CI: cada push contra una Windows real (2026-09-19)
+
+Cada push a `master` (y cada PR) corre **dos jobs en un runner de Windows
+real** — el punto del producto es el motor de Windows real, así que el CI no
+emula nada:
+
+- **gates**: la suite de aceptación completa (los M0/M1/M3/M4/M5 + avatar).
+- **binary**: compila `IsyMotron.exe` desde una máquina limpia y corre su
+  smoke test (sirve `/api/state`, 401 sin token).
+
+El badge del README refleja el último run. Para verlo desde la terminal:
+
+```
+gh run list --limit 3
+```
+
+Salida real del primer run (el push del propio CI, 2026-09-19):
+
+```
+in_progress      CI: the acceptance gates + the binary build    ci  master  push  35463873894  33s
+```
+
+Y el resultado, verificado con `gh run view 35463873894`:
+
+```
+✓ master ci · 35463873894
+Triggered via push about 2 minutes ago
+
+JOBS
+✓ gates in 50s (ID 105952438265)
+✓ binary in 58s (ID 105952555612)
+```
+
+La línea del suite dentro del job `gates` (salida real del runner):
+
+```
+191 passed, 5 skipped in 24.68s
+```
+
+**191 + 5 = 196**: cuadra exacto con la suite local. Los 5 skips son el gate
+vivo (`test_live_model.py`), que se salta solo cuando no hay clave de
+proveedor en el entorno — en CI, sin secrets configurados. La regresión del
+pet (`test_pet_body_renders_without_console`) **corrió de verdad** en el
+runner (tiene display para Tk); si algún host no tiene display, el test se
+salta con `no display for Tk on this host` en vez de romperse.
+
+Cómo leer el CI:
+
+| Señal | Significado | Qué hacer |
+|---|---|---|
+| `✓ gates` | la suite pasó en una Windows limpia | nada |
+| `191 passed, 5 skipped` | todo verde; el vivo se saltó por falta de secret | opcional: añade el secret (abajo) |
+| `196 passed` | el vivo corrió: hay secret configurado y el planificador real funcionó | nada |
+| `✗ gates` | algo que pasa en tu máquina no pasa en una limpia | mira el log: `gh run view <id> --log` |
+| `✗ binary` | el exe no compila o su smoke falló en una máquina limpia | casi siempre: paths absolutos de tu máquina colados |
+| `! Node.js 20 is deprecated` | aviso global de GitHub sobre sus propias actions | ignorarlo; no es un fallo tuyo |
+
+Para que el gate vivo corra también en CI (opcional, gasta tokens reales):
+
+1. Repo → **Settings → Secrets and variables → Actions → New repository secret**
+2. Nombre: `NVIDIA_NIM_API_KEY`, valor: tu `nvapi-...` (o `NEBIUS_API_KEY` +
+   la variable `ISYMOTRON_PROVIDER=nebius`)
+3. El siguiente push correrá los 5 tests vivos contra el proveedor real
+
+Trampas del CI (2026-09-19):
+
+- **Windows cobra 2× minutos en repos privados.** Los runners de Windows
+  consumen minutos a doble velocidad contra el free tier (2000 min/mes ≈
+  unos 160 runs de estos dos jobs). Si un día sobra presupuesto, el job
+  `binary` es el candidato a quitar — es el más caro y el menos frecuente en
+  romperse.
+- **El gate vivo se salta, no falla, sin secret.** Está diseñado así
+  (`skipif`): el CI está verde con cero secrets y se vuelve más estricto
+  cuando añades la clave. No "arregles" el skip.
+- **`[skip ci]` o `[ci skip]` en el mensaje del commit** no dispara el
+  workflow — útil para pushes de solo documentación si algún día aprieta el
+  presupuesto.
+- **Las anotaciones de Node 20** las pone GitHub sobre `checkout@v4` y
+  `setup-python@v5`; son avisos de migración de SU plataforma, aparecen en
+  todos los repos y no tienen nada que ver con el producto.
+- **No hay secrets = no hay claves en el repo.** Las claves viven cifradas en
+  GitHub Secrets, nunca en el código ni en el workflow.
