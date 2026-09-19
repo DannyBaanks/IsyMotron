@@ -285,3 +285,104 @@ def test_mode_event_at_start(console):
     assert events[0]["channel"] == "authority"
     assert events[0]["state"] == "idle"
     assert events[0]["provider"] == "none"
+
+
+# -- agent mode (AV7): a key adds a planner, never a permission (R7) -------
+
+def test_mode_event_names_provider_label(tmp_path):
+    from agents.provider import ScriptedProvider
+    from isymotron.awareness import HostAwarenessEngine, TestPowerProvider
+    from relay.loopback import LoopbackRelay
+
+    def world(provider_factory=None):
+        relay = LoopbackRelay()
+        relay.attach(ModernHost(
+            fs={"C:/Photos/a.png": "AAA"},
+            granted=["filesystem.read", "system.info"],
+            grant_scopes={"filesystem.read": {"roots": ["C:/Photos"]},
+                          "system.info": {}},
+        ))
+        awareness = HostAwarenessEngine("win11-victus", TestPowerProvider())
+        return ConsoleState(relay, awareness, str(tmp_path / "g.json"),
+                           provider_factory)
+
+    reply = json.dumps({"understood": "info", "steps": [
+        {"host": "win11-victus", "capability": "system.info",
+         "params": {}, "why": "report"}], "refused": None})
+    with_provider = world(lambda: ScriptedProvider([reply]))
+    without = world()
+    assert with_provider.avatar.since(0)[0]["provider"] == "scripted"
+    assert without.avatar.since(0)[0]["provider"] == "none"
+    # the label is the ONLY difference the mode event carries
+    a = dict(with_provider.avatar.since(0)[0])
+    b = dict(without.avatar.since(0)[0])
+    a.pop("provider"), b.pop("provider")
+    assert a == b
+
+
+FIXED_REQUESTS = [
+    {"host": "win11-victus", "capability": "filesystem.read",
+     "params": {"path": "C:/Photos/a.png"}},
+    {"host": "win11-victus", "capability": "filesystem.read",
+     "params": {"path": "C:/Secrets/k.txt"}},
+    {"host": "win11-victus", "capability": "process.inspect", "params": {}},
+    {"host": "win98-retrobox", "capability": "apps.launch",
+     "params": {"app": "DOOM.EXE"}},
+]
+
+
+def test_provider_changes_no_bounds_or_grants(tmp_path):
+    """R7: switching mode may enable planning; it must not change any
+    grant, bound, lease or enforcer decision. Same world twice — with a
+    provider and without — everything except cognition must be equal."""
+    from agents.provider import ScriptedProvider
+    from isymotron.awareness import HostAwarenessEngine, TestPowerProvider
+    from isymotron.contracts import ExecutionRequest
+    from relay.loopback import LoopbackRelay
+
+    def world(name, provider_factory=None):
+        relay = LoopbackRelay()
+        relay.attach(ModernHost(
+            fs={"C:/Photos/a.png": "AAA"},
+            granted=["filesystem.read", "system.info"],
+            grant_scopes={"filesystem.read": {"roots": ["C:/Photos"]},
+                          "system.info": {}},
+        ))
+        relay.attach(LegacyHost(
+            fs={"C:/NEMO/INBOX/.keep": ""},
+            granted=["filesystem.write", "apps.launch"],
+            grant_scopes={"filesystem.write": {"roots": ["C:/NEMO/INBOX"]},
+                          "apps.launch": {"allowlist": ["DOOM.EXE"]}},
+        ))
+        grants_path = tmp_path / f"grants_{name}.json"
+        grants_path.write_text('{"host_id": "x", "granted": [], "scopes": {}}',
+                                encoding="utf-8")
+        awareness = HostAwarenessEngine("win11-victus", TestPowerProvider())
+        state = ConsoleState(relay, awareness, str(grants_path),
+                             provider_factory)
+        decisions = []
+        for req in FIXED_REQUESTS:
+            lease, decision = relay.request_lease(
+                req["host"], "console:local", req["capability"], 60.0)
+            if lease is None:
+                decisions.append(decision.to_dict())
+                continue
+            er = ExecutionRequest.make(req["host"], "console:local",
+                                        req["capability"], req["params"],
+                                        lease.lease_id)
+            decisions.append(relay.execute(er).decision.to_dict())
+        return {
+            "describes": [relay.describe(h["host_id"])
+                          for h in relay.hosts()],
+            "decisions": decisions,
+            "grants_bytes": grants_path.read_bytes(),
+        }
+
+    reply = json.dumps({"understood": "info", "steps": [
+        {"host": "win11-victus", "capability": "system.info",
+         "params": {}, "why": "report"}], "refused": None})
+    avatar_world = world("avatar")
+    agent_world = world("agent", lambda: ScriptedProvider([reply]))
+    assert avatar_world["describes"] == agent_world["describes"]
+    assert avatar_world["decisions"] == agent_world["decisions"]
+    assert avatar_world["grants_bytes"] == agent_world["grants_bytes"]

@@ -42,7 +42,7 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
 | AV4 | Web renderer in the console | **DONE** | AV2, AV3 |
 | AV5 | Desktop renderer (Companion window, adapted) | **DONE** | AV2, AV3 |
 | AV6 | No-AI mode ("avatar" mode) | **DONE** | AV3 |
-| AV7 | AI mode ("agent" mode) | NOT_STARTED | AV6 |
+| AV7 | AI mode ("agent" mode) | IN_PROGRESS | AV6 |
 | AV8 | Adversarial suite | NOT_STARTED | AV4, AV5 |
 | AV9 | Demo path, packaging, docs | NOT_STARTED | AV7, AV8 |
 
