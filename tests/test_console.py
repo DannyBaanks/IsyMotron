@@ -313,10 +313,12 @@ def test_mode_event_names_provider_label(tmp_path):
     without = world()
     assert with_provider.avatar.since(0)[0]["provider"] == "scripted"
     assert without.avatar.since(0)[0]["provider"] == "none"
-    # the label is the ONLY difference the mode event carries
+    # the label is the ONLY difference the mode event carries (besides its
+    # own clock stamp)
     a = dict(with_provider.avatar.since(0)[0])
     b = dict(without.avatar.since(0)[0])
     a.pop("provider"), b.pop("provider")
+    a.pop("at"), b.pop("at")
     assert a == b
 
 
