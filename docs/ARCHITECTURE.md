@@ -156,5 +156,7 @@ contract itself.
 
 ## What is not here yet
 
-The Doctor, the sandbox, the marketplace, the identity seam, the agent roles,
-and any real Windows host. `docs/EVIDENCE.md` tracks each one.
+The sandbox, the marketplace, the identity seam, the agent roles, and any
+additional legacy Windows host are not here yet. Doctor V0 now exists as a
+pure observation-comparison plane; `docs/EVIDENCE.md` tracks the still-unproven
+runtime claim.
