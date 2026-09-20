@@ -71,10 +71,10 @@ taught us that the design did not.
 | M5 console surface gate | `tests/test_console.py` | 23 passed |
 | Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
-**233 tests, all passing.** Doctor V0, the first Python sandbox/provider, and
+**236 tests, all passing.** Doctor V0, the first Python sandbox/provider, and
 Malbolge lessons L3-L6 are
-present. Not started: the
-marketplace, the identity seam, a legacy Windows host.
+present. The Git-backed activity registry is present; the identity seam and a
+legacy Windows host remain pending.
 
 **Windows 7 and earlier are out of product scope.** Not because the contract
 could not reach them — the whole point of an 8-operation surface is that it

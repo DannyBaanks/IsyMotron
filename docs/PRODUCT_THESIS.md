@@ -36,11 +36,11 @@ file and function are named.
 | 3 | Transport != contract. Replace the relay and nothing else notices. | `relay/loopback.py` holds no policy |
 | 4 | The model interprets; the mechanism enforces. | `core/isymotron/policy.py:Enforcer` is pure and model-free |
 | 5 | No capability means no action. | `Host.list_capabilities` omits ungranted ids |
-| 6 | New behaviour may be learned; new authority may not. | Doctor V0 comparison exists; runtime proof still needs a sandbox |
+| 6 | New behaviour may be learned; new authority may not. | Doctor V0 + Python sandbox demonstrate this in a scoped provider |
 | 7 | Local authority always wins. | `Host.request_lease` intersects, never unions |
 | 8 | Verification is scoped, never universal. | `DoctorVerdict` has no `SAFE` member |
-| 9 | A changed artifact is a new trust problem. | not yet built — needs the marketplace |
-| 10 | Source is the primary artifact, not a binary bundle. | policy, not code, until the marketplace exists |
+| 9 | A changed artifact is a new trust problem. | `core/isymotron/marketplace.py:GitActivityRegistry.install` rejects tree digest changes |
+| 10 | Source is the primary artifact, not a binary bundle. | Git-backed activity registry installs source at a pinned commit |
 | 11 | Doctor evidence is machine evidence. | Doctor V0 seals reports; provider integration pending |
 | 12 | An external reviewer model is advisory, never authority. | `Decision` is produced only by `Enforcer` |
 | 13 | Unsupported != impossible. | scope statement, not a technical claim |
