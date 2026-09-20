@@ -14,7 +14,7 @@ can still be retried with the correct browser transaction.
 
 ```text
 py -m pytest tests/test_identity.py -q
-3 passed
+4 passed
 ```
 
 This is not a production identity provider and does not contact a network.
