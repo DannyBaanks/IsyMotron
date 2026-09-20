@@ -156,7 +156,6 @@ contract itself.
 
 ## What is not here yet
 
-The sandbox, the marketplace, the identity seam, the agent roles, and any
-additional legacy Windows host are not here yet. Doctor V0 now exists as a
-pure observation-comparison plane; `docs/EVIDENCE.md` tracks the still-unproven
-runtime claim.
+The marketplace, the identity seam, the agent roles, and any additional legacy
+Windows host are not here yet. Doctor V0 and a first Python sandbox/provider
+now exist; `docs/EVIDENCE.md` records their deliberately narrow scope.

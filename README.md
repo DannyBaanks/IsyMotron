@@ -71,8 +71,8 @@ taught us that the design did not.
 | M5 console surface gate | `tests/test_console.py` | 23 passed |
 | Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
-**200 tests, all passing.** Doctor V0's pure verification plane is present;
-the sandbox/provider is still pending. Not started: the
+**203 tests, all passing.** Doctor V0 and the first Python sandbox/provider are
+present. Not started: the
 marketplace, the identity seam, a legacy Windows host.
 
 **Windows 7 and earlier are out of product scope.** Not because the contract
