@@ -36,10 +36,10 @@ lesson) · **ABSENT** (searched, not found).
 - L4 crazy operation — oracle `op` (**VERIFIED in `malbolge-l4-crazy-op`**)
 - L5 self-modification — oracle encrypt-after-execute (**VERIFIED in `malbolge-l5-encryption`**)
 - L6 small executable programs — oracle run / canonical Hello World (**VERIFIED in `malbolge-l6-hello-world`**)
-- L7 translation/roundtrip — Walbolge (ADAPTER_NEEDED, NOT_DEMONSTRATED)
-- L8 differential verification — malbolge-differential (ADAPTER_NEEDED, NOT_DEMONSTRATED)
-- L9 real existing programs — corpus in MALBOLGE fixtures + oracle (COMPOSABLE, NOT_DEMONSTRATED)
-- L10 Lutter quine analysis — quine_harness + GENEALOGIA_MALBOLGE (ADAPTER_NEEDED, NOT_DEMONSTRATED)
-- L11 MalbolgeLISP forensics — malbolge-lisp-forensics (ADAPTER_NEEDED, NOT_DEMONSTRATED)
-- L12 MalbolgeFree — malbolge-free (ADAPTER_NEEDED, NOT_DEMONSTRATED)
-- L13 sealed/episodic execution — episodic.py / anchuring + IsyMotron seals (ADAPTER_NEEDED, NOT_DEMONSTRATED)
+- L7 translation/roundtrip — **VERIFIED** with the vendored positional codec
+- L8 differential verification — **VERIFIED** against the copied independent runner
+- L9 real existing programs — **VERIFIED** with the canonical published fixture
+- L10 Lutter quine analysis — **NOT_DEMONSTRATED**; source artifact is not present here
+- L11 MalbolgeLISP forensics — **NOT_DEMONSTRATED**; 3^19 image not present here
+- L12 MalbolgeFree — **NOT_DEMONSTRATED**; no classic-pack adapter exists
+- L13 sealed/episodic execution — **VERIFIED** with a hash-linked tamper witness

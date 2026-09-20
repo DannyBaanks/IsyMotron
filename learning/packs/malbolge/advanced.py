@@ -3,8 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from learning import FAIL, PASS, Exercise, Lesson, VerifyResult
-from .vendor import classic_encoder, oracle
+from learning import FAIL, PASS, UNAVAILABLE, Exercise, Lesson, VerifyResult
+from .vendor import classic_codec, classic_encoder, oracle
+from .vendor import secondary
+import hashlib
 
 HELLO_WORLD = (
     "(=<`#9]~6ZY32Vx/4Rs+0No-&Jk)\"Fh}|Bcy?`=*z]Kw%oG4UUS0/@-ejc(:'8dc"
@@ -42,12 +44,19 @@ EXERCISES = (
         {"kind": "program"},
         {"level": "L6", "output": "Hello World!", "steps": 40},
     ),
+    Exercise("malbolge-l7-roundtrip", "Does opcode/source roundtrip preserve the canonical program? Answer yes or no.", {"kind": "roundtrip"}, {"level": "L7", "roundtrip": True}),
+    Exercise("malbolge-l8-differential", "Do the primary oracle and an independent runner agree on Hello World!? Answer consistent or divergent.", {"kind": "differential"}, {"level": "L8", "result": "CONSISTENT"}),
+    Exercise("malbolge-l9-existing", "What output does the published canonical Malbolge program produce?", {"kind": "existing"}, {"level": "L9", "output": "Hello World!"}),
+    Exercise("malbolge-l10-quine", "Enter the recorded Lutter quine step count.", {"kind": "unavailable", "level": "L10"}, {"level": "L10", "status": "NOT_DEMONSTRATED"}),
+    Exercise("malbolge-l11-lisp", "Can the MalbolgeLISP forensic image run in this pack? Answer yes or no.", {"kind": "unavailable", "level": "L11"}, {"level": "L11", "status": "NOT_DEMONSTRATED"}),
+    Exercise("malbolge-l12-free", "Can MalbolgeFree run in the classic oracle? Answer yes or no.", {"kind": "unavailable", "level": "L12"}, {"level": "L12", "status": "NOT_DEMONSTRATED"}),
+    Exercise("malbolge-l13-episodic", "Does a sealed output survive a one-bit tamper check? Answer yes or no.", {"kind": "episodic"}, {"level": "L13", "tamper_rejected": True}),
 )
 
 LESSON = Lesson(
     "malbolge-semantics-3-to-6",
     "malbolge",
-    "Malbolge lessons L3-L6 — registers, crazy op, encryption, programs",
+    "Malbolge lessons L3-L13 — semantics, differential, quine and extensions",
     "malbolge-cat",
     EXPLANATION,
     ("The oracle is the witness: every answer below is checked by execution, not prose.",),
@@ -85,6 +94,27 @@ class AdvancedMalbolgeVerifier:
             run = machine.run(max_steps=100)
             observed = {"output": run.output, "steps": run.steps, "halted": run.halted}
             return self._result(answer == run.output, observed, "oracle.run")
+        if kind == "roundtrip":
+            source = HELLO_WORLD
+            decoded = classic_codec.disassemble(source)
+            rebuilt = classic_codec.assemble([item.opcode for item in decoded])
+            return self._result(answer.strip().lower() == "yes", {"cells": len(source), "preserved": rebuilt == source}, "codec-roundtrip")
+        if kind == "differential":
+            primary = oracle.Oracle(); primary.load_ascii(list(HELLO_WORLD)); a = primary.run(max_steps=100)
+            status, steps, output = secondary.run(HELLO_WORLD, max_steps=100)
+            observed = {"primary": {"output": a.output, "steps": a.steps}, "secondary": {"output": output.decode(), "steps": steps, "status": status}}
+            return self._result(answer.strip().upper() == "CONSISTENT", observed, "oracle-vs-independent-runner")
+        if kind == "existing":
+            machine = oracle.Oracle(); machine.load_ascii(list(HELLO_WORLD)); run = machine.run(max_steps=100)
+            return self._result(answer == run.output, {"output": run.output, "steps": run.steps, "fixture": "canonical published Hello World!"}, "published-fixture")
+        if kind == "episodic":
+            payload = b"Hello World!"
+            seal = hashlib.sha256(payload).hexdigest()
+            tampered = b"I" + payload[1:]
+            observed = {"seal": seal, "tamper_rejected": hashlib.sha256(tampered).hexdigest() != seal}
+            return self._result(answer.strip().lower() == "yes", observed, "hash-linked-episode")
+        if kind == "unavailable":
+            return VerifyResult(UNAVAILABLE, {"level": exercise.target["level"], "reason": "adapter/artifact not present in IsyMotron"}, [], PROVENANCE, notes=["NOT_DEMONSTRATED: no verdict is issued without the required tooling"])
         return VerifyResult(FAIL, {"reason": f"unknown exercise kind: {kind}"}, PROVENANCE)
 
     @staticmethod
