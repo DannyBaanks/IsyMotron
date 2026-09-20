@@ -71,7 +71,7 @@ taught us that the design did not.
 | M5 console surface gate | `tests/test_console.py` | 23 passed |
 | Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
-**239 tests, all passing.** Doctor V0, the first Python sandbox/provider, and
+**242 tests, all passing.** Doctor V0, the first Python sandbox/provider, and
 Malbolge lessons L3-L6 are
 present. The Git-backed activity registry and mock identity seam are present;
 a real Windows 10 host is the remaining platform verification target.

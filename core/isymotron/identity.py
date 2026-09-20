@@ -67,7 +67,7 @@ class MockIdentityProvider:
     def __init__(self, issuer: str = "https://mock.identity.invalid", *, secret: bytes = b"isyco-test-secret"):
         self.issuer = issuer.rstrip("/")
         self._secret = secret
-        self._codes: dict[str, tuple[str, str, str, str]] = {}
+        self._codes: dict[str, tuple[str, str, str, str, str]] = {}
 
     def begin(self, client_id: str, redirect_uri: str) -> LoginRequest:
         state = secrets.token_urlsafe(18)
@@ -81,16 +81,20 @@ class MockIdentityProvider:
 
     def authorize(self, *, client_id: str, redirect_uri: str, subject: str, state: str, nonce: str) -> str:
         code = secrets.token_urlsafe(24)
-        self._codes[code] = (client_id, redirect_uri, subject, nonce)
+        self._codes[code] = (client_id, redirect_uri, subject, nonce, state)
         return f"{redirect_uri}?{urlencode({'code': code, 'state': state})}"
 
-    def exchange(self, code: str, *, client_id: str, redirect_uri: str, now: int | None = None) -> IdentitySession:
-        record = self._codes.pop(code, None)
+    def exchange(self, code: str, *, client_id: str, redirect_uri: str,
+                 state: str, now: int | None = None) -> IdentitySession:
+        record = self._codes.get(code)
         if record is None:
             raise ValueError("invalid or already-used authorization code")
-        expected_client, expected_redirect, subject, nonce = record
+        expected_client, expected_redirect, subject, nonce, expected_state = record
         if (client_id, redirect_uri) != (expected_client, expected_redirect):
             raise ValueError("authorization code client or redirect mismatch")
+        if state != expected_state:
+            raise ValueError("authorization code state mismatch")
+        self._codes.pop(code)
         issued = int(time.time() if now is None else now)
         claims = IdentityClaims(self.issuer, subject, client_id, issued, issued + 300, nonce)
         return IdentitySession(claims, self._sign(claims.to_dict()))

@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import shutil
 import tarfile
 import tempfile
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .doctor import ActivityManifest, DoctorReport
+from .canon import digest
 from .sandbox import PythonSandbox
 
 
@@ -49,11 +51,12 @@ class ActivityRecord:
     entrypoint: str
     declared_effects: tuple[dict[str, Any], ...]
     tree_digest: str
+    manifest_digest: str
 
     @classmethod
     def read(cls, path: Path) -> "ActivityRecord":
         data = json.loads(path.read_text(encoding="utf-8"))
-        required = {"activity_id", "version", "entrypoint", "declared_effects", "tree_digest"}
+        required = {"activity_id", "version", "entrypoint", "declared_effects", "tree_digest", "manifest_digest"}
         missing = required - data.keys()
         if missing:
             raise ValueError(f"activity.json missing fields: {sorted(missing)}")
@@ -63,6 +66,7 @@ class ActivityRecord:
             entrypoint=str(data["entrypoint"]),
             declared_effects=tuple(dict(effect) for effect in data["declared_effects"]),
             tree_digest=str(data["tree_digest"]),
+            manifest_digest=str(data["manifest_digest"]),
         )
 
 
@@ -84,30 +88,46 @@ class GitActivityRegistry:
         repository = Path(repository).resolve()
         destination = Path(destination).resolve()
         resolved = self._git(repository, "rev-parse", f"{commit}^{{commit}}").strip()
-        if destination.exists() and any(destination.iterdir()):
-            raise FileExistsError(f"destination is not empty: {destination}")
-        destination.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(suffix=".tar", delete=False) as archive:
-            archive_path = Path(archive.name)
+        if destination.exists():
+            raise FileExistsError(f"destination already exists: {destination}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        staging = Path(tempfile.mkdtemp(prefix=f".{destination.name}.staging-", dir=destination.parent))
+        published = False
         try:
-            self._git(repository, "archive", "--format=tar", resolved, stdout_path=archive_path)
-            with tarfile.open(archive_path) as bundle:
-                bundle.extractall(destination, filter="data")
-        finally:
-            archive_path.unlink(missing_ok=True)
+            with tempfile.NamedTemporaryFile(suffix=".tar", delete=False) as archive:
+                archive_path = Path(archive.name)
+            try:
+                self._git(repository, "archive", "--format=tar", resolved, stdout_path=archive_path)
+                with tarfile.open(archive_path) as bundle:
+                    bundle.extractall(staging, filter="data")
+            finally:
+                archive_path.unlink(missing_ok=True)
 
-        record = ActivityRecord.read(destination / "activity.json")
-        actual_digest = tree_digest(destination)
-        if actual_digest != record.tree_digest:
-            raise ValueError(f"tree digest mismatch: expected {record.tree_digest}, got {actual_digest}")
-        entrypoint = destination / record.entrypoint
-        if not entrypoint.is_file():
-            raise ValueError(f"entrypoint is not a file: {record.entrypoint}")
-        manifest = ActivityManifest(record.activity_id, record.version, record.declared_effects)
-        result = self.sandbox.run(manifest, entrypoint)
-        report_path = destination / "doctor-report.json"
-        report_path.write_text(json.dumps(report_payload(result.report), indent=2) + "\n", encoding="utf-8")
-        return Installation(resolved, destination, record, result.report)
+            record = ActivityRecord.read(staging / "activity.json")
+            actual_digest = tree_digest(staging)
+            if actual_digest != record.tree_digest:
+                raise ValueError(f"tree digest mismatch: expected {record.tree_digest}, got {actual_digest}")
+            if manifest_digest(record) != record.manifest_digest:
+                raise ValueError("manifest digest mismatch")
+            entrypoint = staging / record.entrypoint
+            if not entrypoint.is_file():
+                raise ValueError(f"entrypoint is not a file: {record.entrypoint}")
+            manifest = ActivityManifest(record.activity_id, record.version, record.declared_effects)
+            result = self.sandbox.run(manifest, entrypoint)
+            report_path = staging / "doctor-report.json"
+            report = report_payload(result.report)
+            report.update({"git_commit": resolved, "source_tree_digest": record.tree_digest,
+                           "manifest_digest": record.manifest_digest})
+            report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            try:
+                staging.replace(destination)
+            except FileExistsError as exc:
+                raise FileExistsError(f"destination was published concurrently: {destination}") from exc
+            published = True
+            return Installation(resolved, destination, record, result.report)
+        finally:
+            if not published:
+                shutil.rmtree(staging, ignore_errors=True)
 
     @staticmethod
     def _git(repository: Path, *args: str, stdout_path: Path | None = None) -> str:
@@ -123,3 +143,13 @@ def report_payload(report: DoctorReport) -> dict[str, Any]:
     payload["seal"] = report.seal
     payload["contract"] = CONTRACT + "+" + payload["contract"]
     return payload
+
+
+def manifest_digest(record: ActivityRecord) -> str:
+    """Digest manifest claims while excluding only derived digest fields."""
+    return digest({
+        "activity_id": record.activity_id,
+        "version": record.version,
+        "entrypoint": record.entrypoint,
+        "declared_effects": [dict(effect) for effect in record.declared_effects],
+    })
