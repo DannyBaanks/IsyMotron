@@ -156,6 +156,7 @@ contract itself.
 
 ## What is not here yet
 
-The marketplace, the identity seam, the agent roles, and any additional legacy
-Windows host are not here yet. Doctor V0 and a first Python sandbox/provider
-now exist; `docs/EVIDENCE.md` records their deliberately narrow scope.
+The agent roles and any additional legacy Windows host are not here yet. Doctor
+V0, a first Python sandbox/provider, a Git-backed activity registry, and a mock
+identity seam now exist; their deliberately narrow scopes are documented next
+to each adapter.

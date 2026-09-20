@@ -415,7 +415,8 @@ Las seis completas están en `docs/FINDINGS.md`. Las que te van a morder:
 Para que no haya sorpresas al enseñarlo:
 
 - **Doctor V0 y sandbox Python ya existen**, con alcance estrecho y sin claim de
-  aislamiento OS-level. Siguen pendientes marketplace y login.
+  aislamiento OS-level. El marketplace Git-backed y el login mock ya existen;
+  siguen pendientes un proveedor de identidad real y el marketplace remoto.
 - **No hay app de móvil.** `clients/fake_mobile.py` es un objeto de Python.
 - **Sólo hay un Windows real.** Falta un host legacy de verdad.
 - **La conciencia del host sólo funciona en Windows.** Ver §12.7.
