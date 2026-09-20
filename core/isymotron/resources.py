@@ -29,7 +29,7 @@ SCHEME = "hostfs://"
 def normalize_path(p: str) -> str:
     """One path grammar for every host generation.
 
-    Win98 and Win11 disagree about separators and case; the contract does not.
+Windows 10 and Windows 11 may disagree about separators and case; the contract does not.
     Backslashes fold to '/', drive letters uppercase, case-insensitive compare
     is done by the caller on the normalized form.
     """

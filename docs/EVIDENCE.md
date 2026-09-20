@@ -25,10 +25,9 @@ There is no `SAFE`. There is no default-pass. An unmeasured claim is
 | **C** — Doctor detects an undeclared side effect and blocks promotion | **`DEMONSTRATED` (scoped)** | `tests/test_sandbox.py` runs a Python activity, blocks an outside write/process attempt, and feeds the real trace to Doctor V0. This is not an OS-level hostile-code claim. |
 | **D** — a changed artifact invalidates prior verification | **`DEMONSTRATED` (scoped)** | `tests/test_marketplace.py::test_changed_tree_is_rejected` pins a Git commit and rejects a mismatched `activity.json` tree digest. |
 | **E** — a publicly accepted activity can still be denied locally | `NOT_DEMONSTRATED` | No marketplace. The mechanism that would enforce it (local grant beats everything) is `DEMONSTRATED` in isolation. |
-| **F** — two Windows generations serve the same contract via different engines | `NOT_DEMONSTRATED` | One **real** engine (`nt-real/0.1`, Windows build 10.0.26200) and two simulated ones now serve the contract. One real machine is not two generations. |
+| **F** — Windows 10 and Windows 11 serve the same contract via different engines | `NOT_DEMONSTRATED` | Windows 11 is real (`nt-real/0.1`, build 10.0.26200); a real Windows 10 host has not been verified yet. Simulated older engines are fixtures only. |
 | **G** — a verified activity reuses a fast path without repeating verification | `NOT_DEMONSTRATED` | Doctor V0 exists, but no install/cache fast path exists. |
 | **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` (now measurable) | Spot numbers only, no workload. Round trip 0.75–6.16 s (median 1.56 s over 12); a two-host plan 4.6–22.4 s. **One HTTP 503 in 12 calls** — real, but n=12 is not a rate. A second run that looked like throttling was the laptop being closed mid-measurement, not the provider (FINDINGS.md #7b). Also: `nemotron-nano-3-30b-a3b` is listed by `/models` and returns 404 on invocation — listed is not servable. |
-| **I** — Windows 98 participates and launches an app from a mobile workflow | `NOT_DEMONSTRATED` | A simulated `dos-bridge/0.1` launches a simulated `DOOM.EXE`. That is a test fixture, not a Windows 98 machine. |
 
 **Two claims crossed on 2026-09-17: A and B.** Both are scoped, and the scope
 is written into the basis line rather than left implied. Seven remain.
@@ -198,9 +197,8 @@ The binary is self-verifying: `build_exe.py` starts it, confirms it serves and
 confirms it returns 401 without a token, and fails the build otherwise. That
 check exists because the first build compiled cleanly and died on launch.
 
-Windows 7 and earlier: **out of product scope**, on licensing grounds rather
-than technical ones. No legal copies are obtainable to test on, so any claim
-about them would be `NOT_DEMONSTRATED` regardless. Invariant 2.13.
+Product host scope: **Windows 10 and Windows 11**. Older Windows names in
+fixtures are not product targets or roadmap claims.
 
 Platform status: Windows `DEMONSTRATED`; Linux `NOT_DEMONSTRATED` (documented
 seam, reports UNKNOWN); macOS `NOT_DEMONSTRATED` (no hardware, no stub);
@@ -213,7 +211,7 @@ pre-suspend notification `NOT_DEMONSTRATED` (no message pump, never claimed).
 This deserves its own section because it is the trap the whole repo is one step
 away from falling into.
 
-`ModernHost` and `LegacyHost` are unlike engines: different path rendering,
+`ModernHost` and the secondary simulator are unlike engines: different path rendering,
 different capability sets, one has no process table and no pid. That is enough
 to show the **contract does not secretly depend on one engine's habits**, which
 is a real and useful result about the contract's shape.
@@ -224,9 +222,9 @@ a way the normalizer assumes but does not verify, that there is no service
 manager, that a 64KB payload is not free — are precisely the ones a Python
 simulation erases by construction.
 
-So: claim F and claim I stay `NOT_DEMONSTRATED` until a receipt comes off real
-hardware. The simulated ones are labelled as fixtures in the code and in the
-test names, so no future reader can mistake them for the thing.
+So: claim F stays `NOT_DEMONSTRATED` until a Windows 10 receipt comes off real
+hardware. The secondary simulator is labelled as a fixture in the code and in
+the test names, so no future reader can mistake it for the thing.
 
 **This was not a hypothetical.** The section above was written before the first
 real host existed. Within hours of writing it, first contact with NTFS produced

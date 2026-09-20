@@ -3,9 +3,8 @@
 ## The eight operations
 
 A host is anything that implements these eight. The number is a design
-constraint, not an accident: it is small enough that a Windows 98 bridge could
-plausibly implement all of it, which is the only honest test of whether the
-contract is portable.
+constraint, not an accident: it is small enough that both supported Windows
+generations can implement all of it, which is the test of contract portability.
 
 | # | Operation | Returns | Note |
 |---|---|---|---|
@@ -121,7 +120,8 @@ carries the decision, the timings, the result, the observed effects, an
 evidence label, and a seal.
 
 `seal = sha256(canonical(payload))` over sorted-key, separator-fixed JSON, so
-the same payload digests identically on a phone, a relay and a legacy host.
+the same payload digests identically on a phone, a relay, Windows 10 and
+Windows 11.
 Tampering with any field invalidates it.
 
 Two distinct identities:
@@ -156,7 +156,7 @@ contract itself.
 
 ## What is not here yet
 
-The agent roles and any additional legacy Windows host are not here yet. Doctor
+The agent roles and a real Windows 10 verification host are not here yet. Doctor
 V0, a first Python sandbox/provider, a Git-backed activity registry, and a mock
 identity seam now exist; their deliberately narrow scopes are documented next
 to each adapter.

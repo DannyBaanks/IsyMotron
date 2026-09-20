@@ -19,7 +19,7 @@ submission must show. Counted against what exists today:
 | host contract | mobile app (platform 1) |
 | L0/L1 boundary | mobile app (platform 2) |
 | cross-device workflow *(simulated)* | real Windows 11 host |
-| | real legacy Windows host |
+| | real Windows 10 host |
 | | five real capabilities |
 | | Nemotron Intent + Planner |
 | | Doctor slow path |
@@ -107,14 +107,11 @@ model does something *visible* rather than refusing something.
 **Do not let the Doctor be the thing that gets compressed at the end.** Build
 it after the first real host and before breadth.
 
-### Keep: exactly one legacy host
+### Scope: Windows 10 and Windows 11
 
-Win98 + Doom is a genuinely great stunt and it is cheap *if and only if* it is
-the last thing built. Its risk is not technical, it is gravitational: it is the
-most fun item on the list, which means it will attract work it has not earned.
-
-The roadmap already says this (M10, "only after core submission path is already
-green"). It is worth repeating because that rule is going to be tested.
+Older Windows engines remain useful as contract fixtures, but they are not
+product targets. The remaining real-platform work is a Windows 10 host probe;
+Windows 98 and other legacy milestones are removed from the roadmap.
 
 ## 4. Revised sequence
 
@@ -129,12 +126,11 @@ Same milestones, reordered by what kills the project if it fails.
 | M2' | web console (not native mobile) | Judges need to see it; phones do not need to run it. |
 | M3 | Intent + Planner on the real inference path | The model enters *after* the grammar exists. Non-negotiable. |
 | M4 | **Doctor v0 + one sandbox + one adversarial activity** | The thesis. Protect this block. |
-| M5 | one legacy host (Win 7) | Proves claim F for real, not in simulation. |
+| M5 | real Windows 10 host | Proves claim F for the supported Windows 10/11 scope. |
 | M6' | git-backed activity registry | Marketplace story at a tenth of the cost. |
 | M7' | mock identity provider only | The OIDC seam is a *shape*; one adapter proves it. |
 | M8 | reliability numbers | Measured, published as numbers. |
 | M9 | breadth, only if green | XP/Vista/10, second platform |
-| M10 | Win98 + Doom | Last. Genuinely last. |
 | M11–12 | hardening, submit early | |
 
 ## 5. Two invariants the roadmap states but nothing yet enforces

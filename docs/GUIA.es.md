@@ -416,7 +416,7 @@ Para que no haya sorpresas al enseñarlo:
 
 - **Doctor V0 y sandbox Python ya existen**, con alcance estrecho y sin claim de
   aislamiento OS-level. El marketplace Git-backed y el login mock ya existen;
-  siguen pendientes un proveedor de identidad real y el marketplace remoto.
+  sigue pendiente un proveedor de identidad real.
 - **No hay app de móvil.** `clients/fake_mobile.py` es un objeto de Python.
 - **Sólo hay un Windows real.** Falta un host legacy de verdad.
 - **La conciencia del host sólo funciona en Windows.** Ver §12.7.
@@ -659,13 +659,13 @@ tarjetas pasan a una columna, y el ledger se apila.
 - **No se auto-actualiza, ni telemetría, ni cuentas.**
 - **Windows 10/11 solamente.** Ver §13.7.
 
-### 13.7 Por qué fuera Windows 7 y anteriores
+### 13.7 Alcance Windows 10/11
 
-Decisión tuya y la dejo escrita como lo que es: **no podemos conseguir copias
-legales** de esas versiones para probar. No es que el contrato no llegue — un
-host de 8 operaciones es justo lo que sí llegaría. Un host sin probar habría
-que etiquetarlo `NOT_DEMONSTRATED` de todas formas, así que la honestidad y el
-alcance coinciden. Invariante 2.13 del roadmap: *unsupported != impossible*.
+El producto soporta Windows 10 y Windows 11. El engine secundario que aparece
+en algunos tests es un fixture de portabilidad del contrato, no un objetivo de
+producto ni un claim de hardware real. El siguiente probe real es
+un host Windows 10; hasta ejecutarlo, el claim F permanece
+`NOT_DEMONSTRATED`.
 
 ---
 

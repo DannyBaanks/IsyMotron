@@ -74,13 +74,11 @@ taught us that the design did not.
 **239 tests, all passing.** Doctor V0, the first Python sandbox/provider, and
 Malbolge lessons L3-L6 are
 present. The Git-backed activity registry and mock identity seam are present;
-a legacy Windows host remains pending.
+a real Windows 10 host is the remaining platform verification target.
 
-**Windows 7 and earlier are out of product scope.** Not because the contract
-could not reach them — the whole point of an 8-operation surface is that it
-could — but because legal copies of those releases are not obtainable to test
-on, and an untested host would have to be labelled `NOT_DEMONSTRATED` anyway.
-Roadmap invariant 2.13: unsupported != impossible.
+**Product host scope: Windows 10 and Windows 11 only.** Older simulated
+engines remain test fixtures for contract portability; they are not product
+targets or roadmap milestones.
 
 ## Run it
 

@@ -63,7 +63,7 @@ class HostIdentity:
     host_id: str
     display_name: str
     os_family: str               # "windows"
-    os_release: str              # "11-24h2", "7-sp1", "98-se"
+    os_release: str              # "10-22h2", "11-24h2"
     engine: str                  # which local implementation serves the contract
     contract: str = CONTRACT
 

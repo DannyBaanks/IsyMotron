@@ -131,7 +131,7 @@ cannot grant, no physical path to a model provider.
 
 ```
 python -m pytest -q                                  # 151 passed
-python -m console --demo-host                        # console + simulated Win98 host
+python -m console --demo-host                        # console + secondary simulated host
 ISYMOTRON_PROVIDER=nebius python tools/nemotron_check.py
 python build_exe.py                                  # dist/IsyMotron.exe + smoke test
 python tools/host_cli.py do filesystem.read --path hostfs://demo

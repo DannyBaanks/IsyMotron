@@ -1,7 +1,7 @@
 """Canonical JSON + digests.
 
 One serialization rule for the whole system, so that a digest computed on a
-phone, on a relay and on a Windows 98 host is the same digest.
+phone, on a relay, on Windows 10 and on Windows 11 is the same digest.
 """
 from __future__ import annotations
 
