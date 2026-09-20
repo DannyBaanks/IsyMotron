@@ -54,8 +54,9 @@ def test_l10_to_l12_are_explicitly_unavailable():
     assert receipt.execution is None
     assert "evidence-only" in receipt.notes[0]
     assert receipt.verify()
-    for prefix in ("malbolge-l11", "malbolge-l12"):
-        receipt = verify_exercise(les, ver, les.exercise(prefix), "")
-        assert receipt.verdict == "UNAVAILABLE"
+    answers = {"malbolge-l11": "3", "malbolge-l12": "FREE_PARAMETRIC = DEMONSTRATED"}
+    for prefix, answer in answers.items():
+        receipt = verify_exercise(les, ver, les.exercise(prefix), answer)
+        assert receipt.verdict == PASS
         assert receipt.verify()
-        assert "NOT_DEMONSTRATED" in receipt.notes[0]
+        assert "evidence-only" in receipt.notes[0]

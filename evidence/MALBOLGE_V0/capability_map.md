@@ -40,6 +40,6 @@ lesson) · **ABSENT** (searched, not found).
 - L8 differential verification — **VERIFIED** against the copied independent runner
 - L9 real existing programs — **VERIFIED** with the canonical published fixture
 - L10 Lutter quine analysis — **VERIFIED (evidence-only)**; source artifact is not present here, so no re-execution claim
-- L11 MalbolgeLISP forensics — **NOT_DEMONSTRATED**; 3^19 image not present here
-- L12 MalbolgeFree — **NOT_DEMONSTRATED**; no classic-pack adapter exists
+- L11 MalbolgeLISP forensics — **VERIFIED (evidence-only)**; 3^19 image not present here
+- L12 MalbolgeFree — **VERIFIED (evidence-only)**; witness metadata only, no local adapter execution
 - L13 sealed/episodic execution — **VERIFIED** with a hash-linked tamper witness

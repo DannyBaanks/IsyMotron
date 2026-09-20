@@ -50,8 +50,8 @@ EXERCISES = (
     Exercise("malbolge-l8-differential", "Do the primary oracle and an independent runner agree on Hello World!? Answer consistent or divergent.", {"kind": "differential"}, {"level": "L8", "result": "CONSISTENT"}),
     Exercise("malbolge-l9-existing", "What output does the published canonical Malbolge program produce?", {"kind": "existing"}, {"level": "L9", "output": "Hello World!"}),
     Exercise("malbolge-l10-quine", "Enter the recorded Lutter quine step count.", {"kind": "quine"}, {"level": "L10", "steps": 69547437, "scope": "EVIDENCE_ONLY"}),
-    Exercise("malbolge-l11-lisp", "Can the MalbolgeLISP forensic image run in this pack? Answer yes or no.", {"kind": "unavailable", "level": "L11"}, {"level": "L11", "status": "NOT_DEMONSTRATED"}),
-    Exercise("malbolge-l12-free", "Can MalbolgeFree run in the classic oracle? Answer yes or no.", {"kind": "unavailable", "level": "L12"}, {"level": "L12", "status": "NOT_DEMONSTRATED"}),
+    Exercise("malbolge-l11-lisp", "What result did the recorded MalbolgeLISP (+ 1 2) witness produce?", {"kind": "lisp_evidence"}, {"level": "L11", "result": "3", "scope": "EVIDENCE_ONLY"}),
+    Exercise("malbolge-l12-free", "What verdict did the recorded MalbolgeFree witness establish?", {"kind": "free_evidence"}, {"level": "L12", "verdict": "FREE_PARAMETRIC = DEMONSTRATED", "scope": "EVIDENCE_ONLY"}),
     Exercise("malbolge-l13-episodic", "Does a sealed output survive a one-bit tamper check? Answer yes or no.", {"kind": "episodic"}, {"level": "L13", "tamper_rejected": True}),
 )
 
@@ -129,6 +129,17 @@ class AdvancedMalbolgeVerifier:
                 PASS if ok else FAIL, observed, ["lutter-quine-witness/1"],
                 PROVENANCE, execution=None,
                 notes=["evidence-only: source artifact is absent; this receipt does not claim re-execution"],
+            )
+        if kind in {"lisp_evidence", "free_evidence"}:
+            filename = "malbolgelisp_witness.json" if kind == "lisp_evidence" else "malbolgefree_witness.json"
+            witness_path = Path(__file__).resolve().parents[3] / "evidence" / "MALBOLGE_V0" / filename
+            witness = json.loads(witness_path.read_text(encoding="utf-8"))
+            expected = witness["result"] if kind == "lisp_evidence" else witness["verdict"]
+            observed = {key: value for key, value in witness.items() if key != "source_artifact_present_in_isymotron"}
+            return VerifyResult(
+                PASS if answer.strip() == expected else FAIL, observed,
+                [f"{witness['level']}-witness-metadata"], PROVENANCE,
+                notes=["evidence-only: external artifact is absent; this receipt does not claim re-execution"],
             )
         if kind == "unavailable":
             return VerifyResult(UNAVAILABLE, {"level": exercise.target["level"], "reason": "adapter/artifact not present in IsyMotron"}, [], PROVENANCE, notes=["NOT_DEMONSTRATED: no verdict is issued without the required tooling"])

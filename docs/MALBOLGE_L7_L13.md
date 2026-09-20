@@ -12,9 +12,10 @@ Machine-backed levels:
 - L8 primary oracle versus an independently copied classic runner;
 - L9 canonical published program;
 - L10 recorded Lutter quine witness metadata (evidence-only, not re-executed);
+- L11 recorded MalbolgeLISP 3^19 witness metadata (evidence-only);
+- L12 recorded MalbolgeFree verdict metadata (evidence-only);
 - L13 hash-linked episodic transfer and tamper rejection.
 
-L11-L12 deliberately return `UNAVAILABLE`, not `PASS`: the MalbolgeLISP 3^19
-image and a MalbolgeFree adapter are not present in this repo. L10's receipt is
-explicitly evidence-only and does not claim that IsyMotron re-executed the
-69,547,437-step witness.
+L10-L12's receipts are explicitly evidence-only and do not claim that
+IsyMotron re-executed the external artifacts. The underlying images/adapters
+remain absent from this repo.

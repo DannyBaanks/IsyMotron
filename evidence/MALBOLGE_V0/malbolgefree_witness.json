@@ -1,0 +1,8 @@
+{
+  "level": "L12",
+  "verdict": "FREE_PARAMETRIC = DEMONSTRATED",
+  "frontier": "10 -> 11 -> 12",
+  "classic_parity": "DEMONSTRATED 6/6",
+  "source_artifact_present_in_isymotron": false,
+  "evidence_scope": "copied witness metadata; not re-executed by IsyMotron"
+}

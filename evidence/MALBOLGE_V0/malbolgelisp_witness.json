@@ -1,0 +1,10 @@
+{
+  "level": "L11",
+  "semantic_profile": "MALBOLGELISP_3^19",
+  "source_artifact_present_in_isymotron": false,
+  "image_bytes": 371331415,
+  "expression": "(+ 1 2)",
+  "result": "3",
+  "halt_steps": 2408246381,
+  "evidence_scope": "copied witness metadata; not re-executed by IsyMotron"
+}
