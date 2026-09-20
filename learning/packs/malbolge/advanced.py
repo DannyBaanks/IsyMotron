@@ -7,6 +7,8 @@ from learning import FAIL, PASS, UNAVAILABLE, Exercise, Lesson, VerifyResult
 from .vendor import classic_codec, classic_encoder, oracle
 from .vendor import secondary
 import hashlib
+import json
+from pathlib import Path
 
 HELLO_WORLD = (
     "(=<`#9]~6ZY32Vx/4Rs+0No-&Jk)\"Fh}|Bcy?`=*z]Kw%oG4UUS0/@-ejc(:'8dc"
@@ -47,7 +49,7 @@ EXERCISES = (
     Exercise("malbolge-l7-roundtrip", "Does opcode/source roundtrip preserve the canonical program? Answer yes or no.", {"kind": "roundtrip"}, {"level": "L7", "roundtrip": True}),
     Exercise("malbolge-l8-differential", "Do the primary oracle and an independent runner agree on Hello World!? Answer consistent or divergent.", {"kind": "differential"}, {"level": "L8", "result": "CONSISTENT"}),
     Exercise("malbolge-l9-existing", "What output does the published canonical Malbolge program produce?", {"kind": "existing"}, {"level": "L9", "output": "Hello World!"}),
-    Exercise("malbolge-l10-quine", "Enter the recorded Lutter quine step count.", {"kind": "unavailable", "level": "L10"}, {"level": "L10", "status": "NOT_DEMONSTRATED"}),
+    Exercise("malbolge-l10-quine", "Enter the recorded Lutter quine step count.", {"kind": "quine"}, {"level": "L10", "steps": 69547437, "scope": "EVIDENCE_ONLY"}),
     Exercise("malbolge-l11-lisp", "Can the MalbolgeLISP forensic image run in this pack? Answer yes or no.", {"kind": "unavailable", "level": "L11"}, {"level": "L11", "status": "NOT_DEMONSTRATED"}),
     Exercise("malbolge-l12-free", "Can MalbolgeFree run in the classic oracle? Answer yes or no.", {"kind": "unavailable", "level": "L12"}, {"level": "L12", "status": "NOT_DEMONSTRATED"}),
     Exercise("malbolge-l13-episodic", "Does a sealed output survive a one-bit tamper check? Answer yes or no.", {"kind": "episodic"}, {"level": "L13", "tamper_rejected": True}),
@@ -113,6 +115,21 @@ class AdvancedMalbolgeVerifier:
             tampered = b"I" + payload[1:]
             observed = {"seal": seal, "tamper_rejected": hashlib.sha256(tampered).hexdigest() != seal}
             return self._result(answer.strip().lower() == "yes", observed, "hash-linked-episode")
+        if kind == "quine":
+            witness_path = Path(__file__).resolve().parents[3] / "evidence" / "MALBOLGE_V0" / "lutter_quine_witness.json"
+            witness = json.loads(witness_path.read_text(encoding="utf-8"))
+            observed = {
+                "steps": witness["steps"],
+                "quine": witness["quine"],
+                "source_sha256": witness["source_sha256"],
+                "scope": witness["evidence_scope"],
+            }
+            ok = answer.strip() == str(witness["steps"])
+            return VerifyResult(
+                PASS if ok else FAIL, observed, ["lutter-quine-witness/1"],
+                PROVENANCE, execution=None,
+                notes=["evidence-only: source artifact is absent; this receipt does not claim re-execution"],
+            )
         if kind == "unavailable":
             return VerifyResult(UNAVAILABLE, {"level": exercise.target["level"], "reason": "adapter/artifact not present in IsyMotron"}, [], PROVENANCE, notes=["NOT_DEMONSTRATED: no verdict is issued without the required tooling"])
         return VerifyResult(FAIL, {"reason": f"unknown exercise kind: {kind}"}, PROVENANCE)

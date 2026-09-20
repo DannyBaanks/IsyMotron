@@ -49,7 +49,12 @@ def test_l7_l8_l9_and_l13_machine_witnesses_pass():
 
 def test_l10_to_l12_are_explicitly_unavailable():
     les, ver = lesson(), verifier()
-    for prefix in ("malbolge-l10", "malbolge-l11", "malbolge-l12"):
+    receipt = verify_exercise(les, ver, les.exercise("malbolge-l10"), "69547437")
+    assert receipt.verdict == PASS
+    assert receipt.execution is None
+    assert "evidence-only" in receipt.notes[0]
+    assert receipt.verify()
+    for prefix in ("malbolge-l11", "malbolge-l12"):
         receipt = verify_exercise(les, ver, les.exercise(prefix), "")
         assert receipt.verdict == "UNAVAILABLE"
         assert receipt.verify()

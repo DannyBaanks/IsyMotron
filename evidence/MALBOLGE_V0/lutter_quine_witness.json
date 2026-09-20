@@ -1,0 +1,17 @@
+{
+  "format": "malbolge-classic-quine-witness/1",
+  "epoch": "E10",
+  "semantic_profile": "CLASSIC_MALBOLGE",
+  "source_artifact": "quine_lutter.malbolge",
+  "source_artifact_present_in_isymotron": false,
+  "source_bytes": 59852,
+  "source_cells": 59032,
+  "source_sha256": "dca8476f8b70c8462c32f661f63c5f8b1ad6c33946b3c7a9a35186c824117d98",
+  "status": "HALTED",
+  "steps": 69547437,
+  "output_bytes": 59852,
+  "output_sha256": "dca8476f8b70c8462c32f661f63c5f8b1ad6c33946b3c7a9a35186c824117d98",
+  "quine": true,
+  "equivalence": "EXACT_SOURCE_BYTES",
+  "evidence_scope": "copied witness metadata; not re-executed by IsyMotron"
+}
