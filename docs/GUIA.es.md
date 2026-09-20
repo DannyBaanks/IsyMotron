@@ -414,17 +414,17 @@ Las seis completas están en `docs/FINDINGS.md`. Las que te van a morder:
 
 Para que no haya sorpresas al enseñarlo:
 
-- **No hay Doctor, ni sandbox, ni marketplace, ni login.**
+- **Doctor V0 y sandbox Python ya existen**, con alcance estrecho y sin claim de
+  aislamiento OS-level. Siguen pendientes marketplace y login.
 - **No hay app de móvil.** `clients/fake_mobile.py` es un objeto de Python.
 - **Sólo hay un Windows real.** Falta un host legacy de verdad.
 - **La conciencia del host sólo funciona en Windows.** Ver §12.7.
 
 Esto está en `docs/EVIDENCE.md` con la etiqueta que le corresponde a cada
-afirmación. Las nueve *Target Claims* del roadmap **siguen las nueve en
-`NOT_DEMONSTRATED`** después de M1. La B y la F se movieron —ahora citan
-hardware real en vez de un simulador— pero ninguna cruzó la línea, y mover una
-etiqueta porque el progreso *parece* que lo merece es justo lo que este fichero
-existe para impedir.
+afirmación. El claim C del Doctor ya está **DEMONSTRATED (scoped)**; los demás
+siguen dependiendo de marketplace, identity seam, segundo host real y demás
+alcance del roadmap. Mover una etiqueta porque el progreso *parece* que lo
+merece es justo lo que este fichero existe para impedir.
 
 ## 11. Lo siguiente, por orden de riesgo
 
@@ -438,7 +438,8 @@ Está razonado en `docs/ROADMAP_DELTA.md`. El resumen:
 3. ~~Host real de Windows 11.~~ **HECHO** — M1, 17 tests sobre disco real.
 4. ~~Nemotron Intent + Planner.~~ **HECHO** — M3, plan validado y ejecutado.
 5. Consola web (no app nativa todavía).
-6. El Doctor. Es la tesis entera; que no sea lo último.
+6. ~~El Doctor.~~ **V0 hecho**: falta endurecer el provider y conectar la ruta
+   de instalación/verificación del marketplace.
 
 ---
 
