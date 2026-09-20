@@ -146,28 +146,100 @@ never a permission.
 
 ## Learn Malbolge with Malbolge Cat
 
-The first learning pack teaches Malbolge source encoding the way authority
-works in the rest of the product: the cat explains, you answer, **real
-vendored tooling decides**, and the sealed receipt says which machinery
-produced the verdict. No model is involved in a verdict — without tooling
-there is no PASS, only UNAVAILABLE.
+Malbolge is named after the eighth circle of Dante's Inferno. Published in
+1998 with nothing but a reference interpreter, it became the language
+where the first "Hello World" was **not written by a human — it was found
+by an automated beam search** (Lou Scheffer). It is widely described as the
+hardest programming language ever put on a machine.
+
+**IsyMotron teaches it anyway — and grades you with machinery, not opinions.**
+
+The first lesson is source encoding: every printable character in a Malbolge
+program decodes to an instruction *depending on where it sits*:
 
 ```
-isymotron learn malbolge                     # the lesson, interactive
-isymotron learn malbolge --exercise 1 --answer 3
+    op = (ASCII(char) + c) mod 94          the decode, at position c
+
+    r   = (op - c) mod 94                  the inverse: you choose the
+    ASCII = r        if 33 <= r <= 93        instruction, you derive the
+    ASCII = r + 94   if 0 <= r <= 32        character
+    char  = chr(ASCII)
 ```
 
+The cat asks, you answer:
+
 ```
-  expected: opcode 68 (nop) — reference instruction 'o'
-  observed: opcode 68 (nop) — reference instruction 'o'
-  execution: 19-cell program, halted=True reason=halt_opcode steps=19
+  Exercise 1 (malbolge-nop-17)
+  The cat wants NOP at position 17. Which single printable character produces it?
+  your answer: 3
+```
+
+Then three real machines take your answer — none of them is a model:
+
+```
+      your '3'
+         |
+         +-- classic_codec.decode ....... opcode 68 (nop)
+         |      the positional codec, exhaustive parity over all
+         |      59049 cells, vendored byte-for-byte (sha256 recorded)
+         |
+         +-- malbolge-oracle XLAT1 ....... instruction 'o'
+         |      reference semantics transcribed from the 1998
+         |      interpreter, written WITHOUT consulting any other
+         |      implementation -- a real differential, not a copy
+         |
+         +-- Oracle.run .................. a 19-cell program with YOUR
+                character at position 17 executes on the reference
+                machine: halted, 19 steps, accumulator 0
+         |
+         v
   VERDICT: PASS   (verdict_source: machine; receipt rcpt_84c5a2fcc8724542; seal ok)
+```
+
+**CAT SPEAKS. TOOLING PROVES.**
+
+- No model is anywhere in the verification path. V0 passes with no API key
+  at all — a lesson that needs a paid opinion to grade you would be
+  architecturally wrong.
+- No tooling, no verdict: an unloaded verifier answers `UNAVAILABLE`, never
+  "the model said it was right".
+- A receipt with an edited verdict breaks its own seal. That is a test.
+- The cat announces the machine's verdict live through the open channel —
+  speech it can never manufacture into a verdict.
+
+Every outcome is a sealed, tamper-evident receipt (real ids from the
+evidence runs):
+
+| your answer | machines say | receipt |
+|---|---|---|
+| `3` | opcode 68 (nop), reference 'o', clean 19-step halt | **PASS** `rcpt_70a00e1131d049b8` |
+| `4` | opcode 69 — not nop | **FAIL** `rcpt_e5ada8d037c3469b` |
+| `zz` | out of contract | **INVALID** `rcpt_eaa6d8cffa3e411f` |
+| *(tooling unloaded)* | no tooling, no verdict | **UNAVAILABLE** `verified_by: []` |
+
+Before any of your answers are trusted, the gate proves the machinery
+itself: the vendored oracle must reproduce the canonical published
+hello-world program byte-for-byte (`Hello World!`, 40 steps), the codec
+must keep its encode/decode parity, and on the dev machine the vendored
+copies are checked against their source repositories.
+
+```
+isymotron learn malbolge                     # the whole lesson, interactive
+isymotron learn malbolge --exercise 1 --answer 3
+isymotron learn malbolge --all               # every exercise, interactive
 ```
 
 If the console and the pet are up, the cat announces the machine's verdict
 live through the open channel — a bubble it can speak but never forge.
-Verdicts, provenance and the capability roadmap:
-[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md).
+Verdicts, provenance and the capability roadmap (L0-L13, each mapped to
+the discovered tooling that would earn it):
+[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md) ·
+[`evidence/MALBOLGE_V0/capability_map.md`](evidence/MALBOLGE_V0/capability_map.md).
+
+What V0 claims is exactly what was demonstrated: **learn → build →
+execute → verify → receipt**, on one real lesson, with machine verdicts —
+not "IsyMotron masters Malbolge". The rest of the curriculum is earned one
+milestone at a time.
 
 ## The avatar (the part a person sees)
 
