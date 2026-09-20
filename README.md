@@ -71,7 +71,8 @@ taught us that the design did not.
 | M5 console surface gate | `tests/test_console.py` | 23 passed |
 | Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
 
-**203 tests, all passing.** Doctor V0 and the first Python sandbox/provider are
+**231 tests, all passing.** Doctor V0, the first Python sandbox/provider, and
+Malbolge lessons L3-L6 are
 present. Not started: the
 marketplace, the identity seam, a legacy Windows host.
 
@@ -228,6 +229,7 @@ copies are checked against their source repositories.
 isymotron learn malbolge                     # the whole lesson, interactive
 isymotron learn malbolge --exercise 1 --answer 3
 isymotron learn malbolge --all               # every exercise, interactive
+isymotron learn malbolge-advanced --all      # L3-L6, interactive
 ```
 
 If the console and the pet are up, the cat announces the machine's verdict

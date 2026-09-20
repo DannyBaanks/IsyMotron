@@ -43,6 +43,8 @@ EXIT_CODES = {PASS: 0, FAIL: 1, INVALID: 2, UNAVAILABLE: 3}
 PACKS = {
     "malbolge": lambda: __import__(
         "learning.packs.malbolge", fromlist=["lesson", "verifier"]),
+    "malbolge-advanced": lambda: __import__(
+        "learning.packs.malbolge.advanced", fromlist=["lesson", "verifier"]),
 }
 
 
@@ -54,6 +56,16 @@ def load_pack(pack_id: str) -> tuple[Lesson, Verifier]:
 
 
 def _print_receipt_lines(receipt) -> None:
+    if "opcode" not in receipt.expected:
+        print(f"  expected: {receipt.expected}")
+        print(f"  observed: {receipt.observed}")
+        if receipt.execution is not None:
+            print(f"  execution: {receipt.execution}")
+        for note in receipt.notes:
+            print(f"  note: {note}")
+        print(f"  VERDICT: {receipt.verdict}   (verdict_source: {receipt.verdict_source}; "
+              f"receipt {receipt.receipt_id}; seal {'ok' if receipt.verify() else 'BROKEN'})")
+        return
     print(f"  expected: opcode {receipt.expected.get('opcode')}"
           f" ({receipt.expected.get('opcode_name')})"
           f" — reference instruction {receipt.expected.get('reference_instruction')!r}")

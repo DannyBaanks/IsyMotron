@@ -18,3 +18,13 @@ def lesson() -> Lesson:
 
 def verifier() -> Verifier:
     return MalbolgeVerifier()
+
+
+def advanced_lesson() -> Lesson:
+    from learning.packs.malbolge.advanced import LESSON
+    return LESSON
+
+
+def advanced_verifier() -> Verifier:
+    from learning.packs.malbolge.advanced import AdvancedMalbolgeVerifier
+    return AdvancedMalbolgeVerifier()
