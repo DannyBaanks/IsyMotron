@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import sys
 import time
+
+import pytest
 
 from hosts.linux.power import LinuxPowerProvider
 from isymotron.awareness import NetworkState
 
 
+LINUX_NATIVE = pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="CLOCK_BOOTTIME and CLOCK_MONOTONIC are Linux-native clocks",
+)
+
+
+@LINUX_NATIVE
 def test_linux_provider_reads_native_clocks():
     provider = LinuxPowerProvider()
     sample = provider.sample()
@@ -34,6 +44,7 @@ def test_linux_provider_network_probe_is_local_and_bounded(monkeypatch, tmp_path
     assert LinuxPowerProvider()._network() is NetworkState.UP
 
 
+@LINUX_NATIVE
 def test_native_clocks_are_monotonic_for_awake_sample():
     provider = LinuxPowerProvider()
     first = provider.sample()
