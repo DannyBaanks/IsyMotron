@@ -64,12 +64,18 @@ without returning the protected payload.
 
 ### Real project evidence
 
-These are copied unchanged from the repository's evidence packages. The
-generated hero above is illustrative artwork, not proof of a product run.
+The video below is a real ShitVid + OBS capture of the judge-facing demo. The
+generated hero above remains illustrative artwork, not proof of a product run.
 
 <div align="center">
-<img src="docs/assets/screenshots/05-desktop-avatar.png" alt="ISyMotron desktop avatar showing a denied action and sealed receipt" width="360" />
-<br /><sub>Real desktop avatar evidence: a host-generated DENY with a sealed receipt.</sub>
+<video controls width="720" poster="docs/assets/hero.png">
+  <source src="isymotron-demo-final.mp4" type="video/mp4" />
+  <a href="isymotron-demo-final.mp4">Watch the ISyMotron demo video</a>
+</video>
+<br /><sub>ShitVid + OBS demo: policy check, sealed capability lease and explicit host denial.</sub>
+<br /><br />
+<img src="docs/assets/malbolgato-clean.gif" alt="Malbolgato animated avatar" width="192" />
+<br /><sub>Malbolgato, the packaged read-only avatar mascot.</sub>
 </div>
 
 ## What is demonstrated
