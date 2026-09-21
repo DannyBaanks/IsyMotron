@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" role="img" aria-labelledby="title desc">
+  <title id="title">Authority never comes from the model</title>
+  <desc id="desc">A request is denied when the capability is absent, the scope is invalid, or policy refuses it. Only the final branch executes and creates a sealed receipt.</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1"><stop stop-color="#111719"/><stop offset="1" stop-color="#18241c"/></linearGradient><marker id="a" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0,0L9,4L0,8z" fill="#a9e65d"/></marker></defs>
+  <rect width="900" height="470" rx="26" fill="url(#bg)"/>
+  <g font-family="Inter,Segoe UI,sans-serif" text-anchor="middle"><text x="450" y="38" fill="#f3f7ef" font-size="22" font-weight="700">Authority never comes from the model.</text><text x="450" y="63" fill="#9aac9e" font-size="13">Every branch is explicit. The default is refusal.</text>
+  <g fill="none" stroke="#a9e65d" stroke-width="3" marker-end="url(#a)"><path d="M450 110V140"/><path d="M390 190H265"/><path d="M510 190H635"/><path d="M265 230V265"/><path d="M635 230V265"/><path d="M575 315H450"/><path d="M715 315V370"/><path d="M450 365V410"/></g>
+  <rect x="325" y="78" width="250" height="45" rx="12" fill="#24352a" stroke="#76b900"/><text x="450" y="106" fill="#fff" font-size="16" font-weight="700">MODEL PROPOSAL</text>
+  <rect x="345" y="145" width="210" height="55" rx="12" fill="#1e2d25" stroke="#d8ff9a"/><text x="450" y="168" fill="#fff" font-size="15" font-weight="700">Capability exists?</text><text x="450" y="187" fill="#9aac9e" font-size="11">host vocabulary only</text>
+  <rect x="115" y="265" width="150" height="45" rx="12" fill="#3a2526" stroke="#ff7777"/><text x="190" y="293" fill="#ffb4b4" font-size="15" font-weight="700">DENY</text><text x="190" y="328" fill="#ff9b9b" font-size="11">CAPABILITY_UNAVAILABLE</text>
+  <rect x="635" y="265" width="210" height="55" rx="12" fill="#1e2d25" stroke="#d8ff9a"/><text x="740" y="288" fill="#fff" font-size="15" font-weight="700">Scope valid?</text><text x="740" y="307" fill="#9aac9e" font-size="11">path / app / lease bounds</text>
+  <rect x="450" y="270" width="150" height="45" rx="12" fill="#3a2526" stroke="#ff7777"/><text x="525" y="298" fill="#ffb4b4" font-size="15" font-weight="700">DENY</text><text x="525" y="333" fill="#ff9b9b" font-size="11">OUT_OF_SCOPE</text>
+  <rect x="650" y="370" width="130" height="45" rx="12" fill="#3a2526" stroke="#ff7777"/><text x="715" y="398" fill="#ffb4b4" font-size="15" font-weight="700">DENY</text><text x="715" y="433" fill="#ff9b9b" font-size="11">POLICY</text>
+  <rect x="325" y="410" width="250" height="45" rx="12" fill="#294c2b" stroke="#d8ff9a"/><text x="450" y="438" fill="#efffe0" font-size="15" font-weight="700">EXECUTE → SEALED RECEIPT</text>
+  <text x="318" y="183" fill="#ffb4b4" font-size="12">NO</text><text x="582" y="183" fill="#d8ff9a" font-size="12">YES</text><text x="300" y="307" fill="#d8ff9a" font-size="12">YES</text><text x="620" y="307" fill="#ffb4b4" font-size="12">NO</text><text x="625" y="355" fill="#ffb4b4" font-size="12">NO</text><text x="470" y="390" fill="#d8ff9a" font-size="12">YES</text>
+  </g>
+</svg>

@@ -1,352 +1,228 @@
-# IsyMotron
+<div align="center">
 
-![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)
+<img src="docs/assets/hero.png" alt="ISyMotron capability fabric hero" width="100%" />
 
+# ISyMotron
+
+### One AI. Many hosts. One capability fabric.
+
+**Plan with Nemotron. Execute through explicit capabilities. Keep authority local. Verify every action with receipts.**
+
+[![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-76B900.svg)](LICENSE)
+[![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-202124.svg)](#what-is-demonstrated)
+
+<sub>Hackathon project for the Nebius × NVIDIA / Devpost challenge.</sub>
+
+</div>
+
+> The model proposes. The local host decides. Execution produces evidence.
+
+## Why this matters
+
+AI should not gain authority merely because it can reason.
+
+ISyMotron gives an agent a typed capability fabric instead of raw host access:
+filesystem roots, process inspection, allowlisted applications and system
+facts. Every request is checked locally, every refusal is explicit, and every
+execution ends in a tamper-evident receipt.
+
+```text
+model proposes  →  local authority decides  →  receipt records
 ```
- ### ##### #   # #   # ###### ##### ####  ###### #   #
-  #  #      # #  ## ## #    #   #   #  #  #    # #  ##
-  #  #####   #   # # # #    #   #   ####  #    # # # #
-  #      #   #   #   # #    #   #   #  #  #    # ##  #
- ### #####   #   #   # ######   #   #   # ###### #   #
+
+## Architecture
+
+<img src="docs/assets/architecture.svg" alt="ISyMotron architecture: model proposal through planner, resolver, relay, hosts and sealed receipt" width="100%" />
+
+ISyMotron separates interpretation from authority:
+
+- Nemotron and the provider live in the planning plane.
+- The contract, leases, scopes and enforcer live at the host boundary.
+- The relay transports requests; it does not grant permission.
+- The host executes only after local policy accepts the request.
+- The receipt carries the decision, result, observed effects and seal.
+
+## Authority never comes from the model
+
+<img src="docs/assets/authority-flow.svg" alt="Authority flow: missing capability, invalid scope and policy refusal deny; only the final branch executes" width="100%" />
+
+The model cannot mint a capability, widen a lease, create a grant or seal a
+receipt. An ungranted capability is absent from the agent's catalogue. A
+malformed request, expired lease, invalid scope or host-level escape is denied
+without returning the protected payload.
+
+## See it in 60 seconds
+
+```text
+1. Grant a narrow capability        →  filesystem.read on one root
+2. Let Nemotron plan                →  typed capability request
+3. Execute an in-scope action       →  ALLOW + observed result
+4. Try an out-of-scope action       →  DENY + no payload
+5. Inspect the receipt              →  seal verified
 ```
 
-> One AI, many hosts, one capability fabric.
-> Any machine, only the authority you grant.
+### Real project evidence
 
-IsyMotron is a personal AI capability fabric: a model can compose capabilities
-that the user has explicitly granted across their own phones and computers,
-while every grant, refusal and effect is enforced and recorded by machinery the
-model does not control.
+These are copied unchanged from the repository's evidence packages. The
+generated hero above is illustrative artwork, not proof of a product run.
 
-**Status: M5 + the avatar track (AV0–AV9), shipped behind one command.** The
-authority grammar runs on a real Windows machine, a real Nemotron plan
-orchestrates work across two unlike hosts while a host refuses a step the model
-asked for, and all of it ships as a single 12 MB binary with a console you can
-open on your phone — plus a floating desktop pet that shows what the host
-decided, and can be talked about, but never talked into anything.
-See [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for what is demonstrated and what is
-not, and [`docs/FINDINGS.md`](docs/FINDINGS.md) for the six things first contact
-taught us that the design did not.
+<div align="center">
+<img src="docs/assets/screenshots/05-desktop-avatar.png" alt="ISyMotron desktop avatar showing a denied action and sealed receipt" width="360" />
+<br /><sub>Real desktop avatar evidence: a host-generated DENY with a sealed receipt.</sub>
+</div>
 
----
+## What is demonstrated
 
-## What exists right now
+The project uses the evidence vocabulary from [`docs/EVIDENCE.md`](docs/EVIDENCE.md).
+The labels below are deliberately narrower than marketing claims.
 
-| Piece | Where | State |
+| Claim | Status | Evidence |
 |---|---|---|
-| `NemoHostContract/v0` — 8 operations | `core/isymotron/host.py` | frozen |
-| Capability / Lease / Request / Receipt types | `core/isymotron/contracts.py` | frozen |
-| L0 authority enforcer, deny-by-default | `core/isymotron/policy.py` | working |
-| Closed verdict vocabularies | `core/isymotron/verdicts.py` | frozen |
-| Two simulated hosts, two unlike engines | `hosts/simulator/engines.py` | working |
-| Loopback relay | `relay/loopback.py` | working |
-| Fake mobile client | `clients/fake_mobile.py` | working |
-| **Real Windows host** — NTFS, processes, app launch | `hosts/windows/win11.py` | working |
-| Local grant file — the local authority, deny-by-default | `hosts/windows/grants.py` | working |
-| Host CLI — grant, revoke, execute | `tools/host_cli.py` | working |
-| **Console** — local web UI, dark surface, brand-green accents, phone-ready | `console/` | working |
-| **`IsyMotron.exe`** — one file, no runtime dependencies | `build_exe.py` | 12 MB |
-| **`isymotron` CLI** — clap-style help, rustc-style errors, ANSI truecolor | `isymotron.ps1` | working |
-| **Learning seam** — lessons, machine verdicts, sealed lesson receipts | `learning/` | working |
-| **Malbolge pack** — source encoding lesson over vendored real tooling | `learning/packs/malbolge/` | working |
-| **Avatar model** — two trust channels, precedence, no I/O | `avatar/model.py` | working |
-| **Open channel** — inbox reader, companion-event-v1 | `avatar/inbox.py` | working |
-| **Authority channel** — producers + `/api/avatar`, read-only avatar token | `console/server.py` | working |
-| **Web avatar** — host frame + third-party bubbles, no innerHTML | `console/static/avatar.js` | working |
-| **Desktop pet** — transparent Tk window; idles alone, follows the console | `avatar/window.py` | working |
-| **Avatar pack** — Malbolge Cat, copied from Companion (see Credits) | `avatar/packs/` | shipped |
-| Avatar adversarial gate — talking grants nothing | `tests/test_avatar_adversarial.py` | 10 passed |
-| Pet offline-render regression — a window is not visibility | `tests/test_avatar_window.py` | 4 passed |
-| **HostAwarenessEngine** — deterministic suspend/network facts | `core/isymotron/awareness.py` | working |
-| Attribution — `HOST_SUSPENDED` is never `PROVIDER_ERROR` | `core/isymotron/attribution.py` | working |
-| Windows power provider — clock bias, no message pump | `hosts/windows/power.py` | working |
-| Provider seam — NVIDIA / Nebius, one env var apart | `agents/provider.py` | working |
-| Planner role — intent to a validated plan | `agents/planner.py` | working |
-| Executor — resolves `$from`, stops at the first DENY | `agents/executor.py` | working |
-| M0 acceptance gate | `tests/test_m0_gate.py` | 23 passed |
-| M1 real-hardware gate | `tests/test_win11_real.py` | 19 passed |
-| M3 planner gate (offline) | `tests/test_planner.py` | 29 passed |
-| M3 live gate (real Nemotron) | `tests/test_live_model.py` | 5 passed |
-| M4 host awareness gate | `tests/test_awareness.py` | 21 passed |
-| M5 console surface gate | `tests/test_console.py` | 23 passed |
-| Sealed receipts from real runs | `evidence/M0/`, `M1/`, `M3/` | 12 receipts + probe |
+| Deny-by-default contract with leases, scopes and sealed receipts | **DEMONSTRATED** | [`tests/test_m0_gate.py`](tests/test_m0_gate.py) |
+| Real filesystem and process surface on a Windows host | **DEMONSTRATED** | [`tests/test_win11_real.py`](tests/test_win11_real.py), [`evidence/M1/`](evidence/M1/) |
+| Planner refuses hallucinated or ungranted capabilities | **DEMONSTRATED** | [`tests/test_planner.py`](tests/test_planner.py) |
+| Live Nemotron planning path | **DEMONSTRATED, scoped** | [`tests/test_live_model.py`](tests/test_live_model.py), [`evidence/M3/`](evidence/M3/) |
+| Host-awareness attribution: suspend is not provider failure | **DEMONSTRATED** | [`tests/test_awareness.py`](tests/test_awareness.py), [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md) |
+| Console and read-only avatar authority channel | **DEMONSTRATED** | [`tests/test_console.py`](tests/test_console.py), [`tests/test_avatar_adversarial.py`](tests/test_avatar_adversarial.py), [`evidence/AV9/`](evidence/AV9/) |
+| Malbolge lesson with machine verdicts and sealed receipts | **DEMONSTRATED, scoped** | [`learning/`](learning/), [`evidence/MALBOLGE_V0/`](evidence/MALBOLGE_V0/) |
+| Nebius provider execution on this repository's current evidence | **NOT_DEMONSTRATED** | Provider seam exists; current evidence records NVIDIA NIM, while Nebius needs a fresh keyed run |
+| A real Windows 10 host | **NOT_DEMONSTRATED** | Windows 11 is the demonstrated real host; Windows 10 remains the product target |
+| Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
 
-**242 tests, all passing.** Doctor V0, the first Python sandbox/provider, and
-Malbolge lessons L3-L6 are
-present. The Git-backed activity registry and mock identity seam are present;
-a real Windows 10 host is the remaining platform verification target.
+## The capability fabric
 
-**Product host scope: Windows 10 and Windows 11 only.** Older simulated
-engines remain test fixtures for contract portability; they are not product
-targets or roadmap milestones.
+<img src="docs/assets/capability-fabric.svg" alt="ISyMotron capability fabric showing filesystem, process, apps and system capabilities" width="100%" />
 
-## Run it
+The current Windows host exposes a small, inspectable contract:
 
-One command for everything (install once, then it works from any new shell):
+| Capability | Bounds |
+|---|---|
+| `filesystem.read` | Granted roots; files and directory metadata |
+| `filesystem.write` | Granted roots; explicit create/overwrite |
+| `apps.launch` | Case-insensitive executable allowlist |
+| `process.inspect` | Read-only process names |
+| `system.info` | Non-identifying machine facts |
 
-```
-.\isymotron.ps1 install      # adds this folder to the user PATH
-isymotron help               # the full clap-style help, with the banner
-isymotron start --demo-host  # console + floating pet, opens the browser
+The contract is intentionally small. Adding a ninth operation is a contract
+version change, not an invisible feature.
+
+## Built with Nebius + NVIDIA
+
+ISyMotron includes a provider seam for NVIDIA NIM and Nebius Token Factory:
+
+```text
+Nebius or NVIDIA endpoint
+          ↓
+       Nemotron
+          ↓
+        Planner
+          ↓
+     Host policy
+          ↓
+        Receipt
 ```
 
-The CLI is a pass-through surface over commands that already exist in this
-repository — it holds no authority of its own:
+The provider changes how a plan is proposed; it does not change the grants,
+scope bounds or authority held by a host. Current repository evidence includes
+a live NVIDIA path. Nebius is wired into the same provider interface and is
+kept explicitly `NOT_DEMONSTRATED` until a fresh Nebius-keyed run is recorded.
 
-```
-isymotron start              console + floating pet + browser (adds --avatar)
-isymotron console --lan      the web console, reachable from your phone
-isymotron pet                only the pet: idles alone, attaches to a console
-isymotron test               the acceptance suite
-isymotron build              rebuild IsyMotron.exe (smoke test included)
-isymotron host status        what THIS machine is, and what it grants
-isymotron host grant filesystem.read --root "C:/Users/you/Pictures"
-isymotron spoof --inbox <f>  append the hostile demo lines to an inbox
-isymotron where              print the repository this CLI belongs to
-```
+## Verification
 
-Build the binary (PyInstaller is a build-time dependency only):
+The CI workflow runs on `windows-latest`, because the real host gate exercises
+Windows filesystem semantics, NTFS junctions and process state. It also builds
+the packaged executable and runs its HTTP/authentication smoke test.
 
-```
-isymotron build              # dist/IsyMotron.exe, 12 MB, self-smoke-tested
-IsyMotron.exe                # opens the console on localhost
-IsyMotron.exe --lan          # also reachable from your phone
-IsyMotron.exe --avatar       # ...plus the floating desktop pet
+```powershell
+# From the repository root on Windows
+py -m pytest -q
+py tests/test_m0_gate.py -q
+py tests/test_win11_real.py -q
+py tests/test_planner.py -q
+py tests/test_console.py -q
 ```
 
-Or from source (`py` is the Windows launcher; no dependencies beyond the
-standard library and `pytest`, no SDK):
+The live provider tests run only when a provider key is present; otherwise they
+skip without making the offline contract suite depend on an external service.
+The exact current count belongs to the CI run, not to a hand-maintained badge.
 
-```
-py -m pytest -q              # 196 passed
-py tools/m0_demo.py          # simulated walkthrough, writes evidence/M0/
-isymotron host status        # what THIS machine is, and what it grants
-```
+## Quickstart
 
-Make your own machine a host (it boots inert until you do):
+### Windows 10/11
 
-```
-isymotron host grant filesystem.read --root "C:/Users/you/Pictures"
-isymotron host do filesystem.read --path "C:/Users/you/Pictures"
-isymotron host do filesystem.read --path "C:/Users/you/Documents"   # DENY
-```
+```powershell
+git clone https://github.com/DannyBaanks/IsyMotron.git
+cd IsyMotron
 
-Wire up a model (either provider — the model id string is the same on both):
-
-```
-setx NVIDIA_NIM_API_KEY nvapi-...        # or NEBIUS_API_KEY, with
-setx ISYMOTRON_PROVIDER nebius           # this
-py tools/nemotron_check.py               # eligibility + planner + adversarial
-py tools/nemotron_check.py --models       # what the key can actually serve
+.\isymotron.ps1 help
+.\isymotron.ps1 start --demo-host
 ```
 
-No model key is needed for any of the authority surfaces — the pet, the
-inbox, grants and sealed receipts are the product; a key only adds a planner,
-never a permission.
+Make a real Windows machine inert until a human grants a scope:
 
-## Learn Malbolge with Malbolge Cat
-
-Malbolge is named after the eighth circle of Dante's Inferno. Published in
-1998 with nothing but a reference interpreter, it became the language
-where the first "Hello World" was **not written by a human — it was found
-by an automated beam search** (Lou Scheffer). It is widely described as the
-hardest programming language ever put on a machine.
-
-**IsyMotron teaches it anyway — and grades you with machinery, not opinions.**
-
-The first lesson is source encoding: every printable character in a Malbolge
-program decodes to an instruction *depending on where it sits*:
-
-```
-    op = (ASCII(char) + c) mod 94          the decode, at position c
-
-    r   = (op - c) mod 94                  the inverse: you choose the
-    ASCII = r        if 33 <= r <= 93        instruction, you derive the
-    ASCII = r + 94   if 0 <= r <= 32        character
-    char  = chr(ASCII)
+```powershell
+.\isymotron.ps1 host status
+.\isymotron.ps1 host grant filesystem.read --root "C:/Users/you/Pictures"
+.\isymotron.ps1 host do filesystem.read --path "C:/Users/you/Pictures"
+.\isymotron.ps1 host do filesystem.read --path "C:/Users/you/Documents" # DENY
 ```
 
-The cat asks, you answer:
+Optional model planning:
 
-```
-  Exercise 1 (malbolge-nop-17)
-  The cat wants NOP at position 17. Which single printable character produces it?
-  your answer: 3
-```
-
-Then three real machines take your answer — none of them is a model:
-
-```
-      your '3'
-         |
-         +-- classic_codec.decode ....... opcode 68 (nop)
-         |      the positional codec, exhaustive parity over all
-         |      59049 cells, vendored byte-for-byte (sha256 recorded)
-         |
-         +-- malbolge-oracle XLAT1 ....... instruction 'o'
-         |      reference semantics transcribed from the 1998
-         |      interpreter, written WITHOUT consulting any other
-         |      implementation -- a real differential, not a copy
-         |
-         +-- Oracle.run .................. a 19-cell program with YOUR
-                character at position 17 executes on the reference
-                machine: halted, 19 steps, accumulator 0
-         |
-         v
-  VERDICT: PASS   (verdict_source: machine; receipt rcpt_84c5a2fcc8724542; seal ok)
+```powershell
+$env:NVIDIA_NIM_API_KEY = "..."
+# or: $env:NEBIUS_API_KEY = "..."
+$env:ISYMOTRON_PROVIDER = "nvidia" # or "nebius"
+py tools/nemotron_check.py
 ```
 
-**CAT SPEAKS. TOOLING PROVES.**
+Linux is useful for inspecting and testing portable modules, but a real Linux
+product host is not demonstrated and is not part of the current product scope.
 
-- No model is anywhere in the verification path. V0 passes with no API key
-  at all — a lesson that needs a paid opinion to grade you would be
-  architecturally wrong.
-- No tooling, no verdict: an unloaded verifier answers `UNAVAILABLE`, never
-  "the model said it was right".
-- A receipt with an edited verdict breaks its own seal. That is a test.
-- The cat announces the machine's verdict live through the open channel —
-  speech it can never manufacture into a verdict.
+## Repository map
 
-Every outcome is a sealed, tamper-evident receipt (real ids from the
-evidence runs):
+```text
+core/isymotron/     contract, policy, leases, receipts, awareness, Doctor
+hosts/windows/      real Windows host, grants and power provider
+hosts/simulator/    deterministic fixture engines
+agents/             provider, planner and executor roles
+relay/              transport-only loopback relay
+console/            local web console and avatar API
+avatar/             trust-separated web/desktop avatar
+learning/           Malbolge lesson packs and verifiers
+evidence/           sealed run artifacts and screenshots
+tests/              contract, host, planner, console and adversarial gates
+docs/               architecture, findings and operational guides
+```
 
-| your answer | machines say | receipt |
+## Security and authority model
+
+- Missing or unreadable grants produce an inert host, not an unrestricted one.
+- A remote console may use granted authority but cannot widen it.
+- The avatar has a separate read-only token and cannot POST authority actions.
+- Receipts are produced for both `ALLOW` and `DENY` outcomes.
+- A denied receipt has no protected result payload.
+- The Python sandbox/Doctor is a scoped verification provider, not a universal
+  OS security boundary; see [`docs/SANDBOX_V0.md`](docs/SANDBOX_V0.md).
+- Network paths, device paths, NTFS alternate data streams and TOCTOU races
+  remain explicitly unverified; see [`docs/FINDINGS.md`](docs/FINDINGS.md).
+
+## Roadmap
+
+| NOW | NEXT | RESEARCH |
 |---|---|---|
-| `3` | opcode 68 (nop), reference 'o', clean 19-step halt | **PASS** `rcpt_70a00e1131d049b8` |
-| `4` | opcode 69 — not nop | **FAIL** `rcpt_e5ada8d037c3469b` |
-| `zz` | out of contract | **INVALID** `rcpt_eaa6d8cffa3e411f` |
-| *(tooling unloaded)* | no tooling, no verdict | **UNAVAILABLE** `verified_by: []` |
-
-Before any of your answers are trusted, the gate proves the machinery
-itself: the vendored oracle must reproduce the canonical published
-hello-world program byte-for-byte (`Hello World!`, 40 steps), the codec
-must keep its encode/decode parity, and on the dev machine the vendored
-copies are checked against their source repositories.
-
-```
-isymotron learn malbolge                     # the whole lesson, interactive
-isymotron learn malbolge --exercise 1 --answer 3
-isymotron learn malbolge --all               # every exercise, interactive
-isymotron learn malbolge-advanced --all      # L3-L6, interactive
-```
-
-If the console and the pet are up, the cat announces the machine's verdict
-live through the open channel — a bubble it can speak but never forge.
-Verdicts, provenance and the capability roadmap (L0-L13, each mapped to
-the discovered tooling that would earn it):
-[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md) ·
-[`evidence/MALBOLGE_V0/capability_map.md`](evidence/MALBOLGE_V0/capability_map.md).
-
-What V0 claims is exactly what was demonstrated: **learn → build →
-execute → verify → receipt**, on one real lesson, with machine verdicts —
-not "IsyMotron masters Malbolge". The rest of the curriculum is earned one
-milestone at a time.
-
-## The avatar (the part a person sees)
-
-A small transparent cat floats on your desktop and mirrors what the host
-decided: a red frame with the verdict, the receipt id and the seal when
-something was allowed or refused; a calm animation the rest of the time. It
-renders its idle body with or without a console running (`isymotron pet`
-works standalone) and attaches to the console's view within half a second of
-one coming up. It lives in the console page too, so the phone sees the same
-pet.
-
-Two channels feed it, and they are not equal:
-
-- what **the host decided** — drawn in the host frame. It can only come from
-  the IsyMotron process itself, over a token the avatar can read with and
-  never write with;
-- what **someone said** — anything appended to the inbox file renders as a
-  third-party bubble, labelled with who wrote it, verbatim, never filtered.
-  A line that *claims* to be a verdict loses those fields before it exists:
-  talking grants nothing, and the frame cannot be talked into.
-
-See [`docs/AVATAR_CONTRACT.md`](docs/AVATAR_CONTRACT.md) for the frozen rules
-(R1–R7) and [`docs/AVATAR_ROADMAP.md`](docs/AVATAR_ROADMAP.md) for how each
-one was built and proven.
-
-## Credits
-
-The desktop avatar window, the pack loader and the Malbolge Cat pack are
-adapted from **Companion**, the author's own prior MIT-licensed work
-(repository `Companion`, commit `0aae576`), copied into this repository and
-reused under the terms of the MIT license. The companion-event-v1 inbox
-protocol is Companion's transport, unchanged. (Devpost text: declare it.)
-
-The CLI banner is a deterministic render by **GlyphFuck**, the author's own
-MIT-licensed ASCII geometry DSL (repository `GlyphFuck`), generated from
-[`tools/cli-banner.gf`](tools/cli-banner.gf) once and embedded as static art;
-the CLI never imports glyphfuck at runtime.
-
-Spanish walkthrough, command by command, with the real output:
-[`docs/GUIA.es.md`](docs/GUIA.es.md).
-
-## The ten rules the code actually enforces
-
-1. **No capability means no action.** `list_capabilities()` omits ungranted
-   capabilities entirely. They are absent from the agent's world, not forbidden
-   in it.
-2. **Deny-by-default, first reason wins.** The enforcer checks in a fixed
-   order and reports the *first* failure, so a caller cannot probe the scope of
-   a capability it was never granted.
-3. **A model never returns ALLOW.** `Enforcer.decide` is the only thing in the
-   system that can, and it is a pure function with no I/O.
-4. **A refusal is an outcome.** DENY produces a sealed receipt like anything
-   else. Silence is not a result.
-5. **Narrowing is safe, widening is impossible.** A client may ask for less
-   scope than it was granted; anything outside the local grant is dropped when
-   the lease is issued, not when it is used.
-6. **Enforcement is two-stage and both stages can refuse.** The enforcer checks
-   the request as written; the engine re-checks what the OS actually resolves.
-   A junction inside a granted root passes the first and is stopped by the
-   second — see [`docs/FINDINGS.md`](docs/FINDINGS.md) #1.
-7. **A plan is a proposal.** The planner only ever sees granted capabilities,
-   its output is validated against the manifests, and every step is still
-   judged by the host. Nemotron asked to launch `DOOM`; the allowlist grants
-   `DOOM.EXE`; the host refused. No prompt made that happen.
-8. **A capability's result shape is part of its contract.** Two engines
-   returned the same value under different names and a plan broke on it —
-   `returns` is now declared and cross-step references are checked against it.
-9. **A remote surface uses authority; it never widens it.** The console grants
-   only from loopback. A phone can read, plan and execute what a human already
-   allowed at the keyboard, and `/api/grant` from the network is a 403.
-10. **Never ask a model to infer host state the host can report.** A closed
-   laptop lid once looked exactly like provider throttling. The machine knows,
-   and `time.monotonic()` on Windows does not —
-   see [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md).
-
-## Layout
-
-```
-isymotron.ps1     The CLI. Pass-through surface; holds no authority.
-core/isymotron/   L0. Contract, policy, verdicts, canonical digests.
-agents/           L1. Provider seam, planner, executor. The only model code.
-console/          The web surface and its static files. Holds no authority.
-avatar/           Model, inbox, window and packs for the desktop pet.
-learning/         The learning seam; packs teach, tooling verifies.
-hosts/windows/    The real Windows engine and the local grant file.
-hosts/simulator/  Two engines that serve the same contract differently.
-relay/            Transport. Holds no policy and cannot execute.
-clients/          Fake mobile surface.
-tests/            The acceptance gates: M0, M1, M3, M4, M5, avatar.
-tools/            m0_demo.py, host_cli.py, nemotron_check.py, cli-banner.gf.
-evidence/         Receipts produced by real runs, not by hand.
-docs/             Thesis, architecture, evidence, findings, prior art, Spanish guide.
-```
-
-## Documents
-
-- [`docs/PRODUCT_THESIS.md`](docs/PRODUCT_THESIS.md) — what this is and what it is not
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the contract and the L0/L1 boundary
-- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — every claim, with its current status
-- [`docs/FINDINGS.md`](docs/FINDINGS.md) — what the code taught us that the design did not
-- [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md) — why a closed laptop looked like provider throttling, and the fix
-- [`docs/PRIOR_ART_ISYCO.md`](docs/PRIOR_ART_ISYCO.md) — what ISyCo already solved
-- [`docs/ROADMAP_DELTA.md`](docs/ROADMAP_DELTA.md) — where this repo departs from the roadmap, and why
-- [`docs/AVATAR_CONTRACT.md`](docs/AVATAR_CONTRACT.md) — the frozen avatar rules (R1–R7)
-- [`docs/GUIA.es.md`](docs/GUIA.es.md) — guía en español, con la salida real de cada comando
+| Typed host contract | Fresh Nebius evidence run | Marketplace trust at scale |
+| Local authority and receipts | Real Windows 10 verification | Additional host generations |
+| Nemotron planner/executor | Harden malformed grant handling | Network relay transports |
+| Console + avatar demo | CI count refresh and evidence refresh | Stronger OS-level sandbox providers |
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+ISyMotron is released under the [MIT License](LICENSE).
+
+## Asset provenance
+
+The README artwork and evidence screenshots are catalogued in
+[`docs/assets/PROVENANCE.md`](docs/assets/PROVENANCE.md). The hero is generated
+illustration only; it is not a screenshot, benchmark or proof of execution.
