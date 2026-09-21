@@ -1,11 +1,10 @@
-"""LinuxPowerProvider — the seam, documented and deliberately not faked.
+"""LinuxPowerProvider — native Linux power and network observations.
 
-Status: `NOT_DEMONSTRATED`. This file exists so the core does not depend on
-Windows, and so that whoever implements it does not have to rediscover the
-design. It is not a working backend and does not pretend to be one:
-`sample()` returns the same "I do not know" a `NullPowerProvider` would,
-because a stub that reported ACTIVE would be exactly the lie this whole engine
-was built to prevent.
+The retrospective power mechanism is implemented here using Linux's
+``CLOCK_BOOTTIME`` and ``CLOCK_MONOTONIC`` clocks.  The former advances during
+suspend while the latter does not, so their difference is the accumulated
+suspend bias.  Network state is read from local interface ``operstate`` files.
+Neither observation requires root or a network request.
 
 The two mechanisms to use, in order
 -----------------------------------
@@ -40,40 +39,76 @@ not always present. Until one is implemented, `NetworkState.UNKNOWN` is the
 correct answer, and `attribute()` already treats UNKNOWN network as a reason to
 return `UNKNOWN` rather than to blame a provider.
 
+The pre-suspend notification is not implemented here, so this provider is
+retrospective, like the Windows provider.  It can demonstrate that a suspend
+occurred after the fact, but never claims ``SUSPENDING`` before it happens.
+
 Not implemented here, and not scheduled: macOS. There is no hardware to
 demonstrate it on, so it stays `NOT_DEMONSTRATED` rather than becoming a third
 untested stub.
 """
 from __future__ import annotations
 
+import os
 import time
 
 from isymotron.awareness import NetworkState, PowerProvider, PowerSample
 
 
 class LinuxPowerProvider(PowerProvider):
-    """Seam only. Reports UNKNOWN until mechanism 1 above is implemented."""
+    """Read retrospective suspend time and local interface state on Linux."""
 
     name = "linux-seam"
-    implemented = False
+    implemented = True
+    _NET_ROOT = "/sys/class/net"
+
+    @staticmethod
+    def _network() -> NetworkState:
+        """Return the aggregate state of non-loopback Linux interfaces."""
+        net_root = LinuxPowerProvider._NET_ROOT
+        try:
+            names = [name for name in os.listdir(net_root)
+                     if name != "lo"]
+        except OSError:
+            return NetworkState.UNKNOWN
+        if not names:
+            return NetworkState.UNKNOWN
+        states: list[str] = []
+        for name in names:
+            try:
+                with open(f"{net_root}/{name}/operstate", encoding="ascii") as f:
+                    states.append(f.read().strip().lower())
+            except OSError:
+                continue
+        if not states:
+            return NetworkState.UNKNOWN
+        return (NetworkState.UP if any(state == "up" for state in states)
+                else NetworkState.DOWN)
 
     def sample(self) -> PowerSample:
+        wall = time.time()
+        monotonic = time.clock_gettime(time.CLOCK_MONOTONIC)
+        boottime = time.clock_gettime(time.CLOCK_BOOTTIME)
+        bias = max(0.0, boottime - monotonic)
         return PowerSample(
-            wall_time=time.time(),
-            monotonic_time=time.monotonic(),
-            unbiased_time=None,
-            suspend_bias_s=None,      # None, never 0.0: we do not know.
-            network_state=NetworkState.UNKNOWN,
+            wall_time=wall,
+            monotonic_time=monotonic,
+            unbiased_time=monotonic,
+            suspend_bias_s=bias,
+            boot_wall_time=wall - boottime,
+            network_state=self._network(),
             source=self.name,
-            detail={"status": "NOT_DEMONSTRATED",
-                    "next_step": "CLOCK_BOOTTIME minus CLOCK_MONOTONIC"},
+            detail={"status": "DEMONSTRATED",
+                    "clock": "CLOCK_BOOTTIME - CLOCK_MONOTONIC",
+                    "network": "/sys/class/net/*/operstate"},
         )
 
     def describe(self) -> dict:
         return {
             "provider": self.name,
-            "implemented": False,
-            "evidence": "NOT_DEMONSTRATED",
-            "planned_mechanism": "CLOCK_BOOTTIME - CLOCK_MONOTONIC, "
-                                 "then logind PrepareForSleep for pre-suspend",
+            "implemented": True,
+            "evidence": "DEMONSTRATED",
+            "mechanism": "CLOCK_BOOTTIME - CLOCK_MONOTONIC",
+            "network_probe": "/sys/class/net/*/operstate",
+            "pre_suspend_notification": False,
         }

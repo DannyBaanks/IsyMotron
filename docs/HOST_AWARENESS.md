@@ -97,7 +97,7 @@ how long?*
       |  describe / snapshot / recent_events / health
       |
       +-- WindowsPowerProvider            hosts/windows/power.py     WORKING
-      +-- LinuxPowerProvider              hosts/linux/power.py       SEAM ONLY
+      +-- LinuxPowerProvider              hosts/linux/power.py       WORKING (retrospective)
       +-- TestPowerProvider               core/isymotron/awareness.py
       +-- NullPowerProvider               core/isymotron/awareness.py
 
@@ -264,10 +264,10 @@ the ability to say afterwards that the wall clock is not the provider's fault.
 
 - **No pre-suspend notification.** `SUSPENDING` and `SUSPENDED` are never
   reported live. `NOT_DEMONSTRATED`.
-- **Linux is a seam, not a backend.** The mechanism is documented
-  (`CLOCK_BOOTTIME − CLOCK_MONOTONIC`, then logind `PrepareForSleep`) and
-  `LinuxPowerProvider` reports `UNKNOWN` rather than pretending.
-  `NOT_DEMONSTRATED`.
+- **Linux is retrospective only.** `LinuxPowerProvider` reads
+  `CLOCK_BOOTTIME − CLOCK_MONOTONIC` and local interface `operstate` files,
+  so Linux power continuity and local network state are demonstrated. It does
+  not claim a pre-suspend notification; that remains `NOT_DEMONSTRATED`.
 - **macOS: absent.** No hardware to demonstrate it on, so no stub.
   `NOT_DEMONSTRATED`.
 - **Network probe is local belief, not reachability.** `InternetGetConnectedState`

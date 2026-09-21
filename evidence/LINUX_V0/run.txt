@@ -1,0 +1,18 @@
+ISyMotron Linux native awareness probe
+timestamp: 2026-09-21
+host: Ubuntu 24.04.5 LTS, Linux 7.0.0-31-generic, x86_64
+python: 3.12.3
+command: .venv-linux/bin/python -m pytest -q
+exit: 0
+stdout: 219 passed, 9 skipped in 22.57s
+
+live provider probe (PYTHONPATH=core python3):
+provider=linux-seam
+implemented=true
+evidence=DEMONSTRATED
+mechanism=CLOCK_BOOTTIME - CLOCK_MONOTONIC
+network_probe=/sys/class/net/*/operstate
+power_state=ACTIVE
+network_state=UP
+suspend_observable=true
+pre_suspend_notification=false

@@ -13,9 +13,10 @@ R2), and every file-writing path. This process reads ``/api/avatar`` with the
 read-only avatar token (AV3) and has no inbox access of its own: the server
 is the single merger, so R1 is enforced in exactly one place.
 
-This module imports Tk but never opens a window at import time; the worker
-opens one only in :func:`run_avatar_worker`, which is meant to run in its own
-subprocess (Tk wants the main thread, and the console wants its own process).
+Tk is loaded lazily because the read-only :class:`AvatarClient` is also useful
+on headless hosts.  The worker opens a window only in
+:func:`run_avatar_worker`, which is meant to run in its own subprocess (Tk
+wants the main thread, and the console wants its own process).
 """
 
 from __future__ import annotations
@@ -23,7 +24,6 @@ from __future__ import annotations
 import json
 import re
 import sys
-import tkinter as tk
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -33,6 +33,14 @@ from avatar.protocol import POSITIONS
 
 POLL_MS = 500
 FETCH_TIMEOUT_S = 3.0
+
+
+def _tk_module():
+    """Load Tk only for GUI users; keep the transport headless-portable."""
+    global tk
+    if "tk" not in globals():
+        import tkinter as tk
+    return tk
 
 
 class AvatarClient:
@@ -72,6 +80,7 @@ class AnimatedAsset:
     """GIF frame animation with per-frame durations, from Companion verbatim."""
 
     def __init__(self, path: Path, clock=None):
+        _tk_module()
         import time as _time
         self.path = path
         self.clock = clock or _time.monotonic
@@ -175,6 +184,7 @@ class AvatarWindow:
     def __init__(self, client: AvatarClient, pack: AssetPack, *,
                  name: str = "IsyMotron", topmost: bool = True,
                  opacity: float = 1.0) -> None:
+        _tk_module()
         self.client = client
         self.pack = pack
         self.name = name

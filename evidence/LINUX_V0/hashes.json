@@ -1,0 +1,7 @@
+{
+  "algorithm": "SHA-256",
+  "artifacts": {
+    "run.txt": "baf7d0c5e72b3fa44feee7fec62646d0855a7040005db2a4950983877bba9361",
+    "FACTS.md": "c2b6b722ab8ca19f2a0e0a4a79a0779221a555d9eff933d7e3db8caa05a928a6"
+  }
+}

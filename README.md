@@ -183,8 +183,9 @@ $env:ISYMOTRON_PROVIDER = "nvidia" # or "nebius"
 py tools/nemotron_check.py
 ```
 
-Linux is useful for inspecting and testing portable modules, but a real Linux
-product host is not demonstrated and is not part of the current product scope.
+Linux native host awareness is demonstrated for retrospective suspend timing
+and local interface state. The product host scope remains Windows 10/11; Linux
+does not claim pre-suspend notifications or a desktop avatar without Tk.
 
 ## Repository map
 

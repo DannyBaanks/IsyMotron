@@ -200,9 +200,18 @@ check exists because the first build compiled cleanly and died on launch.
 Product host scope: **Windows 10 and Windows 11**. Older Windows names in
 fixtures are not product targets or roadmap claims.
 
-Platform status: Windows `DEMONSTRATED`; Linux `NOT_DEMONSTRATED` (documented
-seam, reports UNKNOWN); macOS `NOT_DEMONSTRATED` (no hardware, no stub);
+Platform status: Windows `DEMONSTRATED`; Linux native awareness
+`DEMONSTRATED` (Ubuntu 24.04, retrospective power bias and local interface
+state); macOS `NOT_DEMONSTRATED` (no hardware, no stub);
 pre-suspend notification `NOT_DEMONSTRATED` (no message pump, never claimed).
+
+Linux evidence (2026-09-21): `.venv-linux/bin/python -m pytest -q` produced
+`219 passed, 9 skipped` on Ubuntu 24.04.5 LTS / Python 3.12.3. The Linux
+provider reads `CLOCK_BOOTTIME - CLOCK_MONOTONIC` and
+`/sys/class/net/*/operstate`; no root access or network request is required.
+The result demonstrates retrospective continuity and network-state observation,
+not pre-suspend notification, hibernation, VM pause, or a Linux product host
+surface.
 
 ---
 
