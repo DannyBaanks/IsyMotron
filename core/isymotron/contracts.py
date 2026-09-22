@@ -229,6 +229,7 @@ class ExecutionReceipt:
     result_digest: str | None = None
     reproduce: Mapping[str, Any] | None = None
     seal_kind: str = "unkeyed"
+    claim_digest: str | None = None
 
     def payload(self) -> dict:
         base = {
@@ -255,6 +256,7 @@ class ExecutionReceipt:
             base["result_digest"] = self.result_digest
             base["reproduce"] = dict(self.reproduce) if self.reproduce is not None else None
             base["seal_kind"] = self.seal_kind
+            base["claim_digest"] = self.claim_digest
         return base
 
     def sealed(self) -> "ExecutionReceipt":
@@ -302,6 +304,7 @@ class ExecutionReceipt:
             result_digest=data.get("result_digest"),
             reproduce=data.get("reproduce"),
             seal_kind=data.get("seal_kind", "unkeyed"),
+            claim_digest=data.get("claim_digest"),
         )
 
 
