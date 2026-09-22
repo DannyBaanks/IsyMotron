@@ -624,18 +624,30 @@ def _menu_ok() -> bool:
 
 def _render_choices(header: str, message: str, choices: list[dict],
                     index: int, stdout) -> None:
+    """One frame, from the top of the screen.
+
+    `\\r\\n` and not `\\n`: raw mode clears OPOST/ONLCR, so the kernel stops
+    translating a bare newline into carriage-return + line-feed and every line
+    would start where the previous one ended -- the cascade that a real
+    terminal shows and a byte-level test does not.
+    """
+    eol = "\r\n"
+    # Any newline a caller left inside the text must become CRLF too: the
+    # header is built with "\n" and, raw, that line break cascades on its own.
+    header = header.replace("\r\n", "\n").replace("\n", eol)
+    message = message.replace("\r\n", "\n").replace("\n", eol)
     lines = [CLEAR_HOME]
     if header:
-        lines.append(_style(header, "dim", stream=stdout) + "\n")
-    lines.append(_style(message, "bold", stream=stdout) + "\n")
+        lines.append(_style(header, "dim", stream=stdout) + eol)
+    lines.append(_style(message, "bold", stream=stdout) + eol)
     for i, choice in enumerate(choices):
         mark = "❯" if i == index else " "
         label = choice["label"]
         if i == index:
             label = _style(label, "inverse", stream=stdout)
         hint = f"  {choice['hint']}" if choice.get("hint") else ""
-        lines.append(f"{mark} {label}{hint}\n")
-    lines.append(_style(MENU_HINT, "dim", stream=stdout) + "\n")
+        lines.append(f"{mark} {label}{hint}" + eol)
+    lines.append(_style(MENU_HINT, "dim", stream=stdout) + eol)
     stdout.write("".join(lines))
     stdout.flush()
 

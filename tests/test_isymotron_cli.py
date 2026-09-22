@@ -442,6 +442,19 @@ def test_menu_redraw_clears_the_screen_instead_of_moving_the_cursor():
 
 
 @LINUX_ONLY
+def test_menu_line_breaks_carry_a_carriage_return():
+    """Raw mode clears OPOST/ONLCR, so a bare newline does not return the
+    carriage and the menu renders as a diagonal cascade. Seen by eye in a real
+    terminal, invisible to a byte-level assertion that only looked for text."""
+    code, out = _run_in_pty(b"q")
+    assert code == 0, out
+    data = out.encode("utf-8")
+    assert b"\r\n" in data, "the menu emitted no CRLF at all"
+    assert data.count(b"\n") == data.count(b"\r\n"), \
+        "a line break without a carriage return: the cascade is back"
+
+
+@LINUX_ONLY
 def test_plain_menu_is_available_without_cursor_control():
     """The escape hatch for a captured pane: no escape sequences, numbers."""
     code, out = _run_in_pty(b"7\n", env={"ISYMOTRON_MENU": "plain"})
