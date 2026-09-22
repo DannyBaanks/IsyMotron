@@ -9,7 +9,9 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any, Mapping
 
+from .canon import digest
 from .contracts import (
+    CONTRACT_V1,
     CapabilityManifest,
     ExecutionReceipt,
     ExecutionRequest,
@@ -28,7 +30,9 @@ from .resources import (
     resolve_path,
     to_uri,
 )
+from .seal import HMAC_SHA256, UNKEYED, resolve_key
 from .verdicts import Decision, DenyReason, Evidence
+from .verify import ClaimBundle
 
 OPERATIONS = (
     "identify", "describe", "list_capabilities", "request_lease",
@@ -77,6 +81,7 @@ class Host(ABC):
         self._max_ttl = max_lease_ttl_s
         self._leases: dict[str, Lease] = {}
         self._receipts: dict[str, ExecutionReceipt] = {}
+        self._claim_bundles: dict[str, ClaimBundle] = {}
         self._enforcer = Enforcer(self.describe(), admin_granted=admin_granted)
 
     # -- 1 ------------------------------------------------------------------
@@ -133,8 +138,14 @@ class Host(ABC):
     # -- 6 ------------------------------------------------------------------
     def execute_capability(self, req: ExecutionRequest, now: float | None = None) -> ExecutionReceipt:
         started = time.time()
+        # Pin the decision instant. The receipt is reproduced at this exact
+        # time, so a lease alive at decision time stays alive during
+        # re-derivation instead of looking expired against the wall clock.
+        decided_at = started if now is None else now
         lease = self._leases.get(req.lease_id) if req.lease_id else None
-        decision = self._enforcer.decide(req, lease, now=now)
+        policy_input = self._enforcer.description
+        decision = self._enforcer.decide(req, lease, now=decided_at)
+        engine_overrode = False
 
         result: dict[str, Any] = {}
         effects: list[dict[str, Any]] = []
@@ -147,6 +158,7 @@ class Host(ABC):
                 # The engine overrides the enforcer's ALLOW. A refusal is a
                 # refusal wherever it is discovered, and it carries no payload.
                 decision = PolicyDecision(Decision.DENY, exc.reason, exc.detail)
+                engine_overrode = True
                 result, effects = {}, []
                 evidence = Evidence.DEMONSTRATED
             except Exception as exc:  # engine failure is not a policy verdict
@@ -155,6 +167,22 @@ class Host(ABC):
                 evidence = Evidence.UNKNOWN
         else:
             evidence = Evidence.DEMONSTRATED  # the refusal itself is demonstrated
+
+        # Quine Gate v1 provenance. A decision the enforcer alone produced is
+        # re-derivable from the bundle; an engine override is not -- it depends
+        # on OS state the verifier does not have -- so no claim is made for it.
+        bundle = None
+        if not engine_overrode:
+            bundle = ClaimBundle(
+                host=policy_input,
+                request=req,
+                lease=lease,
+                decided_at=decided_at,
+                expected=decision,
+                admin_granted=self._enforcer.admin_granted,
+            )
+        capability = next((c for c in policy_input.capabilities
+                           if c.id == req.capability), None)
 
         receipt = ExecutionReceipt(
             receipt_id=new_receipt_id(),
@@ -170,9 +198,28 @@ class Host(ABC):
             result=result,
             effects=effects,
             evidence=evidence,
+            contract=CONTRACT_V1,
+            claim_digest=bundle.digest() if bundle is not None else None,
+            policy_digest=digest(policy_input.to_dict()),
+            capability_digest=digest(capability.to_dict()) if capability else None,
+            result_digest=digest(result),
+            reproduce={"tool": self._identity.engine,
+                       "request_digest": req.digest(),
+                       "decided_at": decided_at},
+            seal_kind=HMAC_SHA256 if resolve_key() else UNKEYED,
         ).sealed()
         self._receipts[receipt.receipt_id] = receipt
+        if bundle is not None:
+            self._claim_bundles[receipt.receipt_id] = bundle
         return receipt
+
+    def claim_bundle(self, receipt_id: str) -> ClaimBundle | None:
+        """The reproduction inputs for a v1 receipt.
+
+        An evidence helper, not one of the 8 contract operations: the receipt
+        travels without the raw params, and the bundle stays local.
+        """
+        return self._claim_bundles.get(receipt_id)
 
     # -- 7 ------------------------------------------------------------------
     def return_receipt(self, receipt_id: str) -> ExecutionReceipt | None:

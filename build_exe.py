@@ -34,6 +34,7 @@ DATA = [
 HIDDEN = [
     "isymotron.awareness", "isymotron.attribution", "isymotron.contracts",
     "isymotron.host", "isymotron.policy", "isymotron.verdicts", "isymotron.canon",
+    "isymotron.seal", "isymotron.verify",
     "windows.win11", "windows.grants", "windows.power",
     "simulator.engines",
     "agents.provider", "agents.planner", "agents.executor",
