@@ -171,8 +171,10 @@ isymotron learn malbolge-advanced --all      # L3-L13, interactive
 ```
 
 Verdicts, provenance and the capability roadmap (L0–L13, each mapped to the
-discovered tooling behind it):
-[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md) ·
+discovered tooling behind it): full write-up in
+[`docs/MALBOLGE.md`](docs/MALBOLGE.md), the executed runs in
+[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md) and the discovery
+inventory in
 [`evidence/MALBOLGE_V0/capability_map.md`](evidence/MALBOLGE_V0/capability_map.md).
 The vendored tooling is recorded byte-for-byte in
 [`learning/packs/malbolge/vendor/PROVENANCE.md`](learning/packs/malbolge/vendor/PROVENANCE.md).
