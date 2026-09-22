@@ -1185,3 +1185,118 @@ Trampas del CI (2026-09-19):
   todos los repos y no tienen nada que ver con el producto.
 - **No hay secrets = no hay claves en el repo.** Las claves viven cifradas en
   GitHub Secrets, nunca en el código ni en el workflow.
+
+---
+
+## Apéndice A. El CLI `isymotron`: todo desde un comando
+
+Todo lo de esta guía —y lo que se construyó después (Quine Gate, Process
+Verifier, verificación de manifiestos de evidencia)— se alcanza desde **un solo
+comando**. La tabla de verbos vive en un único sitio (`tools/isymotron_cli.py`)
+y un test falla si queda una capacidad sin comando. En Windows `isymotron.ps1`
+delega en ese mismo código; en Linux hay un shim de seis líneas
+(`tools/isymotron`).
+
+**Las salidas de este apéndice son reales, ejecutadas el 2026-09-22 en el host
+Linux de desarrollo.** El CLI es multiplataforma; lo que aquí no se pueda correr
+en Linux (consola, pet, build) sigue pasando por el mismo comando, sin cambios.
+
+### A.1 Ver todos los comandos
+
+```
+$ isymotron help
+
+ ### ##### #   # #   # ###### ##### ####  ###### #   #
+  #  #      # #  ## ## #    #   #   #  #  #    # #  ##
+  #  #####   #   # # # #    #   #   ####  #    # # # #
+  #      #   #   #   # #    #   #   #  #  #    # ##  #
+ ### #####   #   #   # ######   #   #   # ###### #   #
+
+  capability fabric -- one command for the whole product
+
+Usage: isymotron [OPTIONS] [COMMAND] [ARGS]...
+
+Commands:
+  start        console + floating pet + browser (adds --avatar)
+  ...
+```
+
+(Recortado: `help` imprime los 18 verbos; `isymotron --help` añade las notas.)
+
+Sin argumentos y **con terminal**, en lugar de la ayuda aparece un **menú con
+flechas** (`↑↓`, Enter, Esc, o el número de la opción). Sin terminal imprime la
+ayuda y sale: nunca se queda esperando una entrada que no va a llegar.
+
+### A.2 Dónde está el repo
+
+```
+$ isymotron where
+/home/danny/Development/ISyCo Git/IsyMotron
+```
+
+### A.3 Las claves: se ponen una vez y no se imprimen nunca
+
+```
+$ isymotron keys set NVIDIA_NIM_API_KEY
+NVIDIA_NIM_API_KEY: stored (sha256:bd211e908a8b) -> /tmp/opencode/guia-keys.env
+
+$ isymotron keys list
+store: /tmp/opencode/guia-keys.env
+  NEBIUS_API_KEY           missing
+  NVIDIA_NIM_API_KEY       set  sha256:bd211e908a8b
+  ISYMOTRON_RECEIPT_KEY    missing
+  ISYMOTRON_PROVIDER       missing
+```
+
+(El `store` que se ve es uno de ejemplo; el real es
+`~/.config/isymotron/keys.env`, permisos `600`. El valor de la clave **no se
+imprime nunca**: solo su huella `sha256[:12]`. El fichero vive fuera del repo, y
+el CLI se lo inyecta a cada hijo que lanza, así que no hace falta exportar nada.)
+
+### A.4 Verificar un manifiesto de evidencia
+
+Esto era código de librería sin comando; ahora:
+
+```
+$ isymotron evidence verify evidence/M3/hashes.json
+{
+  "manifest": "evidence/M3/hashes.json",
+  "algorithm": "SHA-256",
+  "passed": true,
+  "reason": "all artifacts match",
+  "artifacts": [
+    ...
+  ]
+}
+```
+
+Sale 0 si cuadra, 1 si corrió y algún byte no cuadra, 2 si ni siquiera pudo
+verificar.
+
+### A.5 Un comando que no existe sale con 2
+
+```
+$ isymotron zzz
+
+error: unknown command 'zzz'
+
+Usage: isymotron [OPTIONS] [COMMAND] [ARGS]...
+
+For more information, try 'isymotron help'.
+```
+
+Los códigos son 0/1/2 como en el resto del producto: 0 bien, 1 el resultado es
+negativo (un DENY, un manifiesto que no cuadra), 2 no se pudo hacer.
+
+### A.6 Dos comandos que quizá no conocías
+
+```
+$ isymotron quine demo
+$ isymotron process verify <pid> --baseline proc.baseline.json
+```
+
+`process verify` también usa 0/1/2: 0 es la misma instancia con el mismo
+binario, 1 es drift (binario cambiado o pid reutilizado), 2 no se pudo observar.
+
+La tabla completa, los códigos de salida y el modelo de claves:
+[`docs/CLI.md`](CLI.md).

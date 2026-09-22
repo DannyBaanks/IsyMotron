@@ -442,3 +442,16 @@ def test_powershell_shim_delegates_instead_of_duplicating_the_table():
     ps1 = (REPO / "isymotron.ps1").read_text(encoding="utf-8")
     assert "isymotron_cli.py" in ps1, "the Windows shim must delegate"
     assert "$Verbs" not in ps1, "a second verb table is the thing that rots"
+
+
+# -- M8: the docs do not drift from the table --------------------------------
+
+def test_the_cli_doc_lists_every_verb():
+    doc = (REPO / "docs" / "CLI.md").read_text(encoding="utf-8")
+    for name in cli.VERBS:
+        assert f"`{name}`" in doc, f"{name} is missing from docs/CLI.md"
+
+
+def test_the_cli_doc_is_linked_from_the_readme():
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    assert "docs/CLI.md" in readme

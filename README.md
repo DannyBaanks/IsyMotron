@@ -245,6 +245,26 @@ The live provider tests run only when a provider key is present; otherwise they
 skip without making the offline contract suite depend on an external service.
 The exact current count belongs to the CI run, not to a hand-maintained badge.
 
+## Command line
+
+Every action in this repository is reachable from one command, and its verb
+table is the single source of truth — a test fails if an entrypoint is left
+unreachable:
+
+```bash
+isymotron                      # menu when a terminal is attached; help otherwise
+isymotron host status          # what this machine is and grants
+isymotron keys set NEBIUS_API_KEY
+isymotron evidence verify evidence/M3/hashes.json
+isymotron quine demo           # the live Quine Gate sequence
+isymotron process verify <pid> --baseline proc.baseline.json
+```
+
+Keys are stored outside the repository and never echoed. The CLI holds no
+authority of its own: granting still goes through `isymotron host grant` or the
+console. Full table, exit codes and the key model:
+[`docs/CLI.md`](docs/CLI.md).
+
 ## Quine Gate: evidence that reproduces itself
 
 A receipt is an *affirmation*; the authority is the reproduction. An
