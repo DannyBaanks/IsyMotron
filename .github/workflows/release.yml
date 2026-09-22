@@ -1,0 +1,48 @@
+# Release workflow: builds IsyMotron.exe on tag and publishes a GitHub Release.
+# Trigger: push a tag matching v* (e.g., git tag v1.0.0 && git push origin v1.0.0)
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # needed to create release and upload asset
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+      - name: Build IsyMotron.exe (one-file, smoke test included)
+        run: python build_exe.py
+      - name: Verify artifact exists
+        run: |
+          if (Test-Path "dist/IsyMotron.exe") {
+            $size = (Get-Item "dist/IsyMotron.exe").Length / 1MB
+            Write-Host "IsyMotron.exe found ($([math]::Round($size, 1)) MB)"
+          } else {
+            Write-Error "dist/IsyMotron.exe not found"
+            exit 1
+          }
+        shell: pwsh
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: IsyMotron ${{ github.ref_name }}
+          body: |
+            Windows 10/11 capability fabric — deny-by-default, leases, sealed receipts.
+            See [README](../blob/${{ github.sha }}/README.md) for quickstart.
+          files: dist/IsyMotron.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
