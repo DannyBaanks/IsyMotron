@@ -5,6 +5,8 @@ __pycache__/
 .venv-linux/
 web/node_modules/
 web/.next/
+IsyMotron/session/
+demo-recordings/
 var/
 .env
 *.local.json
