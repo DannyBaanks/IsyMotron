@@ -151,6 +151,26 @@ def _spawn(argv):
                             stderr=subprocess.DEVNULL)
 
 
+def _observe_quietly(pid):
+    """observe() or None if the process is already gone."""
+    try:
+        return observe(pid)
+    except ProcessError:
+        return None
+
+
+def _wait_until(fn, timeout=10.0, interval=0.05):
+    """Poll instead of trusting a fixed sleep: these tests run alongside ~380
+    others and a fixed sleep flaked under that load."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        got = fn()
+        if got is not None:
+            return got
+        time.sleep(interval)
+    return None
+
+
 def _cleanup(*procs):
     for proc in procs:
         try:
@@ -161,7 +181,7 @@ def _cleanup(*procs):
 
 @LINUX
 def test_scenario_C_stability_within_one_instance():
-    proc = _spawn(["sleep", "4"])
+    proc = _spawn(["sleep", "20"])
     time.sleep(0.10)
     try:
         first = observe(proc.pid)
@@ -174,8 +194,8 @@ def test_scenario_C_stability_within_one_instance():
 
 @LINUX
 def test_scenario_I1_I2_instance_identity_and_field_ablation():
-    a = _spawn(["sleep", "4"])
-    b = _spawn(["sleep", "4"])
+    a = _spawn(["sleep", "20"])
+    b = _spawn(["sleep", "20"])
     time.sleep(0.10)
     try:
         ia, ib = observe(a.pid), observe(b.pid)
@@ -192,7 +212,7 @@ def test_scenario_D_binary_deleted_under_a_live_process(tmp_path):
     fake = tmp_path / "victim.bin"
     fake.write_bytes(Path("/bin/sleep").read_bytes())
     fake.chmod(0o755)
-    proc = _spawn([str(fake), "4"])
+    proc = _spawn([str(fake), "20"])
     time.sleep(0.10)
     try:
         baseline = observe(proc.pid)
@@ -219,17 +239,26 @@ def test_scenario_X_execve_keeps_instance_and_changes_artifact():
     # zombie whose /proc/<pid>/exe is unreadable. The original researcher run
     # compared against that unreadable marker, not against a live new image;
     # this is the corrected measurement.
-    proc = _spawn(["bash", "-c", "sleep 0.6; exec sleep 30"])
-    time.sleep(0.15)
-    baseline = observe(proc.pid)
-    time.sleep(1.0)
+    #
+    # Timing is polled, never slept on: the fixed-sleep version flaked when the
+    # whole suite ran on a loaded machine.
+    proc = _spawn(["bash", "-c", "sleep 1.5; exec sleep 30"])
     try:
-        current = observe(proc.pid)
+        baseline = _wait_until(lambda: _observe_quietly(proc.pid))
+        assert baseline is not None, "the shell never became observable"
+        assert not str(baseline.observations["exe_sha256"]).startswith("<"), \
+            "the baseline image must be readable"
+
+        current = _wait_until(lambda: (lambda c: c if (
+            c is not None
+            and c.observations["exe_sha256"] != baseline.observations["exe_sha256"]
+        ) else None)(_observe_quietly(proc.pid)))
+        assert current is not None, "execve never happened within the timeout"
+
         assert current.observations["starttime"] == baseline.observations["starttime"], \
             "instance identity survives execve"
         assert not str(current.observations["exe_sha256"]).startswith("<"), \
             "the new image must be readable, or the test proves nothing"
-        assert current.observations["exe_sha256"] != baseline.observations["exe_sha256"]
         verdict = verdict_for(baseline, current)
         assert verdict.status == DENY and verdict.reason == ARTIFACT_DRIFT
     finally:
@@ -247,7 +276,7 @@ def test_scenario_P_observer_limit_degrades_strength():
 
 @LINUX
 def test_cli_observe_store_verify_exit_codes(tmp_path):
-    proc = _spawn(["sleep", "4"])
+    proc = _spawn(["sleep", "20"])
     time.sleep(0.10)
     baseline = tmp_path / "proc.baseline.json"
     script = str(REPO / "tools" / "process_verify.py")
