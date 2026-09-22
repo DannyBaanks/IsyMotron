@@ -13,3 +13,7 @@ var/
 dist/
 build/
 *.spec
+# Quine Gate: signing secrets never enter the repository or the artifact.
+*.key
+*.pem
+.receipt-key

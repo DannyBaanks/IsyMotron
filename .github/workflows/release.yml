@@ -9,7 +9,9 @@ on:
       - 'v*'
 
 permissions:
-  contents: write  # needed to create release and upload asset
+  contents: write      # create the Release and upload the asset
+  id-token: write      # OIDC used by the provenance attestation
+  attestations: write  # publish the attestation
 
 jobs:
   build-and-release:
@@ -33,6 +35,13 @@ jobs:
             exit 1
           }
         shell: pwsh
+      - name: Attest build provenance (Quine Gate M3)
+        # External anchor for the artifact digest. Public, Sigstore-backed, and
+        # independent of any key stored in the repository. Verify with:
+        #   gh attestation verify dist/IsyMotron.exe --repo DannyBaanks/IsyMotron
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/IsyMotron.exe
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

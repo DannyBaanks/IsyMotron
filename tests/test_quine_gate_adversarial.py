@@ -1,52 +1,44 @@
-"""Quine Gate — M0: baseline adversarial de sellos (test rojo).
+"""Quine Gate — adversarial seal gate (M0 baseline, completed by M3).
 
-This is milestone M0 of `.opencode/plans/quine-gate-reproducible-evidence.md`.
-It fixes the CURRENT state in the tree before any fix lands:
+History, kept because it is the point:
 
-- the receipt seal is an *unkeyed* digest (`seal == sha256(canonical(payload))`);
-- therefore an attacker who edits a DENY to an ALLOW and recomputes the seal
-  produces a receipt that `verify()` accepts.
+- M0 froze the CURRENT state: the seal was an *unkeyed* digest, so a receipt
+  edited DENY->ALLOW and re-sealed verified. Two ``xfail(strict=True)`` tests
+  asserted the desired behaviour and were expected to XPASS when M3 landed.
+- M3 added keyed sealing (``isymotron.seal``, HMAC-SHA256, no third-party
+  dependency). The markers are gone; these are now real passing tests.
 
-The two ``xfail(strict=True)`` tests below assert the *desired* behaviour
-(a re-sealed forgery must be rejected). They fail today for exactly that
-reason, which is the point: when M3 adds a keyed seal, they will XPASS and
-strict mode will turn that into a suite error, forcing the marker's removal.
-
-The control test at the end is the protection that already exists and must
-not regress: a mutation that does NOT recompute the seal is detected.
-
-Scope note (what this does NOT claim): the attack is in-process and uses the
-public dataclasses. It does not prove a remote exploit, only that the seal
-carries no authority independent of the payload's own hash.
+The unkeyed scheme is not deleted: v0 receipts already emitted use it and must
+stay readable. It is *integrity only* -- anyone can recompute it -- and the
+boundary is asserted explicitly below. Authority-bearing receipts are keyed,
+and even then authority is reproduction (M2), not the seal.
 """
 from __future__ import annotations
 
 from dataclasses import replace
 
-import pytest
-
+from isymotron.canon import digest
 from isymotron.contracts import (
+    CONTRACT_V1,
     ExecutionReceipt,
     HostIdentity,
     PolicyDecision,
     new_receipt_id,
 )
+from isymotron.seal import HMAC_SHA256, MissingKey, seal_payload
 from isymotron.verdicts import Decision, DenyReason, Evidence
 from learning import LessonReceipt
 
-# The reason text is shared so the two xfail markers cannot drift apart.
-_HOLE = (
-    "unkeyed digest: a DENY->ALLOW edit plus seal recomputation verifies today; "
-    "M3 (keyed seal) must make this test XPASS and remove the marker"
-)
+SECRET = "test-key-not-a-secret"
+WRONG = "another-key"
 
 
-def _denied_host_receipt() -> ExecutionReceipt:
-    """A legitimate, sealed DENY receipt built from the real dataclasses."""
-    return ExecutionReceipt(
+def _denied_fields(**overrides) -> ExecutionReceipt:
+    """An unsealed DENY receipt built from the real dataclasses."""
+    fields = dict(
         receipt_id=new_receipt_id(),
         request_digest="sha256:" + "0" * 64,
-        request_id="req_quinegate_m0",
+        request_id="req_quinegate",
         host=HostIdentity(
             host_id="win11-quinegate",
             display_name="Quine Gate (test)",
@@ -67,15 +59,21 @@ def _denied_host_receipt() -> ExecutionReceipt:
         result={},
         effects=(),
         evidence=Evidence.DEMONSTRATED,
-    ).sealed()
+    )
+    fields.update(overrides)
+    return ExecutionReceipt(**fields)
+
+
+def _denied_host_receipt(**overrides) -> ExecutionReceipt:
+    """A legitimate, sealed (unkeyed) DENY receipt."""
+    return _denied_fields(**overrides).sealed()
 
 
 def _failed_lesson_receipt() -> LessonReceipt:
-    """A legitimate, sealed FAIL lesson receipt (same digest machinery)."""
     return LessonReceipt(
         receipt_id=new_receipt_id(),
-        lesson_id="quinegate-m0",
-        exercise_id="quinegate-m0-1",
+        lesson_id="quinegate",
+        exercise_id="quinegate-1",
         learner_input="wrong",
         verdict="FAIL",
         expected={"opcode": 81},
@@ -83,7 +81,7 @@ def _failed_lesson_receipt() -> LessonReceipt:
         execution=None,
         verified_by=["test fixture"],
         provenance=["tests/test_quine_gate_adversarial.py"],
-        notes=["m0 baseline"],
+        notes=[],
         verdict_source="machine",
         started_at=1.0,
         ended_at=2.0,
@@ -91,56 +89,78 @@ def _failed_lesson_receipt() -> LessonReceipt:
 
 
 def test_host_receipt_legitimate_deny_verifies():
-    """Sanity: the baseline receipt is well-formed before we attack it."""
     rcpt = _denied_host_receipt()
     assert rcpt.decision.decision is Decision.DENY
     assert rcpt.verify(), "a freshly sealed receipt must verify"
 
 
 def test_lesson_receipt_legitimate_fail_verifies():
-    """Sanity: the second receipt family is well-formed before we attack it."""
     rcpt = _failed_lesson_receipt()
     assert rcpt.verdict == "FAIL"
     assert rcpt.verify(), "a freshly sealed receipt must verify"
 
 
-@pytest.mark.xfail(strict=True, reason=_HOLE)
-def test_rehashed_allow_host_receipt_is_rejected():
-    """Attack A (receipt mutation) + B (internal rehash), host receipt.
+def test_unkeyed_seal_is_integrity_only_not_authority():
+    """Boundary: the legacy unkeyed scheme can be recomputed by anyone.
 
-    The attacker changes the decision to ALLOW and recomputes the seal. The
-    receipt becomes self-consistent under the current scheme, so `verify()`
-    returns True. The desired contract is REJECT; this test fails today.
+    This is not a bug to fix -- it is why an unkeyed receipt carries no
+    authority on its own, and why authority lives in reproduction (M2) and in
+    keyed receipts (M3).
     """
-    forged = replace(
-        _denied_host_receipt(),
-        decision=PolicyDecision(Decision.ALLOW),
-        result={"text": "exfiltrated"},
-    )
+    forged = replace(_denied_host_receipt(),
+                     decision=PolicyDecision(Decision.ALLOW),
+                     result={"text": "exfiltrated"})
     forged = forged.sealed()
-
-    assert not forged.verify(), (
-        "a re-sealed DENY->ALLOW receipt must not verify"
-    )
+    assert forged.verify(), "unkeyed is integrity-only; anyone can recompute it"
 
 
-@pytest.mark.xfail(strict=True, reason=_HOLE)
-def test_rehashed_pass_lesson_receipt_is_rejected():
-    """Attack B on the second receipt family: FAIL -> PASS, seal recomputed."""
-    forged = replace(_failed_lesson_receipt(), verdict="PASS")
-    forged = forged.sealed()
+def test_hmac_seal_rejects_an_unkeyed_reseal():
+    """Attack: edit DENY->ALLOW and reseal with the unkeyed scheme.
 
-    assert not forged.verify(), (
-        "a re-sealed FAIL->PASS lesson receipt must not verify"
-    )
+    The forged receipt keeps ``seal_kind='hmac-sha256'`` but its seal is an
+    unkeyed digest, so verification fails.
+    """
+    rcpt = _denied_fields(contract=CONTRACT_V1, seal_kind=HMAC_SHA256)
+    rcpt = rcpt.sealed(key=SECRET)
+    assert rcpt.verify(key=SECRET)
+
+    forged = replace(rcpt, decision=PolicyDecision(Decision.ALLOW))
+    forged = replace(forged, seal=digest(forged.payload()))  # attacker's reseal
+    assert not forged.verify(key=SECRET)
+
+
+def test_hmac_seal_rejects_a_wrong_key():
+    rcpt = _denied_fields(contract=CONTRACT_V1, seal_kind=HMAC_SHA256)
+    rcpt = rcpt.sealed(key=SECRET)
+
+    forged = replace(rcpt, decision=PolicyDecision(Decision.ALLOW))
+    forged = forged.sealed(key=WRONG)  # attacker has *a* key, not the key
+    assert not forged.verify(key=SECRET)
+
+
+def test_hmac_seal_requires_a_key_and_is_not_forgeable_without_it():
+    rcpt = _denied_fields(contract=CONTRACT_V1, seal_kind=HMAC_SHA256)
+    sealed = rcpt.sealed(key=SECRET)
+
+    assert sealed.verify(key=SECRET)
+    assert not sealed.verify(), "no key available: fail closed"
+    try:
+        rcpt.sealed()
+    except MissingKey:
+        pass
+    else:  # pragma: no cover - explicit failure if the guard disappears
+        raise AssertionError("sealing HMAC without a key must raise MissingKey")
+
+
+def test_unkeyed_helpers_still_work_for_v0():
+    """v0 receipts keep the old scheme byte-for-byte."""
+    rcpt = _denied_host_receipt()
+    assert rcpt.seal == digest(rcpt.payload())
+    assert seal_payload(rcpt.payload()) == rcpt.seal
 
 
 def test_plain_mutation_without_reseal_is_detected():
-    """Control: the protection that already exists must not regress.
-
-    Editing a sealed field without recomputing the seal is caught by both
-    receipt families (this is what `verify()` does guarantee today).
-    """
+    """Control: the protection that always existed must not regress."""
     host = replace(_denied_host_receipt(), result={"text": "leak"})
     lesson = replace(_failed_lesson_receipt(), verdict="PASS")
 

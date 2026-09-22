@@ -11,6 +11,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Any, Mapping, Sequence
 
 from .canon import digest
+from .seal import UNKEYED, seal_payload, verify_payload
 from .verdicts import Decision, DenyReason, Evidence
 
 CONTRACT = "NemoHostContract/v0"
@@ -228,7 +229,7 @@ class ExecutionReceipt:
     capability_digest: str | None = None
     result_digest: str | None = None
     reproduce: Mapping[str, Any] | None = None
-    seal_kind: str = "unkeyed"
+    seal_kind: str = UNKEYED
     claim_digest: str | None = None
 
     def payload(self) -> dict:
@@ -259,12 +260,14 @@ class ExecutionReceipt:
             base["claim_digest"] = self.claim_digest
         return base
 
-    def sealed(self) -> "ExecutionReceipt":
+    def sealed(self, key: str | None = None) -> "ExecutionReceipt":
         from dataclasses import replace
-        return replace(self, seal=digest(self.payload()))
+        return replace(self, seal=seal_payload(self.payload(),
+                                               kind=self.seal_kind, key=key))
 
-    def verify(self) -> bool:
-        return bool(self.seal) and self.seal == digest(self.payload())
+    def verify(self, key: str | None = None) -> bool:
+        return bool(self.seal) and verify_payload(self.payload(), self.seal,
+                                                  kind=self.seal_kind, key=key)
 
     def to_dict(self) -> dict:
         d = self.payload()
