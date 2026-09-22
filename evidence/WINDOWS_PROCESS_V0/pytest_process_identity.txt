@@ -1,0 +1,29 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\progr\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Development\ISyCo Git\IsyMotron
+configfile: pytest.ini
+plugins: anyio-4.14.2, langsmith-0.10.2, cov-7.1.0
+collecting ... collected 19 items
+
+tests/test_process_identity.py::test_identical_identity_passes PASSED    [  5%]
+tests/test_process_identity.py::test_reused_pid_is_instance_mismatch PASSED [ 10%]
+tests/test_process_identity.py::test_changed_image_is_artifact_drift PASSED [ 15%]
+tests/test_process_identity.py::test_deleted_binary_is_artifact_deleted PASSED [ 21%]
+tests/test_process_identity.py::test_unreadable_current_artifact_is_error_not_pass PASSED [ 26%]
+tests/test_process_identity.py::test_unreadable_baseline_artifact_is_error_not_pass PASSED [ 31%]
+tests/test_process_identity.py::test_other_observation_change_is_fingerprint_mismatch PASSED [ 36%]
+tests/test_process_identity.py::test_weak_strength_when_artifact_unreadable PASSED [ 42%]
+tests/test_process_identity.py::test_unsupported_source_refuses_explicitly PASSED [ 47%]
+tests/test_process_identity.py::test_supported_platform_selection PASSED [ 52%]
+tests/test_process_identity.py::test_store_roundtrips_and_detects_tampering PASSED [ 57%]
+tests/test_process_identity.py::test_store_is_atomic_and_has_no_key_next_to_it PASSED [ 63%]
+tests/test_process_identity.py::test_scenario_C_stability_within_one_instance SKIPPED [ 68%]
+tests/test_process_identity.py::test_scenario_I1_I2_instance_identity_and_field_ablation SKIPPED [ 73%]
+tests/test_process_identity.py::test_scenario_D_binary_deleted_under_a_live_process SKIPPED [ 78%]
+tests/test_process_identity.py::test_scenario_X_execve_keeps_instance_and_changes_artifact SKIPPED [ 84%]
+tests/test_process_identity.py::test_scenario_P_observer_limit_degrades_strength SKIPPED [ 89%]
+tests/test_process_identity.py::test_cli_observe_store_verify_exit_codes SKIPPED [ 94%]
+tests/test_process_identity.py::test_cli_missing_baseline_is_error SKIPPED [100%]
+
+======================== 12 passed, 7 skipped in 0.08s ========================

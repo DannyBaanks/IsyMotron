@@ -1,0 +1,20 @@
+{
+  "pid": 12396,
+  "copy": "C:\\Users\\progr\\AppData\\Local\\Temp\\isymotron_e3_9ukp3ad0\\victim_python.exe",
+  "image_path": "C:\\Users\\progr\\AppData\\Local\\Temp\\isymotron_e3_9ukp3ad0\\victim_python.exe",
+  "hash_disk_before": "sha256:4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+  "hash_image_before": "sha256:4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+  "hash_match_before": true,
+  "delete": {
+    "ok": false,
+    "error": "PermissionError: [WinError 5] Acceso denegado: 'C:\\\\Users\\\\progr\\\\AppData\\\\Local\\\\Temp\\\\isymotron_e3_9ukp3ad0\\\\victim_python.exe'"
+  },
+  "exists_after_delete": true,
+  "overwrite": {
+    "ok": false,
+    "error": "PermissionError: [Errno 13] Permission denied: 'C:\\\\Users\\\\progr\\\\AppData\\\\Local\\\\Temp\\\\isymotron_e3_9ukp3ad0\\\\victim_python.exe'"
+  },
+  "hash_disk_after": "sha256:4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+  "image_path_after": "C:\\Users\\progr\\AppData\\Local\\Temp\\isymotron_e3_9ukp3ad0\\victim_python.exe",
+  "hash_image_after": "sha256:4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a"
+}

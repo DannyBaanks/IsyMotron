@@ -1,0 +1,15 @@
+{
+  "algorithm": "SHA-256",
+  "artifacts": {
+    "cli_observe_unsupported.json": "9de8ebcf199bd4fdf40bab0f2f77770c7b87eb708bb99bd1a504f2fd3fb13143",
+    "e1_getprocess.json": "9f0bd461e8c8fb2eb4018cca38d13bbb975107f0f48bafc8bfb8bc68a205168d",
+    "e1_raw.json": "d1885d032cc8274b576d2c1733ff2a02af234f84b3969938440d3e3f87c528b6",
+    "e1_wmi.json": "bdac68fc1d2f5075715068926a056c302d4fe5af69ca5701a2009f58c00aff2d",
+    "e2_reuse.json": "fb6d2265bbdebd282157c89246a8dc88f07486187eb2279265bcccb6330d374f",
+    "e3_hash.json": "8aa04b683325d3bc248cbfe3de582f3eae9739dc33534b99035d0dd46acf0c3e",
+    "e4_limits.json": "44c3a8292b251428cfc28dc143d143929a2502db2fee55ed7b1f807c947e63af",
+    "pytest_full.txt": "986a4e93ce30d7704613d34ed8e9efe0adf9b9ac08e5b946840450862eac6459",
+    "pytest_process_identity.txt": "dcefc67aa4c722059bab2f4bf238c70627e4ea9542496d307ead11a06f0a42d0",
+    "RUN.md": "8021ffaf0b0b1b4c689eb6dafe3bb77b27d6148706c65409e22701bd0df72a53"
+  }
+}

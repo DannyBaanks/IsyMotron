@@ -1,0 +1,32 @@
+{
+  "targets": {
+    "system_pid4": {
+      "pid": 4,
+      "handle": 0,
+      "open_error": 5,
+      "access_denied": true
+    },
+    "self": {
+      "pid": 6744,
+      "handle": 340,
+      "query_ok": true,
+      "image_path": "C:\\Users\\progr\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "query_error": null,
+      "times_ok": true,
+      "creation": 134345512229383278
+    },
+    "dead_1": {
+      "pid": 1,
+      "handle": 0,
+      "open_error": 87,
+      "access_denied": false
+    },
+    "nonexistent_999999": {
+      "pid": 999999,
+      "handle": 0,
+      "open_error": 87,
+      "access_denied": false
+    }
+  },
+  "rule_mapping": " unreadable exe/observations -> WEAK tier per strength_for(); fail-closed ERROR, never PASS (verdict_for)"
+}

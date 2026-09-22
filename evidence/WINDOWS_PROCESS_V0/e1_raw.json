@@ -1,0 +1,12 @@
+{
+  "pid": 16828,
+  "open_handle": 344,
+  "open_error": null,
+  "query_ok": true,
+  "image_path": "C:\\Program Files\\WindowsApps\\Microsoft.WindowsNotepad_11.2607.14.0_x64__8wekyb3d8bbwe\\Notepad\\Notepad.exe",
+  "query_error": null,
+  "times_ok": true,
+  "creation_time": 134345511710339280,
+  "times_error": null,
+  "layer": "raw: OpenProcess/QueryFullProcessImageNameW/GetProcessTimes via ctypes (userland Win32 on top of NT kernel)"
+}
