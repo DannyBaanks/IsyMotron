@@ -265,7 +265,7 @@ end-to-end demonstrations.
 | Backlog is never replayed; live lines arrive within 1 s | **`DEMONSTRATED`** | The reader starts at end-of-file; a separate process' line appears in `bus.since(0)` in 0.281 s (AV2 evidence); 10 000-line flood keeps the ring bounded at 200 with the real verdict on top. `test_tail_starts_at_end`, `test_flood_keeps_reader_bounded_and_verdict_on_top`. |
 | The desktop pet floats, and neither process death kills the other | **`DEMONSTRATED`** | `IsyMotron.exe --avatar`: pet window found; pet closed -> console still serves HTTP 200; console killed -> a fresh pet stays alive. AV5 evidence. |
 | The demo path: six steps, one exe, no second install | **`DEMONSTRATED`** (except step 6) | `evidence/AV9/demo_avatar_events.json`, recorded end to end against the rebuilt exe. |
-| Step 6 with **Nebius** specifically | `NOT_DEMONSTRATED` | No `NEBIUS_API_KEY` on this host. The same seam ran live with NVIDIA NIM (`evidence/AV7/`); switching providers is one env var. |
+| Step 6 with **Nebius** specifically | `DEMONSTRATED` (sealed 2026-09-22) | `evidence/M3/RUN.md` + `evidence/M3/hashes.json`: round trip, plan and adversarial refusal pass on Nebius Token Factory. The avatar step-6 capture in `evidence/AV7/` predates this run. |
 | Fresh Windows user profile | `NOT_DEMONSTRATED` | The demo ran on the development profile. Creating a fresh profile from this session was not possible; no second install was needed on the profile it ran on. |
 
 The adversarial suite earned its keep before it was 24 hours old: case 5 found

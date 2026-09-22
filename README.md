@@ -89,11 +89,11 @@ The labels below are deliberately narrower than marketing claims.
 | Deny-by-default contract with leases, scopes and sealed receipts | **DEMONSTRATED** | [`tests/test_m0_gate.py`](tests/test_m0_gate.py) |
 | Real filesystem and process surface on a Windows host | **DEMONSTRATED** | [`tests/test_win11_real.py`](tests/test_win11_real.py), [`evidence/M1/`](evidence/M1/) |
 | Planner refuses hallucinated or ungranted capabilities | **DEMONSTRATED** | [`tests/test_planner.py`](tests/test_planner.py) |
-| Live Nemotron planning path | **DEMONSTRATED, scoped** | [`tests/test_live_model.py`](tests/test_live_model.py), [`evidence/M3/`](evidence/M3/) |
+| Live Nemotron planning path (Nebius Token Factory) | **DEMONSTRATED, scoped** | [`tests/test_live_model.py`](tests/test_live_model.py), [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
 | Host-awareness attribution: suspend is not provider failure | **DEMONSTRATED** | [`tests/test_awareness.py`](tests/test_awareness.py), [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md) |
 | Console and read-only avatar authority channel | **DEMONSTRATED** | [`tests/test_console.py`](tests/test_console.py), [`tests/test_avatar_adversarial.py`](tests/test_avatar_adversarial.py), [`evidence/AV9/`](evidence/AV9/) |
 | Malbolge lesson with machine verdicts and sealed receipts | **DEMONSTRATED, scoped** | [`learning/`](learning/), [`evidence/MALBOLGE_V0/`](evidence/MALBOLGE_V0/) |
-| Nebius provider execution on this repository's current evidence | **NOT_DEMONSTRATED** | Provider seam exists; current evidence records NVIDIA NIM, while Nebius needs a fresh keyed run |
+| Nebius Token Factory provider execution | **DEMONSTRATED** | Sealed keyed run 2026-09-22: round trip, plan and adversarial refusal all pass. [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
 | A real Windows 10 host | **NOT_DEMONSTRATED** | Windows 11 is the demonstrated real host; Windows 10 remains the product target |
 | Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
 
@@ -131,9 +131,12 @@ Nebius or NVIDIA endpoint
 ```
 
 The provider changes how a plan is proposed; it does not change the grants,
-scope bounds or authority held by a host. Current repository evidence includes
-a live NVIDIA path. Nebius is wired into the same provider interface and is
-kept explicitly `NOT_DEMONSTRATED` until a fresh Nebius-keyed run is recorded.
+scope bounds or authority held by a host. Nebius Token Factory is demonstrated
+live and sealed: [`evidence/M3/RUN.md`](evidence/M3/RUN.md) (2026-09-22) records
+a real round trip, a real plan and a real adversarial refusal, with
+[`evidence/M3/hashes.json`](evidence/M3/hashes.json) sealing the artifacts. The
+same seam also reaches NVIDIA NIM (`evidence/M3/probe_nvidia.json`); its earlier
+`HTTP 503` is kept as a historical negative result.
 
 ## Verification
 
@@ -175,13 +178,13 @@ Make a real Windows machine inert until a human grants a scope:
 .\isymotron.ps1 host do filesystem.read --path "C:/Users/you/Documents" # DENY
 ```
 
-Optional model planning:
+Optional model planning (Nebius Token Factory is the hackathon path):
 
 ```powershell
-$env:NVIDIA_NIM_API_KEY = "..."
-# or: $env:NEBIUS_API_KEY = "..."
-$env:ISYMOTRON_PROVIDER = "nvidia" # or "nebius"
+$env:NEBIUS_API_KEY = "..."
+$env:ISYMOTRON_PROVIDER = "nebius"
 py tools/nemotron_check.py
+# NVIDIA NIM is the same seam: $env:NVIDIA_NIM_API_KEY + ISYMOTRON_PROVIDER = "nvidia"
 ```
 
 Linux native host awareness is demonstrated for retrospective suspend timing
@@ -221,7 +224,7 @@ docs/               architecture, findings and operational guides
 
 | NOW | NEXT | RESEARCH |
 |---|---|---|
-| Typed host contract | Fresh Nebius evidence run | Marketplace trust at scale |
+| Typed host contract | Sealed Nebius evidence ✓ | Marketplace trust at scale |
 | Local authority and receipts | Real Windows 10 verification | Additional host generations |
 | Nemotron planner/executor | Harden malformed grant handling | Network relay transports |
 | Console + avatar demo | CI count refresh and evidence refresh | Stronger OS-level sandbox providers |

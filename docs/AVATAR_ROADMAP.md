@@ -366,7 +366,8 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
   seal ok. NOT_DEMONSTRATED: the *Nebius-specific* live run — no
   `NEBIUS_API_KEY` on this host; the provider is one env var
   (`ISYMOTRON_PROVIDER=nebius`), and the NIM run above exercised the same
-  seam. Note: AV7's implementation (planning events, provider label in the
+  seam. **Superseded 2026-09-22: `evidence/M3/RUN.md` seals a live Nebius
+  run (round trip, plan, adversarial refusal).** Note: AV7's implementation (planning events, provider label in the
   mode event) was carried by AV3/AV6; AV7 adds the invariant tests and the
   live evidence. The one test failure during development was the test's own
   equality over the event's `at` timestamp — fixed in the test, not the code.
@@ -449,7 +450,8 @@ Spanish with real executed output (ISyCo `AGENTS.md` § 10b convention).
   `"ALLOW ✅"` as a third-party bubble, verdict count unchanged; (5)
   out-of-scope -> real DENY `rcpt_81ccb11805ff4dba` with receipt in the
   frame; (6) Nebius NOT_DEMONSTRATED (no key on this host; the same seam ran
-  live with NIM in AV7 — one env var apart). Docs: README (user-doc avatar
+  live with NIM in AV7 — one env var apart). **Superseded 2026-09-22:
+  `evidence/M3/RUN.md` seals a live Nebius run.** Docs: README (user-doc avatar
   section, no provider jargon; Credits declaring Companion as the author's
   prior MIT work at 0aae576 — the Devpost text draws from it), EVIDENCE.md
   avatar-claims ledger (R1–R7 all DEMONSTRATED, with the two honest

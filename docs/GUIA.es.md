@@ -841,8 +841,8 @@ HTTP 200 | decision: DENY | reason: OUT_OF_SCOPE | receipt: rcpt_81ccb11805ff4db
 host_frame.verdict.decision: DENY | receipt: rcpt_81ccb11805ff4dba
 
 === paso 6 (opcional): NEBIUS_API_KEY -> modo agent ===
-NOT_DEMONSTRATED en este equipo: no hay NEBIUS_API_KEY.
-El mismo seam corrió en vivo con NVIDIA NIM (evidencia AV7).
+DEMONSTRATED: corrida con clave el 2026-09-22 (evidence/M3/RUN.md + hashes.json).
+En el equipo original (Windows, ya formateado) no habia clave; el seam es el mismo.
 
 demo completa: 2 verdicts reales, todos con sello; scrub R6 PASS
 ```
