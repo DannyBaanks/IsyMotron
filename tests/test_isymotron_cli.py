@@ -9,11 +9,19 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import select
+import subprocess
 import sys
+import time
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 CLI_PATH = REPO / "tools" / "isymotron_cli.py"
+
+LINUX_ONLY = pytest.mark.skipif(not sys.platform.startswith("linux"),
+                                reason="the pty menu test is POSIX-only")
 
 
 def _load_cli():
@@ -349,3 +357,58 @@ def test_new_verbs_are_wired():
     # process is wired through the same pass-through
     done = _run("process", "observe", "--help")
     assert done.returncode == 0
+
+
+# -- M5: the interactive menu (munder's model, POSIX backend here) -----------
+
+def _run_in_pty(keys=b"q", timeout=20.0):
+    import pty
+    master, slave = pty.openpty()
+    proc = subprocess.Popen([sys.executable, str(CLI_PATH)], cwd=str(REPO),
+                            stdin=slave, stdout=slave, stderr=slave, close_fds=True)
+    os.close(slave)
+    out = b""
+    try:
+        time.sleep(0.5)                     # let the menu render
+        os.write(master, keys)
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            ready, _, _ = select.select([master], [], [], 0.2)
+            if ready:
+                try:
+                    chunk = os.read(master, 4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                out += chunk
+            elif proc.poll() is not None:
+                break
+        proc.wait(timeout=5)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+        os.close(master)
+    return proc.returncode, out.decode("utf-8", "replace")
+
+
+@LINUX_ONLY
+def test_menu_appears_with_a_tty_and_q_exits_without_hanging():
+    code, out = _run_in_pty(b"q")
+    assert code == 0, out
+    assert "What do we do?" in out, out
+    assert "bye" in out, out
+
+
+@LINUX_ONLY
+def test_menu_number_key_selects_an_entry():
+    # "1" is "Show help and every command"; then "q" leaves.
+    code, out = _run_in_pty(b"1q")
+    assert code == 0, out
+    assert "Usage: isymotron" in out, out
+
+
+@LINUX_ONLY
+def test_menu_ctrl_c_aborts_with_130():
+    code, out = _run_in_pty(b"\x03")
+    assert code == 130, (code, out)

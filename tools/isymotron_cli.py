@@ -214,6 +214,7 @@ def orphan_entrypoints(verbs: Mapping[str, Verb] | None = None,
 
 _ANSI = {
     "reset": "\x1b[0m", "bold": "\x1b[1m", "dim": "\x1b[2m",
+    "inverse": "\x1b[7m",
     "brand": "\x1b[38;2;118;185;0m",      # #76B900
     "accent": "\x1b[38;2;145;199;51m",    # #91C733
     "red": "\x1b[1;38;2;254;63;63m",      # rustc error red
@@ -574,11 +575,183 @@ def run_grouped(verb: Verb, rest: list[str]) -> int:
     return run_pass_through([entry], tail)
 
 
+SELECT_CANCEL = -1
+SELECT_ABORT = -2
+MENU_HINT = "↑↓ navigate · Enter choose · Esc exit"
+
+
+def _render_choices(message: str, choices: list[dict], index: int,
+                    stdout, *, first: bool) -> None:
+    lines = []
+    if not first:
+        lines.append(f"\x1b[{len(choices) + 2}A")
+    lines.append(_style(message, "bold", stream=stdout) + "\n")
+    for i, choice in enumerate(choices):
+        mark = "❯" if i == index else " "
+        label = choice["label"]
+        if i == index:
+            label = _style(label, "inverse", stream=stdout)
+        hint = f"  {choice['hint']}" if choice.get("hint") else ""
+        lines.append(f"{mark} {label}{hint}\n")
+    lines.append(_style(MENU_HINT, "dim", stream=stdout) + "\n")
+    lines.append("\x1b[0J")
+    stdout.write("".join(lines))
+    stdout.flush()
+
+
+def _select_posix(message: str, choices: list[dict], stdin, stdout) -> int:
+    import select as _select
+    import termios
+    import tty
+    fd = stdin.fileno()
+    saved = termios.tcgetattr(fd)
+    index = 0
+    result = SELECT_CANCEL
+    try:
+        # TCSANOW, not tty.setraw()'s default TCSAFLUSH: flushing would discard
+        # input already typed ahead of the next render (a pasted "1q" would
+        # lose the "q").
+        tty.setraw(fd, when=termios.TCSANOW)
+        stdout.write("\x1b[?25l")
+        _render_choices(message, choices, index, stdout, first=True)
+        while True:
+            first_byte = os.read(fd, 1)
+            if not first_byte:
+                break
+            ch = first_byte.decode("utf-8", "replace")
+            if ch == "\x03":                       # Ctrl-C
+                result = SELECT_ABORT
+                break
+            if ch == "\x1b":                       # Esc, or an arrow sequence
+                ready, _, _ = _select.select([fd], [], [], 0.05)
+                if not ready:
+                    break                          # a bare Esc cancels
+                if os.read(fd, 1) != b"[":
+                    break
+                code = os.read(fd, 1)
+                if code == b"A":
+                    index = (index - 1) % len(choices)
+                elif code == b"B":
+                    index = (index + 1) % len(choices)
+                _render_choices(message, choices, index, stdout, first=False)
+                continue
+            if ch in ("\r", "\n"):
+                result = index
+                break
+            if ch in ("q", "Q"):
+                break
+            if ch.isdigit() and 1 <= int(ch) <= len(choices):
+                result = int(ch) - 1
+                break
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+        stdout.write("\x1b[?25h\n")
+        stdout.flush()
+    return result
+
+
+def _select_windows(message: str, choices: list[dict], stdout) -> int:
+    import msvcrt
+    index = 0
+    stdout.write("\x1b[?25l")
+    _render_choices(message, choices, index, stdout, first=True)
+    try:
+        while True:
+            ch = msvcrt.getwch()
+            if ch == "\x03":
+                return SELECT_ABORT
+            if ch in ("\x00", "\xe0"):             # arrow-key prefix
+                code = msvcrt.getwch()
+                if code == "H":
+                    index = (index - 1) % len(choices)
+                elif code == "P":
+                    index = (index + 1) % len(choices)
+                _render_choices(message, choices, index, stdout, first=False)
+                continue
+            if ch in ("\r", "\n"):
+                return index
+            if ch in ("q", "Q", "\x1b"):
+                return SELECT_CANCEL
+            if ch.isdigit() and 1 <= int(ch) <= len(choices):
+                return int(ch) - 1
+    finally:
+        stdout.write("\x1b[?25h\n")
+        stdout.flush()
+
+
+def select(message: str, choices: list[dict]) -> int:
+    """Arrow-key menu. Returns the chosen index, `SELECT_CANCEL` (Esc/q) or
+    `SELECT_ABORT` (Ctrl-C). Never called without a terminal."""
+    if not choices or not _is_tty():
+        return SELECT_CANCEL
+    if os.name == "nt":
+        return _select_windows(message, choices, sys.stdout)
+    return _select_posix(message, choices, sys.stdin, sys.stdout)
+
+
+def ask(question: str) -> str:
+    try:
+        return input(question).strip()
+    except EOFError:
+        return ""
+
+
+def interactive_menu() -> int:
+    """The no-arguments entrypoint when a terminal is attached."""
+    print_banner()
+    values = load_store()
+    stored = [name for name in KNOWN_KEYS if name in values]
+    print(f"  {sys.platform} · {REPO}")
+    print(f"  keys {len(stored)}/{len(KNOWN_KEYS)} set · store {default_store_path()}")
+    print()
+    manifests = ["evidence/M3/hashes.json", "evidence/M0/hashes.json",
+                 "evidence/QUINE_GATE/hashes.json"]
+    choices = [
+        {"label": "Show help and every command", "value": "help"},
+        {"label": "Keys: list", "value": "keys-list"},
+        {"label": "Keys: store one", "value": "keys-set"},
+        {"label": "Host: status", "value": "host-status"},
+        {"label": "Evidence: verify a manifest", "value": "evidence"},
+        {"label": "Quine Gate: live demo", "value": "quine-demo"},
+        {"label": "Exit", "value": "quit"},
+    ]
+    while True:
+        picked = select("What do we do?", choices)
+        print()
+        if picked == SELECT_ABORT:
+            return 130
+        if picked < 0:
+            print(_style("bye", "dim"))
+            return 0
+        action = choices[picked]["value"]
+        if action == "quit":
+            print(_style("bye", "dim"))
+            return 0
+        if action == "help":
+            print_help()
+        elif action == "keys-list":
+            cmd_keys(["list"])
+        elif action == "keys-set":
+            which = select("Which key?", [{"label": k, "value": k} for k in KNOWN_KEYS])
+            if which >= 0:
+                cmd_keys(["set", KNOWN_KEYS[which]])
+        elif action == "host-status":
+            run_entrypoint(VERBS["host"], ["status"])
+        elif action == "evidence":
+            which = select("Which manifest?", [{"label": m, "value": m} for m in manifests])
+            if which >= 0:
+                cmd_evidence(["verify", manifests[which]])
+        elif action == "quine-demo":
+            run_grouped(VERBS["quine"], ["demo"])
+        print()
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
 
     if not args:
-        # The interactive menu (M5) goes here when there is a terminal.
+        if _is_tty():
+            return interactive_menu()
         print_help()
         return 0
 
