@@ -561,6 +561,17 @@ def cmd_keys(rest: list[str]) -> int:
 EVIDENCE_USAGE = "usage: isymotron evidence verify <manifest.json>"
 
 
+def resolve_repo_path(raw: str) -> Path:
+    """In-CLI verbs resolve a relative path against the repository, the same
+    way pass-through verbs already run with cwd=REPO. Without this, the
+    installed `isymotron evidence verify evidence/M3/hashes.json` only worked
+    if the caller happened to be standing in the repository."""
+    candidate = Path(raw)
+    if candidate.is_absolute() or candidate.exists():
+        return candidate
+    return REPO / raw
+
+
 def cmd_evidence(rest: list[str]) -> int:
     """`evidence verify`: the manifest checker had no CLI until now."""
     if len(rest) != 2 or rest[0] != "verify":
@@ -569,7 +580,7 @@ def cmd_evidence(rest: list[str]) -> int:
         print(EVIDENCE_USAGE)
         return 2
     from isymotron.evidence import verify_manifest
-    result = verify_manifest(rest[1])
+    result = verify_manifest(resolve_repo_path(rest[1]))
     print(json.dumps(result.to_dict(), indent=2))
     if result.passed:
         return 0

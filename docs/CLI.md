@@ -47,7 +47,9 @@ waits for input that is not coming. That rule matters in CI and in pipes.
 
 Flags after a verb are forwarded **verbatim** to the command that implements
 it. The top-level dispatch parses no flags, so there is no `--` separator to
-remember.
+remember. A relative path given to a verb the CLI implements itself (`evidence
+verify`) resolves against the repository, so the command works from any
+directory once the shim is installed.
 
 ## Keys
 

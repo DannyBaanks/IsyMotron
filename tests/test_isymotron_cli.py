@@ -335,6 +335,17 @@ def test_evidence_verify_reports_a_real_manifest():
     assert payload["algorithm"] == "SHA-256"
 
 
+def test_evidence_verify_resolves_repo_paths_from_another_directory(tmp_path):
+    """The installed CLI is run from anywhere; a repo-relative manifest path
+    must still resolve (pass-through verbs already run with cwd=REPO)."""
+    done = subprocess.run(
+        [sys.executable, str(CLI_PATH), "evidence", "verify",
+         "evidence/M3/hashes.json"],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=30)
+    assert done.returncode == 0, done.stdout
+    assert json.loads(done.stdout)["passed"] is True
+
+
 def test_evidence_verify_exit_codes(tmp_path):
     artifact = tmp_path / "a.txt"
     artifact.write_bytes(b"bytes")
