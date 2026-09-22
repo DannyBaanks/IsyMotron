@@ -1,0 +1,19 @@
+{
+  "algorithm": "SHA-256",
+  "artifacts": {
+    "01_read_allow.json": "a3c0d3d42a5adae8f4fc5ec4bc209c1c51c61affead182b47d23961857fc9d5a",
+    "02_read_out_of_scope.json": "d0d7c4071dd6f19b1a8df51b4765d8c8f9272aa674ac0562ef56870309a82cef",
+    "03_capability_unavailable.json": "677bd2c3dbc2df8b54d67d64cfca0c9c3dd4d8a05e62648e97964087a4e2beec",
+    "04_transfer_src.json": "5e19745342b979d458103d8f86c3fbed1353ebf82cf34e02019143165c1c8751",
+    "05_transfer_dst.json": "f24013741a9e6975417e1fd2505231ae3fe23e8cb64bd60031e3269ebe6d3ba5",
+    "06_legacy_launch.json": "3f88edc3c45441b634aa1d564614c4dbbdbeed752278341ef3968807fed3d85b",
+    "07_legacy_launch_denied.json": "399a7ff9d28f8aea7ad34ea7cf2b4b3cb7885d0ddc30d089a6051b084bc068ba",
+    "claims/01_read_allow.claim.json": "a4d03d233575d6d4ae9a4cfeafea1c632b88a01812bbfd0eeadff1d1c6422b6f",
+    "claims/02_read_out_of_scope.claim.json": "b4a6b1004e3adfe24118a32ab879d1001c257bd2a8710723812dbad252a0e7b9",
+    "claims/03_capability_unavailable.claim.json": "279175092b20bf050f5929faee627c6ea2547406837f840f74a08332c197d599",
+    "claims/04_transfer_src.claim.json": "4431b2d7f579e3add5af8aef3a7097f75b607c1f047f655d477d318a8b84ffa3",
+    "claims/05_transfer_dst.claim.json": "4a35ad3df08708d697a1cb17984957bc7c457be7e1e67c3905f70f89e18a6983",
+    "claims/06_legacy_launch.claim.json": "feab5c09bf3eb2b97de541be4fc6f28d76aacce46f682e656b6be3161b79302b",
+    "claims/07_legacy_launch_denied.claim.json": "57a09c9db13498bc7e7b5780711be37d0b6bc05527a1bcdf3ed01854c39156c6"
+  }
+}

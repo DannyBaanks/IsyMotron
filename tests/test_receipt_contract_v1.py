@@ -26,6 +26,7 @@ from isymotron.contracts import (
     PolicyDecision,
     new_receipt_id,
 )
+from isymotron.verify import ClaimBundle, verify_receipt
 from isymotron.verdicts import Decision, DenyReason, Evidence
 
 REPO = Path(__file__).resolve().parent.parent
@@ -63,11 +64,15 @@ def _base_receipt(**overrides) -> ExecutionReceipt:
     return ExecutionReceipt(**fields).sealed()
 
 
-def _all_evidence_receipts() -> list[Path]:
-    paths: list[Path] = []
-    for folder in ("M0", "M1"):
-        paths.extend(sorted((REPO / "evidence" / folder).glob("*.json")))
-    return paths
+def _real_host_v0_receipts() -> list[Path]:
+    """evidence/M1: receipts from the real Windows host. Untouched history."""
+    return sorted((REPO / "evidence" / "M1").glob("*.json"))
+
+
+def _simulated_v1_receipts() -> list[Path]:
+    """evidence/M0: simulated, regenerable receipts (tools/m0_demo.py)."""
+    return [p for p in sorted((REPO / "evidence" / "M0").glob("*.json"))
+            if p.name != "hashes.json"]
 
 
 def test_v0_payload_key_set_is_frozen():
@@ -81,13 +86,34 @@ def test_v0_receipt_verifies_before_and_after_roundtrip():
     assert ExecutionReceipt.from_dict(rcpt.to_dict()).verify()
 
 
-@pytest.mark.parametrize("path", _all_evidence_receipts(), ids=lambda p: p.name)
-def test_emitted_evidence_receipts_still_verify(path):
-    """The acceptance criterion: every receipt already on disk stays valid."""
+@pytest.mark.parametrize("path", _real_host_v0_receipts(), ids=lambda p: p.name)
+def test_emitted_v0_receipts_still_verify(path):
+    """The acceptance criterion: real-host receipts already on disk (v0,
+    produced before the Quine Gate) stay valid without any edit."""
     data = json.loads(path.read_text(encoding="utf-8"))
     rcpt = ExecutionReceipt.from_dict(data)
     assert rcpt.contract == CONTRACT
     assert rcpt.verify(), f"{path} no longer verifies after the v1 change"
+
+
+@pytest.mark.parametrize("path", _simulated_v1_receipts(), ids=lambda p: p.name)
+def test_m0_receipts_are_v1(path):
+    """The regenerated M0 walkthrough emits v1 receipts with provenance."""
+    rcpt = ExecutionReceipt.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    assert rcpt.contract == CONTRACT_V1
+    assert rcpt.claim_digest, f"{path} must name the claim it can be derived from"
+    assert rcpt.verify()
+
+
+@pytest.mark.parametrize("path", _simulated_v1_receipts(), ids=lambda p: p.name)
+def test_m0_claims_reproduce_their_receipts(path):
+    """Every M0 receipt is verified by re-derivation, not by its seal."""
+    rcpt = ExecutionReceipt.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    claim_path = path.parent / "claims" / f"{path.stem}.claim.json"
+    assert claim_path.is_file(), f"{path} has no claim bundle"
+    claim = ClaimBundle.from_dict(json.loads(claim_path.read_text(encoding="utf-8")))
+    result = verify_receipt(rcpt, claim)
+    assert result.passed, f"{path} does not re-derive: {result.to_dict()}"
 
 
 def test_v1_receipt_carries_and_seals_provenance():

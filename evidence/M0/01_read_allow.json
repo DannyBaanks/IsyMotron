@@ -1,8 +1,8 @@
 {
-  "contract": "NemoHostContract/v0",
-  "receipt_id": "rcpt_412778693cfe429d",
+  "contract": "NemoHostContract/v1",
+  "receipt_id": "rcpt_a6e00cdba7114a7a",
   "request_digest": "sha256:c690e44b214df98e300e04cd54ea8b41cc2606d341d1376960b63dca8ddadf50",
-  "request_id": "req_6e7d921ee1824e38",
+  "request_id": "req_1dbf9a980f0045fb",
   "host": {
     "host_id": "win11-demo",
     "display_name": "Demo (Windows 11)",
@@ -13,14 +13,14 @@
   },
   "capability": "filesystem.read",
   "subject": "mobile:demo-phone",
-  "lease_id": "lease_ebeb99b09e704003",
+  "lease_id": "lease_373c8eae677648c1",
   "decision": {
     "decision": "ALLOW",
     "reason": null,
     "detail": ""
   },
-  "started_at": 1790037473.7580502,
-  "ended_at": 1790037473.7581317,
+  "started_at": 1790069138.8972802,
+  "ended_at": 1790069138.8973606,
   "result": {
     "path": "hostfs://photos/shot.png",
     "kind": "file",
@@ -35,5 +35,15 @@
     }
   ],
   "evidence": "DEMONSTRATED",
-  "seal": "sha256:97b9a459d71fa35546de62425464efb22fddc35d4e3fa1702c0ed0542ae97eac"
+  "policy_digest": "sha256:ae812eacc55b453fd9bafc7fec3e5649000fea509dc85f228fe14a00718369d6",
+  "capability_digest": "sha256:7f63f5ea9ef774f89c324c214ab4138c55b163dd4fd439ae736e9b939b55b461",
+  "result_digest": "sha256:9bea5e0baf48acc16b3d9b090a8fee81498209509520c4f16b4a97f6ceb7e56d",
+  "reproduce": {
+    "tool": "nt-modern/0.1",
+    "request_digest": "sha256:c690e44b214df98e300e04cd54ea8b41cc2606d341d1376960b63dca8ddadf50",
+    "decided_at": 1790069138.8972802
+  },
+  "seal_kind": "unkeyed",
+  "claim_digest": "sha256:2c0d6169182be68b1a7b56432549702bf085e141c524354e0e7e4b28ff7fb49e",
+  "seal": "sha256:5bfb60d74886a10b795d5be54aae63a2e86b7491f2c55b039c4159802b33f33c"
 }

@@ -42,26 +42,27 @@ de autoridad está rota y no se sigue construyendo encima.
 python tools/m0_demo.py
 ```
 
-Salida real (fragmentos, el recorrido completo son 7 pasos):
+Salida real (fragmentos, el recorrido completo son 7 pasos; corrida del
+2026-09-22, fixtures `demo` sin PII):
 
 ```
 === 1. describe() - what each device says it is ===================
-  win11-victus     11-24h2  engine=nt-modern/0.1   granted=5/6
+  win11-demo       11-24h2  engine=nt-modern/0.1   granted=5/6
   win98-retrobox   98-se    engine=dos-bridge/0.1  granted=4/4
 
 === 2. the human approves one narrow lease ========================
-  lease lease_7b7d4470d0ca4314
-  capability filesystem.read  scope {'roots': ['C:/Users/danny/Photos']}  ttl 300s
+  lease lease_373c8eae677648c1
+  capability filesystem.read  scope {'roots': ['C:/Users/demo/Photos']}  ttl 300s
 
 === 3. an in-scope read ===========================================
-  [ALLOW] filesystem.read on win11-victus
-         result: {"path": "C:/Users/danny/Photos/shot-2026-09-17.png", "bytes": 7, ...}
-         seal ok: True  (sha256:faa09b5b05e7279e...)
+  [ALLOW] filesystem.read on win11-demo
+         result: {"path": "hostfs://photos/shot.png", "kind": "file", "bytes": 7, "text": "PNGDATA", "sha256": "s
+         seal ok: True  (sha256:5bfb60d74886a10b...)
 
 === 4. the same capability, one directory over ====================
-  [DENY  OUT_OF_SCOPE] filesystem.read on win11-victus
-         C:/Users/danny/Secrets/keys.txt is outside ['C:/Users/danny/Photos']
-         seal ok: True  (sha256:d25c1ef4c834fb42...)
+  [DENY  OUT_OF_SCOPE] filesystem.read on win11-demo
+         C:/Users/demo/Secrets/keys.txt is outside ['hostfs://photos']
+         seal ok: True  (sha256:3f9a6d75425c227e...)
 ```
 
 y al final:
@@ -71,6 +72,9 @@ y al final:
   receipts written : 7 -> evidence/M0/
   ALLOW / DENY     : 4 / 3
   seals verified   : 7/7
+  claims written   : 7 -> evidence/M0/claims/
+  claims re-derive : 7/7
+  manifest         : evidence/M0/hashes.json (14 artifacts)
   relay hops       : 12
 ```
 
@@ -92,12 +96,12 @@ Salida real:
 {
   "decision": "DENY",
   "reason": "OUT_OF_SCOPE",
-  "detail": "C:/Users/danny/Secrets/keys.txt is outside ['C:/Users/danny/Photos']"
+  "detail": "C:/Users/demo/Secrets/keys.txt is outside ['hostfs://photos']"
 }
 ```
 
 Y el mismo fichero trae `"result": {}` y
-`"seal": "sha256:d25c1ef4c834fb42e7abc874bb856ea5..."`.
+`"seal": "sha256:3f9a6d75425c227e..."`.
 
 Dos cosas que hay que leer despacio ahí:
 
@@ -116,7 +120,7 @@ python -c "import json;d=json.load(open('evidence/M0/01_read_allow.json',encodin
 Salida real:
 
 ```
-sello guardado: sha256:faa09b5b05e7279e179bba2 ...
+sello guardado: sha256:5bfb60d74886a10b795d5be ...
 ```
 
 La comprobación viva está en el test `test_receipt_seal_detects_tampering`: se
@@ -966,9 +970,10 @@ bug del pet reportado por Danny):
 | `isymotron zzz` | `error: unknown command 'zzz'` + uso + "For more information, try 'isymotron --help'." — **exit 2** (semántica clap) |
 | colores | con `FORCE_COLOR=1`, la salida lleva ESC `\e[38;2;…m` verificado (verde marca y dim); `NO_COLOR` los apaga |
 
-**NO PROBADO en esta pasada:** `demo` (reescribe `evidence/M0/`; su última
-salida real documentada está en §2) y el `webbrowser.open` de `start` (abría
-tu navegador; todo lo demás del verbo está probado vía `--no-browser`).
+**NO PROBADO en esta pasada:** `demo` sí se ejecutó (2026-09-22, host Linux:
+reescribió `evidence/M0/` con claims Quine Gate, 7/7 re-derivan); queda sin
+probar el `webbrowser.open` de `start` (abría tu navegador; todo lo demás del
+verbo está probado vía `--no-browser`).
 
 **Volver a la versión simple:** el estado anterior está etiquetado —
 `git checkout cli-plain-bf7bcae -- isymotron.ps1`.

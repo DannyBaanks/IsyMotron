@@ -25,6 +25,8 @@ REPO = Path(__file__).resolve().parent.parent
 REAL_MANIFESTS = [
     REPO / "evidence" / "LINUX_V0" / "hashes.json",
     REPO / "evidence" / "M3" / "hashes.json",
+    REPO / "evidence" / "M0" / "hashes.json",
+    REPO / "evidence" / "QUINE_GATE" / "hashes.json",
 ]
 
 

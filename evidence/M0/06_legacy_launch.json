@@ -1,8 +1,8 @@
 {
-  "contract": "NemoHostContract/v0",
-  "receipt_id": "rcpt_6a130eaa1f814a65",
+  "contract": "NemoHostContract/v1",
+  "receipt_id": "rcpt_41ac1938f3854fc8",
   "request_digest": "sha256:dd0e74a65f43f521eac537271c41e4e6c5ec94455acb68b634329c62b37616b0",
-  "request_id": "req_42b9338ec07c4b48",
+  "request_id": "req_f76c381e576a4e37",
   "host": {
     "host_id": "win98-retrobox",
     "display_name": "RetroBox (Windows 98 SE)",
@@ -13,14 +13,14 @@
   },
   "capability": "apps.launch",
   "subject": "mobile:demo-phone",
-  "lease_id": "lease_c219b5c0bc044018",
+  "lease_id": "lease_5e583a1c959b4383",
   "decision": {
     "decision": "ALLOW",
     "reason": null,
     "detail": ""
   },
-  "started_at": 1790037473.7584918,
-  "ended_at": 1790037473.7585177,
+  "started_at": 1790069138.898313,
+  "ended_at": 1790069138.8983383,
   "result": {
     "app": "DOOM.EXE",
     "pid": null,
@@ -33,5 +33,15 @@
     }
   ],
   "evidence": "DEMONSTRATED",
-  "seal": "sha256:6dd30e4374b0302f8a4c2becf7aadfeb76f3817e410db9f91e09d5650fd3585c"
+  "policy_digest": "sha256:454c2b0141c6f28656459e0e2dbbaeb6f2a2a5dbe3ca3183cfdaa32528ab08f7",
+  "capability_digest": "sha256:853a1c03b9fc9fa0c1012ddc5dd575a46e775410867261beb6b2ba16106defef",
+  "result_digest": "sha256:e7b2a48926c9cc0bee1878062b51462f94a94835c847c555f5b133e6ab962424",
+  "reproduce": {
+    "tool": "dos-bridge/0.1",
+    "request_digest": "sha256:dd0e74a65f43f521eac537271c41e4e6c5ec94455acb68b634329c62b37616b0",
+    "decided_at": 1790069138.898313
+  },
+  "seal_kind": "unkeyed",
+  "claim_digest": "sha256:eada5a2301cc14d6f805c79a0667cef4af359d0d2d212736e8386cce72938fb4",
+  "seal": "sha256:fc4679e42b9eecae3c4d86a6f88ecc6514d3525137854a39627be32ac3a6e0ab"
 }

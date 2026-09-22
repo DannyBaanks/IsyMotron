@@ -1,8 +1,8 @@
 {
-  "contract": "NemoHostContract/v0",
-  "receipt_id": "rcpt_975bce467c524f4a",
+  "contract": "NemoHostContract/v1",
+  "receipt_id": "rcpt_2f84e008c1e74a55",
   "request_digest": "sha256:b720ae48229c7c9987ef2e32920ec415272548125004d07985522c098b50ba9a",
-  "request_id": "req_21fb729d11444964",
+  "request_id": "req_f21f0ee33bf540eb",
   "host": {
     "host_id": "win11-demo",
     "display_name": "Demo (Windows 11)",
@@ -13,16 +13,26 @@
   },
   "capability": "filesystem.read",
   "subject": "mobile:demo-phone",
-  "lease_id": "lease_ebeb99b09e704003",
+  "lease_id": "lease_373c8eae677648c1",
   "decision": {
     "decision": "DENY",
     "reason": "OUT_OF_SCOPE",
     "detail": "C:/Users/demo/Secrets/keys.txt is outside ['hostfs://photos']"
   },
-  "started_at": 1790037473.7582142,
-  "ended_at": 1790037473.758239,
+  "started_at": 1790069138.8975873,
+  "ended_at": 1790069138.8976133,
   "result": {},
   "effects": [],
   "evidence": "DEMONSTRATED",
-  "seal": "sha256:c92fe39d96cc1528a3a002617bc81b966a17ec271d02ee385efdaa1809388b52"
+  "policy_digest": "sha256:ae812eacc55b453fd9bafc7fec3e5649000fea509dc85f228fe14a00718369d6",
+  "capability_digest": "sha256:7f63f5ea9ef774f89c324c214ab4138c55b163dd4fd439ae736e9b939b55b461",
+  "result_digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "reproduce": {
+    "tool": "nt-modern/0.1",
+    "request_digest": "sha256:b720ae48229c7c9987ef2e32920ec415272548125004d07985522c098b50ba9a",
+    "decided_at": 1790069138.8975873
+  },
+  "seal_kind": "unkeyed",
+  "claim_digest": "sha256:365d7c8a840f7720bfe93a837164bdb477d5eaf478f3a292467e1ee5634aec91",
+  "seal": "sha256:3f9a6d75425c227ea14a25fd57d2ea896ba2d5a9c55ec0231d34eaf3e00dc016"
 }

@@ -1,0 +1,174 @@
+{
+  "contract": "quine-claim/v1",
+  "host": {
+    "identity": {
+      "host_id": "win11-demo",
+      "display_name": "Demo (Windows 11)",
+      "os_family": "windows",
+      "os_release": "11-24h2",
+      "engine": "nt-modern/0.1",
+      "contract": "NemoHostContract/v0"
+    },
+    "capabilities": [
+      {
+        "id": "filesystem.read",
+        "version": "0.2",
+        "summary": "Read a file, or list a directory with each entry's size and modification time, inside the granted roots. A listing also returns `newest` (the path of its most recently modified file) and `newest_name` (that file's name).",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [
+          "path"
+        ],
+        "returns": [
+          "path",
+          "kind",
+          "bytes",
+          "sha256",
+          "text",
+          "entries",
+          "count",
+          "order",
+          "newest",
+          "newest_name"
+        ]
+      },
+      {
+        "id": "filesystem.write",
+        "version": "0.1",
+        "summary": "Create or overwrite a file inside granted roots.",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [
+          "path",
+          "content"
+        ],
+        "returns": [
+          "path",
+          "bytes",
+          "overwrote",
+          "sha256"
+        ]
+      },
+      {
+        "id": "apps.launch",
+        "version": "0.1",
+        "summary": "Launch an allowlisted local application.",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [
+          "app"
+        ],
+        "returns": [
+          "app",
+          "pid"
+        ]
+      },
+      {
+        "id": "system.info",
+        "version": "0.1",
+        "summary": "Report non-identifying machine facts.",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [],
+        "returns": [
+          "os",
+          "engine",
+          "cores"
+        ]
+      },
+      {
+        "id": "process.inspect",
+        "version": "0.1",
+        "summary": "List running processes. Read-only.",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [
+          "mutate"
+        ],
+        "returns": [
+          "processes"
+        ]
+      },
+      {
+        "id": "system.admin_task",
+        "version": "0.1",
+        "summary": "A capability that declares it needs administrator authority.",
+        "scopes": {},
+        "requires_admin": true,
+        "params": [
+          "action"
+        ],
+        "returns": []
+      }
+    ],
+    "granted": [
+      "filesystem.read",
+      "filesystem.write",
+      "apps.launch",
+      "system.info",
+      "process.inspect"
+    ],
+    "bounds": {
+      "filesystem.read": {
+        "roots": [
+          {
+            "id": "photos",
+            "uri": "hostfs://photos",
+            "label": "Photos"
+          }
+        ]
+      },
+      "filesystem.write": {
+        "roots": [
+          {
+            "id": "nemoinbox",
+            "uri": "hostfs://nemoinbox",
+            "label": "NemoInbox"
+          }
+        ]
+      },
+      "apps.launch": {
+        "apps": [
+          {
+            "id": "notepad",
+            "label": "notepad",
+            "canonical": "notepad.exe"
+          }
+        ]
+      }
+    }
+  },
+  "admin_granted": false,
+  "request": {
+    "request_id": "req_f21f0ee33bf540eb",
+    "host_id": "win11-demo",
+    "subject": "mobile:demo-phone",
+    "capability": "filesystem.read",
+    "params": {
+      "path": "C:/Users/demo/Secrets/keys.txt"
+    },
+    "lease_id": "lease_373c8eae677648c1",
+    "plan_id": null
+  },
+  "lease": {
+    "lease_id": "lease_373c8eae677648c1",
+    "host_id": "win11-demo",
+    "subject": "mobile:demo-phone",
+    "capability": "filesystem.read",
+    "scope": {
+      "roots": [
+        "C:/Users/demo/Photos"
+      ]
+    },
+    "issued_at": 1790069138.8972461,
+    "expires_at": 1790069438.8972461,
+    "revoked": false
+  },
+  "decided_at": 1790069138.8975873,
+  "expected": {
+    "decision": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "detail": "C:/Users/demo/Secrets/keys.txt is outside ['hostfs://photos']"
+  },
+  "claim_digest": "sha256:365d7c8a840f7720bfe93a837164bdb477d5eaf478f3a292467e1ee5634aec91"
+}

@@ -1,0 +1,134 @@
+{
+  "contract": "quine-claim/v1",
+  "host": {
+    "identity": {
+      "host_id": "win98-retrobox",
+      "display_name": "RetroBox (Windows 98 SE)",
+      "os_family": "windows",
+      "os_release": "98-se",
+      "engine": "dos-bridge/0.1",
+      "contract": "NemoHostContract/v0"
+    },
+    "capabilities": [
+      {
+        "id": "filesystem.read",
+        "version": "0.2",
+        "summary": "Read a file, or list a directory with each entry's size and modification time, inside the granted roots. A listing also returns `newest` (the path of its most recently modified file) and `newest_name` (that file's name).",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [
+          "path"
+        ],
+        "returns": [
+          "path",
+          "kind",
+          "bytes",
+          "sha256",
+          "text",
+          "entries",
+          "count",
+          "order",
+          "newest",
+          "newest_name"
+        ]
+      },
+      {
+        "id": "filesystem.write",
+        "version": "0.1",
+        "summary": "Create or overwrite a file inside granted roots.",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [
+          "path",
+          "content"
+        ],
+        "returns": [
+          "path",
+          "bytes",
+          "overwrote",
+          "sha256"
+        ]
+      },
+      {
+        "id": "apps.launch",
+        "version": "0.1",
+        "summary": "Launch an allowlisted local application.",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [
+          "app"
+        ],
+        "returns": [
+          "app",
+          "pid"
+        ]
+      },
+      {
+        "id": "system.info",
+        "version": "0.1",
+        "summary": "Report non-identifying machine facts.",
+        "scopes": {},
+        "requires_admin": false,
+        "params": [],
+        "returns": [
+          "os",
+          "engine",
+          "cores"
+        ]
+      }
+    ],
+    "granted": [
+      "filesystem.read",
+      "filesystem.write",
+      "apps.launch",
+      "system.info"
+    ],
+    "bounds": {
+      "filesystem.read": {
+        "roots": [
+          {
+            "id": "games",
+            "uri": "hostfs://games",
+            "label": "GAMES"
+          }
+        ]
+      },
+      "filesystem.write": {
+        "roots": [
+          {
+            "id": "inbox",
+            "uri": "hostfs://inbox",
+            "label": "INBOX"
+          }
+        ]
+      },
+      "apps.launch": {
+        "apps": [
+          {
+            "id": "doom",
+            "label": "DOOM",
+            "canonical": "DOOM.EXE"
+          }
+        ]
+      }
+    }
+  },
+  "admin_granted": false,
+  "request": {
+    "request_id": "req_cef6622ebc3146f8",
+    "host_id": "win98-retrobox",
+    "subject": "mobile:demo-phone",
+    "capability": "process.inspect",
+    "params": {},
+    "lease_id": null,
+    "plan_id": null
+  },
+  "lease": null,
+  "decided_at": 1790069138.8977838,
+  "expected": {
+    "decision": "DENY",
+    "reason": "CAPABILITY_UNAVAILABLE",
+    "detail": "win98-retrobox does not implement process.inspect"
+  },
+  "claim_digest": "sha256:43e34251ae3d499b077bf58bdd668e6899196e27b034fba68040f00bfe73cf00"
+}

@@ -5,6 +5,11 @@ Run:  python tools/m0_demo.py
 Six steps, in the order of roadmap section 31: describe the hosts, take a
 narrow lease, do an allowed thing, get refused for an out-of-scope thing, move
 a file between two unlike engines, verify every seal.
+
+Since the Quine Gate, each receipt travels with the *claim bundle* that can
+re-derive it (evidence/M0/claims/) and a hashes.json manifest seals the whole
+package. The hosts are simulated fixtures: this evidence is regenerable by
+design, unlike the real-host receipts in evidence/M1.
 """
 from __future__ import annotations
 
@@ -17,6 +22,8 @@ for p in (ROOT, os.path.join(ROOT, "core"), os.path.join(ROOT, "hosts")):
     sys.path.insert(0, p)
 
 from clients.fake_mobile import FakeMobile          # noqa: E402
+from isymotron.evidence import sha256_file         # noqa: E402
+from isymotron.verify import verify_receipt        # noqa: E402
 from relay.loopback import LoopbackRelay            # noqa: E402
 from simulator.engines import LegacyHost, ModernHost  # noqa: E402
 
@@ -124,11 +131,42 @@ def main() -> int:
         with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8") as fh:
             json.dump(rcpt.to_dict(), fh, indent=2, ensure_ascii=False)
 
+    # Quine Gate: a receipt earns authority by reproduction, so each one
+    # travels with the claim bundle that can re-derive it.
+    hosts = {"win11-demo": modern, "win98-retrobox": legacy}
+    claims_dir = os.path.join(OUT, "claims")
+    os.makedirs(claims_dir, exist_ok=True)
+    claimed = []
+    for name, rcpt in receipts:
+        claim = hosts[rcpt.host.host_id].claim_bundle(rcpt.receipt_id)
+        if rcpt.claim_digest and claim is not None:
+            path = os.path.join(claims_dir, f"{name}.claim.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(claim.to_dict(), fh, indent=2, ensure_ascii=False)
+            claimed.append((name, rcpt, claim))
+
+    manifest = {"algorithm": "SHA-256", "artifacts": {}}
+    for name, _ in receipts:
+        manifest["artifacts"][f"{name}.json"] = \
+            sha256_file(os.path.join(OUT, f"{name}.json"))
+    for name, _, _ in claimed:
+        manifest["artifacts"][f"claims/{name}.claim.json"] = \
+            sha256_file(os.path.join(claims_dir, f"{name}.claim.json"))
+    with open(os.path.join(OUT, "hashes.json"), "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2)
+        fh.write("\n")
+
     rule("summary")
     allowed = sum(1 for _, r in receipts if r.decision.decision.value == "ALLOW")
+    rederived = sum(1 for _, rcpt, claim in claimed
+                    if verify_receipt(rcpt, claim).passed)
     print(f"  receipts written : {len(receipts)} -> evidence/M0/")
     print(f"  ALLOW / DENY     : {allowed} / {len(receipts) - allowed}")
     print(f"  seals verified   : {sum(1 for _, r in receipts if r.verify())}/{len(receipts)}")
+    print(f"  claims written   : {len(claimed)} -> evidence/M0/claims/")
+    print(f"  claims re-derive : {rederived}/{len(claimed)}")
+    print(f"  manifest         : evidence/M0/hashes.json "
+          f"({len(manifest['artifacts'])} artifacts)")
     print(f"  relay hops       : {len(relay.log)}")
     return 0
 

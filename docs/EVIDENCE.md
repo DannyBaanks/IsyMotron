@@ -142,7 +142,10 @@ python tools/nemotron_check.py             # the M3 probe, writes evidence/M3/
 
 Sealed receipts from real runs:
 
-- `evidence/M0/` — 7 receipts, simulated hosts, 4 ALLOW / 3 DENY, 7/7 seals verified
+- `evidence/M0/` — 7 receipts, simulated hosts, 4 ALLOW / 3 DENY, 7/7 seals
+  verified; since the Quine Gate each receipt also ships the claim bundle that
+  re-derives it (`claims/`, 7/7 reproduce) and a `hashes.json` manifest (14
+  artifacts)
 - `evidence/M1/` — 5 receipts from the **real** `win11-danny` host, including a
   real read of a real file and a real `OUT_OF_SCOPE` refusal
 - `evidence/M3/` — the provider probe, with measured latencies and the
