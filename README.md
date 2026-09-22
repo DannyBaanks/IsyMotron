@@ -161,6 +161,13 @@ The exact current count belongs to the CI run, not to a hand-maintained badge.
 
 ### Windows 10/11
 
+**Prebuilt test build:** download [`IsyMotron.exe`](https://github.com/DannyBaanks/IsyMotron/releases/download/v1.0.0/IsyMotron.exe)
+from the [v1.0.0 release](https://github.com/DannyBaanks/IsyMotron/releases/latest)
+(Windows 10/11, no Python required). It is the same binary the CI builds and
+smoke-tests on every run.
+
+Or build from source:
+
 ```powershell
 git clone https://github.com/DannyBaanks/IsyMotron.git
 cd IsyMotron
