@@ -17,6 +17,9 @@ never widens a grant or mints a receipt.
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
@@ -199,3 +202,158 @@ def orphan_entrypoints(verbs: Mapping[str, Verb] | None = None,
     be reached from the one command that is supposed to reach everything.
     """
     return sorted(known_entrypoints(root) - referenced_entrypoints(verbs) - set(EXCLUDED))
+
+
+# ─── style (parity with isymotron.ps1:33-48) ────────────────────────────────
+
+_ANSI = {
+    "reset": "\x1b[0m", "bold": "\x1b[1m", "dim": "\x1b[2m",
+    "brand": "\x1b[38;2;118;185;0m",      # #76B900
+    "accent": "\x1b[38;2;145;199;51m",    # #91C733
+    "red": "\x1b[1;38;2;254;63;63m",      # rustc error red
+}
+
+
+def _use_colour(stream=None) -> bool:
+    """Colour only where a human reads it: interactive, and not switched off."""
+    stream = sys.stdout if stream is None else stream
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    try:
+        return bool(stream.isatty())
+    except Exception:
+        return False
+
+
+def _style(text: str, *codes: str, stream=None) -> str:
+    if not _use_colour(stream) or not codes:
+        return text
+    return "".join(_ANSI[c] for c in codes) + text + _ANSI["reset"]
+
+
+def _is_tty() -> bool:
+    try:
+        return bool(sys.stdin.isatty() and sys.stdout.isatty())
+    except Exception:
+        return False
+
+
+#: Static render of tools/cli-banner.gf (same art the PowerShell CLI carries).
+BANNER = (
+    " ### ##### #   # #   # ###### ##### ####  ###### #   #\n"
+    "  #  #      # #  ## ## #    #   #   #  #  #    # #  ##\n"
+    "  #  #####   #   # # # #    #   #   ####  #    # # # #\n"
+    "  #      #   #   #   # #    #   #   #  #  #    # ##  #\n"
+    " ### #####   #   #   # ######   #   #   # ###### #   #"
+)
+
+USAGE = "Usage: isymotron [OPTIONS] [COMMAND] [ARGS]..."
+
+
+def print_banner() -> None:
+    print()
+    print(_style(BANNER, "brand"))
+    print("  " + _style("capability fabric", "dim") + _style(
+        " -- one command for the whole product", "bold"))
+    print()
+
+
+def print_help(*, long: bool = True) -> None:
+    print(USAGE)
+    print()
+    print(_style("Commands:", "bold"))
+    for verb in VERBS.values():
+        print("  {:<12} {}".format(verb.name, verb.summary))
+    print()
+    print(_style("Options:", "bold"))
+    print("  -h, --help      Print help")
+    print("  -V, --version   Print version")
+    if long:
+        print()
+        print(_style("Notes:", "bold"))
+        print("  - Every command is a pass-through; this CLI holds no authority of")
+        print("    its own. Granting goes through `isymotron host grant` or the console.")
+        print("  - With no arguments and no terminal it prints this help and exits;")
+        print("    it never waits for input that is not coming.")
+
+
+def print_usage_error(message: str) -> None:
+    print()
+    print(_style("error:", "red", "bold") + " " + message)
+    print()
+    print(USAGE)
+    print()
+    print("For more information, try 'isymotron help'.")
+
+
+def repo_version() -> str:
+    try:
+        done = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
+                              capture_output=True, text=True, timeout=5)
+        revision = done.stdout.strip()
+    except Exception:
+        revision = ""
+    return f"isymotron 1.0.0 {revision}".strip()
+
+
+def run_entrypoint(verb: Verb, rest: list[str]) -> int:
+    """Run a verb's entrypoint and propagate its exit code unchanged.
+
+    The argv is a pass-through: `rest` is forwarded verbatim, so a flag the
+    subcommand understands reaches it untouched.
+    """
+    argv = [sys.executable, *verb.argv, *rest]
+    try:
+        return subprocess.run(argv, cwd=str(REPO)).returncode
+    except KeyboardInterrupt:  # pragma: no cover - interactive
+        return 130
+    except OSError as exc:
+        print(_style("error:", "red", "bold") + f" could not run {verb.name}: {exc}")
+        return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = list(sys.argv[1:] if argv is None else argv)
+
+    if not args:
+        # The interactive menu (M5) goes here when there is a terminal.
+        print_help()
+        return 0
+
+    command, rest = args[0], args[1:]
+
+    if command in ("help", "--help"):
+        print_banner()
+        print_help()
+        return 0
+    if command == "-h":
+        print_help(long=False)
+        return 0
+    if command in ("-V", "--version", "version"):
+        print(repo_version())
+        return 0
+    if command == "where":
+        print(REPO)
+        return 0
+    if command in ("keys", "install"):
+        # Deliberate fail-closed: a verb that exists in the table but has no
+        # implementation yet must not look like it worked.
+        print(_style("error:", "red", "bold")
+              + f" '{command}' is not implemented in this build"
+              + f" (plan milestone {'M3' if command == 'keys' else 'M6'})")
+        return 2
+
+    verb = VERBS.get(command)
+    if verb is None:
+        print_usage_error(f"unknown command '{command}'")
+        return 2
+    if verb.entrypoint is None and not verb.subcommands:
+        print(_style("error:", "red", "bold") + f" '{command}' has no entrypoint wired yet")
+        return 2
+    return run_entrypoint(verb, rest)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

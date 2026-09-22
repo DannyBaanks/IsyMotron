@@ -94,3 +94,78 @@ def test_verbs_implemented_inside_the_cli_have_no_entrypoint():
     for name in ("keys", "install", "where", "help"):
         assert cli.VERBS[name].entrypoint is None
         assert cli.VERBS[name].subcommands == {}
+
+
+# -- M1: the skeleton, exercised as a real process ---------------------------
+
+def _run(*args, timeout=30, **kwargs):
+    import subprocess
+    return subprocess.run(
+        [sys.executable, str(CLI_PATH), *args],
+        cwd=str(REPO), capture_output=True, text=True, timeout=timeout, **kwargs)
+
+
+def test_help_exits_zero_and_lists_every_verb():
+    done = _run("help")
+    assert done.returncode == 0
+    assert "Usage: isymotron" in done.stdout
+    for name in cli.VERBS:
+        assert name in done.stdout, f"{name} missing from help"
+
+
+def test_short_and_long_help_are_available():
+    assert _run("-h").returncode == 0
+    assert _run("--help").returncode == 0
+    assert "Usage: isymotron" in _run("-h").stdout
+
+
+def test_unknown_command_is_exit_two_and_points_at_help():
+    done = _run("zzz")
+    assert done.returncode == 2
+    assert "unknown command 'zzz'" in done.stdout
+    assert "isymotron help" in done.stdout
+
+
+def test_no_args_without_a_tty_prints_help_and_never_hangs():
+    done = _run(timeout=20)          # a hang raises TimeoutExpired and fails
+    assert done.returncode == 0
+    assert "Usage: isymotron" in done.stdout
+
+
+def test_stdout_closed_does_not_hang():
+    import subprocess
+    done = subprocess.run([sys.executable, str(CLI_PATH), "help"],
+                          cwd=str(REPO), stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL, timeout=20)
+    assert done.returncode == 0
+
+
+def test_where_prints_the_repository():
+    done = _run("where")
+    assert done.returncode == 0
+    assert done.stdout.strip() == str(REPO)
+
+
+def test_version_mentions_the_product():
+    done = _run("--version")
+    assert done.returncode == 0
+    assert done.stdout.startswith("isymotron")
+
+
+def test_unimplemented_verbs_fail_closed():
+    for name, milestone in (("keys", "M3"), ("install", "M6")):
+        done = _run(name)
+        assert done.returncode == 2, f"{name} must not look like it worked"
+        assert milestone in done.stdout
+
+
+def test_a_verb_passes_through_and_propagates_the_exit_code():
+    # `host --help` is argparse's own help: safe, side-effect free, exit 0.
+    done = _run("host", "--help")
+    assert done.returncode == 0
+    assert "status" in done.stdout
+
+    # `process verify` with a missing baseline exits 2; the CLI must not mask it.
+    missing = _run("process", "verify", "1", "--baseline", str(REPO / "nope.json"))
+    assert missing.returncode == 2
+    assert "NO_BASELINE" in missing.stdout
