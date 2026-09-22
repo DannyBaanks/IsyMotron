@@ -606,13 +606,27 @@ def run_grouped(verb: Verb, rest: list[str]) -> int:
 SELECT_CANCEL = -1
 SELECT_ABORT = -2
 MENU_HINT = "↑↓ navigate · Enter choose · Esc exit"
+#: Home + clear. Redrawing from the top instead of moving the cursor up by the
+#: frame's height: if the pane is short (or the banner pushed the menu down),
+#: a relative move clamps at the top of the screen and every frame accumulates
+#: into a staircase. Clearing cannot accumulate.
+CLEAR_HOME = "\x1b[H\x1b[2J"
+#: Take the menu to the alternate screen and give the terminal back on exit,
+#: so the user's scrollback survives the menu.
+ALT_SCREEN_ON = "\x1b[?1049h"
+ALT_SCREEN_OFF = "\x1b[?1049l"
 
 
-def _render_choices(message: str, choices: list[dict], index: int,
-                    stdout, *, first: bool) -> None:
-    lines = []
-    if not first:
-        lines.append(f"\x1b[{len(choices) + 2}A")
+def _menu_ok() -> bool:
+    """The arrow menu needs a terminal that emulates cursor control."""
+    return _is_tty() and os.environ.get("TERM", "") != "dumb"
+
+
+def _render_choices(header: str, message: str, choices: list[dict],
+                    index: int, stdout) -> None:
+    lines = [CLEAR_HOME]
+    if header:
+        lines.append(_style(header, "dim", stream=stdout) + "\n")
     lines.append(_style(message, "bold", stream=stdout) + "\n")
     for i, choice in enumerate(choices):
         mark = "❯" if i == index else " "
@@ -622,12 +636,11 @@ def _render_choices(message: str, choices: list[dict], index: int,
         hint = f"  {choice['hint']}" if choice.get("hint") else ""
         lines.append(f"{mark} {label}{hint}\n")
     lines.append(_style(MENU_HINT, "dim", stream=stdout) + "\n")
-    lines.append("\x1b[0J")
     stdout.write("".join(lines))
     stdout.flush()
 
 
-def _select_posix(message: str, choices: list[dict], stdin, stdout) -> int:
+def _select_posix(header: str, message: str, choices: list[dict], stdin, stdout) -> int:
     import select as _select
     import termios
     import tty
@@ -640,8 +653,8 @@ def _select_posix(message: str, choices: list[dict], stdin, stdout) -> int:
         # input already typed ahead of the next render (a pasted "1q" would
         # lose the "q").
         tty.setraw(fd, when=termios.TCSANOW)
-        stdout.write("\x1b[?25l")
-        _render_choices(message, choices, index, stdout, first=True)
+        stdout.write(ALT_SCREEN_ON + "\x1b[?25l")
+        _render_choices(header, message, choices, index, stdout)
         while True:
             first_byte = os.read(fd, 1)
             if not first_byte:
@@ -661,7 +674,7 @@ def _select_posix(message: str, choices: list[dict], stdin, stdout) -> int:
                     index = (index - 1) % len(choices)
                 elif code == b"B":
                     index = (index + 1) % len(choices)
-                _render_choices(message, choices, index, stdout, first=False)
+                _render_choices(header, message, choices, index, stdout)
                 continue
             if ch in ("\r", "\n"):
                 result = index
@@ -673,16 +686,16 @@ def _select_posix(message: str, choices: list[dict], stdin, stdout) -> int:
                 break
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, saved)
-        stdout.write("\x1b[?25h\n")
+        stdout.write("\x1b[?25h" + ALT_SCREEN_OFF)
         stdout.flush()
     return result
 
 
-def _select_windows(message: str, choices: list[dict], stdout) -> int:
+def _select_windows(header: str, message: str, choices: list[dict], stdout) -> int:
     import msvcrt
     index = 0
-    stdout.write("\x1b[?25l")
-    _render_choices(message, choices, index, stdout, first=True)
+    stdout.write(ALT_SCREEN_ON + "\x1b[?25l")
+    _render_choices(header, message, choices, index, stdout)
     try:
         while True:
             ch = msvcrt.getwch()
@@ -694,7 +707,7 @@ def _select_windows(message: str, choices: list[dict], stdout) -> int:
                     index = (index - 1) % len(choices)
                 elif code == "P":
                     index = (index + 1) % len(choices)
-                _render_choices(message, choices, index, stdout, first=False)
+                _render_choices(header, message, choices, index, stdout)
                 continue
             if ch in ("\r", "\n"):
                 return index
@@ -703,18 +716,44 @@ def _select_windows(message: str, choices: list[dict], stdout) -> int:
             if ch.isdigit() and 1 <= int(ch) <= len(choices):
                 return int(ch) - 1
     finally:
-        stdout.write("\x1b[?25h\n")
+        stdout.write("\x1b[?25h" + ALT_SCREEN_OFF)
         stdout.flush()
 
 
-def select(message: str, choices: list[dict]) -> int:
-    """Arrow-key menu. Returns the chosen index, `SELECT_CANCEL` (Esc/q) or
+def plain_menu(header: str, message: str, choices: list[dict]) -> int:
+    """A numbered menu with no escape sequences at all.
+
+    The way out when the terminal does not emulate cursor control (a captured
+    pane, a log): every action stays reachable, nothing gets redrawn.
+    """
+    if header:
+        print(header)
+    print(message)
+    for i, choice in enumerate(choices, 1):
+        hint = f"  {choice['hint']}" if choice.get("hint") else ""
+        print(f"  {i}) {choice['label']}{hint}")
+    try:
+        answer = input("Choose [1-{}], or q to exit: ".format(len(choices))).strip()
+    except EOFError:
+        return SELECT_CANCEL
+    if answer.lower() in ("q", ""):
+        return SELECT_CANCEL
+    if answer.isdigit() and 1 <= int(answer) <= len(choices):
+        return int(answer) - 1
+    print(_style("not one of the options", "red"))
+    return SELECT_CANCEL
+
+
+def select(header: str, message: str, choices: list[dict]) -> int:
+    """Menu. Returns the chosen index, `SELECT_CANCEL` (Esc/q) or
     `SELECT_ABORT` (Ctrl-C). Never called without a terminal."""
     if not choices or not _is_tty():
         return SELECT_CANCEL
+    if os.environ.get("ISYMOTRON_MENU") == "plain" or os.environ.get("TERM") == "dumb":
+        return plain_menu(header, message, choices)
     if os.name == "nt":
-        return _select_windows(message, choices, sys.stdout)
-    return _select_posix(message, choices, sys.stdin, sys.stdout)
+        return _select_windows(header, message, choices, sys.stdout)
+    return _select_posix(header, message, choices, sys.stdin, sys.stdout)
 
 
 def ask(question: str) -> str:
@@ -726,12 +765,11 @@ def ask(question: str) -> str:
 
 def interactive_menu() -> int:
     """The no-arguments entrypoint when a terminal is attached."""
-    print_banner()
     values = load_store()
     stored = [name for name in KNOWN_KEYS if name in values]
-    print(f"  {sys.platform} · {REPO}")
-    print(f"  keys {len(stored)}/{len(KNOWN_KEYS)} set · store {default_store_path()}")
-    print()
+    header = (f"{sys.platform} · {REPO}\n"
+              f"keys {len(stored)}/{len(KNOWN_KEYS)} set · "
+              f"store {default_store_path()}")
     manifests = ["evidence/M3/hashes.json", "evidence/M0/hashes.json",
                  "evidence/QUINE_GATE/hashes.json"]
     choices = [
@@ -744,8 +782,7 @@ def interactive_menu() -> int:
         {"label": "Exit", "value": "quit"},
     ]
     while True:
-        picked = select("What do we do?", choices)
-        print()
+        picked = select(header, "What do we do?", choices)
         if picked == SELECT_ABORT:
             return 130
         if picked < 0:
@@ -760,18 +797,19 @@ def interactive_menu() -> int:
         elif action == "keys-list":
             cmd_keys(["list"])
         elif action == "keys-set":
-            which = select("Which key?", [{"label": k, "value": k} for k in KNOWN_KEYS])
+            which = select(header, "Which key?",
+                           [{"label": k, "value": k} for k in KNOWN_KEYS])
             if which >= 0:
                 cmd_keys(["set", KNOWN_KEYS[which]])
         elif action == "host-status":
             run_entrypoint(VERBS["host"], ["status"])
         elif action == "evidence":
-            which = select("Which manifest?", [{"label": m, "value": m} for m in manifests])
+            which = select(header, "Which manifest?",
+                           [{"label": m, "value": m} for m in manifests])
             if which >= 0:
                 cmd_evidence(["verify", manifests[which]])
         elif action == "quine-demo":
             run_grouped(VERBS["quine"], ["demo"])
-        print()
 
 
 def cmd_install() -> int:
@@ -793,7 +831,7 @@ def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
 
     if not args:
-        if _is_tty():
+        if _menu_ok():
             return interactive_menu()
         print_help()
         return 0

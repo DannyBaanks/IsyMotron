@@ -373,11 +373,14 @@ def test_new_verbs_are_wired():
 
 # -- M5: the interactive menu (munder's model, POSIX backend here) -----------
 
-def _run_in_pty(keys=b"q", timeout=20.0):
+def _run_in_pty(keys=b"q", timeout=20.0, env=None):
     import pty
     master, slave = pty.openpty()
+    child_env = dict(os.environ)
+    child_env.update(env or {})
     proc = subprocess.Popen([sys.executable, str(CLI_PATH)], cwd=str(REPO),
-                            stdin=slave, stdout=slave, stderr=slave, close_fds=True)
+                            stdin=slave, stdout=slave, stderr=slave,
+                            close_fds=True, env=child_env)
     os.close(slave)
     out = b""
     try:
@@ -424,6 +427,34 @@ def test_menu_number_key_selects_an_entry():
 def test_menu_ctrl_c_aborts_with_130():
     code, out = _run_in_pty(b"\x03")
     assert code == 130, (code, out)
+
+
+@LINUX_ONLY
+def test_menu_redraw_clears_the_screen_instead_of_moving_the_cursor():
+    """Measured failure: a relative cursor move clamps at the top of a short
+    pane (or under a banner), so every frame accumulated into a staircase.
+    Clearing from home cannot accumulate."""
+    src = CLI_PATH.read_text(encoding="utf-8")
+    assert 'CLEAR_HOME = "\\x1b[H\\x1b[2J"' in src
+    assert 'ALT_SCREEN_ON = "\\x1b[?1049h"' in src
+    assert 'ALT_SCREEN_OFF = "\\x1b[?1049l"' in src
+    assert "len(choices) + 2}A" not in src, "the cursor-up redraw came back"
+
+
+@LINUX_ONLY
+def test_plain_menu_is_available_without_cursor_control():
+    """The escape hatch for a captured pane: no escape sequences, numbers."""
+    code, out = _run_in_pty(b"7\n", env={"ISYMOTRON_MENU": "plain"})
+    assert code == 0, out
+    assert "Choose [1-7]" in out
+    assert "Show help and every command" in out
+
+
+@LINUX_ONLY
+def test_a_dumb_terminal_gets_help_and_not_a_broken_menu():
+    code, out = _run_in_pty(b"", timeout=10, env={"TERM": "dumb"})
+    assert code == 0
+    assert "Usage: isymotron" in out
 
 
 # -- M6: shims — one surface, two entrypoints --------------------------------

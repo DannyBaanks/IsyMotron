@@ -22,6 +22,11 @@ isymotron process verify <pid> --baseline proc.baseline.json
 With no arguments and **no terminal**, it prints the help and exits: it never
 waits for input that is not coming. That rule matters in CI and in pipes.
 
+The menu uses the alternate screen and clears before each redraw, so it works in
+a short pane and gives your scrollback back on exit. If the terminal cannot do
+any of that (a captured pane, a log), it falls back to a plain numbered prompt
+with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
+
 ## Commands
 
 | Verb | What it runs |
