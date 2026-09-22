@@ -1,8 +1,8 @@
 {
   "contract": "NemoHostContract/v0",
-  "receipt_id": "rcpt_59912990c204454a",
-  "request_digest": "sha256:cc0783edbde99bae2a13d9a09274a63799e2b90e9f6c61fcd6cb47c47bbe4925",
-  "request_id": "req_88e7e73ddf8341d9",
+  "receipt_id": "rcpt_9335613d61434c99",
+  "request_digest": "sha256:925ee2f9c1bb596c2ae8ab344d02e8874a9d21b597abed0bf6c308b533746176",
+  "request_id": "req_da62da94ec1b41f6",
   "host": {
     "host_id": "win98-retrobox",
     "display_name": "RetroBox (Windows 98 SE)",
@@ -12,17 +12,17 @@
     "contract": "NemoHostContract/v0"
   },
   "capability": "apps.launch",
-  "subject": "mobile:iphone-danny",
-  "lease_id": "lease_4256954ede2341e8",
+  "subject": "mobile:demo-phone",
+  "lease_id": "lease_c219b5c0bc044018",
   "decision": {
     "decision": "DENY",
     "reason": "OUT_OF_SCOPE",
-    "detail": "'REGEDIT.EXE' is not in the app allowlist"
+    "detail": "'REGEDIT.EXE' is not in the app allowlist; granted ids: ['doom']"
   },
-  "started_at": 1789676756.1157298,
-  "ended_at": 1789676756.1157298,
+  "started_at": 1790037473.7585542,
+  "ended_at": 1790037473.75858,
   "result": {},
   "effects": [],
   "evidence": "DEMONSTRATED",
-  "seal": "sha256:0259e01409334af9a20653b20bf3d738444b8810ded3a05efb09cb5f3d8a0feb"
+  "seal": "sha256:aeb801aa94805662328f95d398184a2ebb8a9bf30afc602612d6ca3509dfffe9"
 }

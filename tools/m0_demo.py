@@ -43,19 +43,21 @@ def main() -> int:
 
     modern = ModernHost(
         fs={
-            "C:/Users/danny/Photos/shot-2026-09-17.png": "PNGDATA",
-            "C:/Users/danny/Secrets/keys.txt": "hunter2",
-            "C:/Users/danny/NemoInbox/.keep": "",
+            "C:/Users/demo/Photos/shot.png": "PNGDATA",
+            "C:/Users/demo/Secrets/keys.txt": "hunter2",
+            "C:/Users/demo/NemoInbox/.keep": "",
         },
         granted=["filesystem.read", "filesystem.write", "apps.launch",
                  "system.info", "process.inspect"],
         grant_scopes={
-            "filesystem.read": {"roots": ["C:/Users/danny/Photos"]},
-            "filesystem.write": {"roots": ["C:/Users/danny/NemoInbox"]},
+            "filesystem.read": {"roots": ["C:/Users/demo/Photos"]},
+            "filesystem.write": {"roots": ["C:/Users/demo/NemoInbox"]},
             "apps.launch": {"allowlist": ["notepad.exe"]},
             "system.info": {},
             "process.inspect": {},
         },
+        host_id="win11-demo",
+        display_name="Demo (Windows 11)",
     )
     legacy = LegacyHost(
         fs={"C:/NEMO/INBOX/.keep": "", "C:/GAMES/DOOM/DOOM.EXE": "MZ"},
@@ -66,12 +68,14 @@ def main() -> int:
             "apps.launch": {"allowlist": ["DOOM.EXE"]},
             "system.info": {},
         },
+        host_id="win98-retrobox",
+        display_name="RetroBox (Windows 98 SE)",
     )
 
     relay = LoopbackRelay()
     relay.attach(modern)
     relay.attach(legacy)
-    phone = FakeMobile(relay, "mobile:iphone-danny")
+    phone = FakeMobile(relay, "mobile:demo-phone")
     receipts = []
 
     rule("1. describe() - what each device says it is")
@@ -81,18 +85,18 @@ def main() -> int:
               f"granted={len(d['granted'])}/{len(d['capabilities'])}")
 
     rule("2. the human approves one narrow lease")
-    lease = phone.approve("win11-victus", "filesystem.read",
-                          scope={"roots": ["C:/Users/danny/Photos"]}, ttl_s=300)
+    lease = phone.approve("win11-demo", "filesystem.read",
+                          scope={"roots": ["C:/Users/demo/Photos"]}, ttl_s=300)
     print(f"  lease {lease.lease_id}")
     print(f"  capability {lease.capability}  scope {lease.scope}  ttl 300s")
 
     rule("3. an in-scope read")
-    r = phone.act("win11-victus", "filesystem.read",
-                  path="C:/Users/danny/Photos/shot-2026-09-17.png")
+    r = phone.act("win11-demo", "filesystem.read",
+                  path="C:/Users/demo/Photos/shot.png")
     show(r); receipts.append(("01_read_allow", r))
 
     rule("4. the same capability, one directory over")
-    r = phone.act("win11-victus", "filesystem.read", path="C:/Users/danny/Secrets/keys.txt")
+    r = phone.act("win11-demo", "filesystem.read", path="C:/Users/demo/Secrets/keys.txt")
     show(r); receipts.append(("02_read_out_of_scope", r))
 
     rule("5. a capability this host does not implement")
@@ -101,10 +105,10 @@ def main() -> int:
 
     rule("6. cross-device: Win11 -> Win98, two engines, one contract")
     phone.approve("win98-retrobox", "filesystem.write")
-    src = phone.act("win11-victus", "filesystem.read",
-                    path="C:/Users/danny/Photos/shot-2026-09-17.png")
+    src = phone.act("win11-demo", "filesystem.read",
+                    path="C:/Users/demo/Photos/shot.png")
     dst = phone.act("win98-retrobox", "filesystem.write",
-                    path="C:/NEMO/INBOX/SHOT.PNG", content=src.result["content"])
+                    path="C:/NEMO/INBOX/SHOT.PNG", content=src.result["text"])
     show(src); show(dst)
     receipts.append(("04_transfer_src", src))
     receipts.append(("05_transfer_dst", dst))

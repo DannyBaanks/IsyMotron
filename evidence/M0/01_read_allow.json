@@ -1,37 +1,39 @@
 {
   "contract": "NemoHostContract/v0",
-  "receipt_id": "rcpt_11734ec7a969423c",
-  "request_digest": "sha256:b6cd7ae382d6ee1f755b60d8a7ee286a67cc5248502b065efd7623050fa41a2f",
-  "request_id": "req_bc22675da49643c9",
+  "receipt_id": "rcpt_412778693cfe429d",
+  "request_digest": "sha256:c690e44b214df98e300e04cd54ea8b41cc2606d341d1376960b63dca8ddadf50",
+  "request_id": "req_6e7d921ee1824e38",
   "host": {
-    "host_id": "win11-victus",
-    "display_name": "Victus (Windows 11)",
+    "host_id": "win11-demo",
+    "display_name": "Demo (Windows 11)",
     "os_family": "windows",
     "os_release": "11-24h2",
     "engine": "nt-modern/0.1",
     "contract": "NemoHostContract/v0"
   },
   "capability": "filesystem.read",
-  "subject": "mobile:iphone-danny",
-  "lease_id": "lease_7b7d4470d0ca4314",
+  "subject": "mobile:demo-phone",
+  "lease_id": "lease_ebeb99b09e704003",
   "decision": {
     "decision": "ALLOW",
     "reason": null,
     "detail": ""
   },
-  "started_at": 1789676756.1147294,
-  "ended_at": 1789676756.1147294,
+  "started_at": 1790037473.7580502,
+  "ended_at": 1790037473.7581317,
   "result": {
-    "path": "C:/Users/danny/Photos/shot-2026-09-17.png",
+    "path": "hostfs://photos/shot.png",
+    "kind": "file",
     "bytes": 7,
-    "content": "PNGDATA"
+    "text": "PNGDATA",
+    "sha256": "sha256:2d4566582844690f8634a8b2534ea5221560038c6c0650c99140759bad603ae2"
   },
   "effects": [
     {
       "kind": "fs.read",
-      "path": "C:/Users/danny/Photos/shot-2026-09-17.png"
+      "path": "C:/Users/demo/Photos/shot.png"
     }
   ],
   "evidence": "DEMONSTRATED",
-  "seal": "sha256:faa09b5b05e7279e179bba2bdb0337ceed9c327a581fc81709960f87d9ec889a"
+  "seal": "sha256:97b9a459d71fa35546de62425464efb22fddc35d4e3fa1702c0ed0542ae97eac"
 }

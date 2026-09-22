@@ -1,28 +1,28 @@
 {
   "contract": "NemoHostContract/v0",
-  "receipt_id": "rcpt_f27e9824bee449ae",
-  "request_digest": "sha256:8b871acfc35519c7be9d9f104e3b546e94f4ce3f5a3990be88b57794b8803fbc",
-  "request_id": "req_d84c623eb0424d52",
+  "receipt_id": "rcpt_975bce467c524f4a",
+  "request_digest": "sha256:b720ae48229c7c9987ef2e32920ec415272548125004d07985522c098b50ba9a",
+  "request_id": "req_21fb729d11444964",
   "host": {
-    "host_id": "win11-victus",
-    "display_name": "Victus (Windows 11)",
+    "host_id": "win11-demo",
+    "display_name": "Demo (Windows 11)",
     "os_family": "windows",
     "os_release": "11-24h2",
     "engine": "nt-modern/0.1",
     "contract": "NemoHostContract/v0"
   },
   "capability": "filesystem.read",
-  "subject": "mobile:iphone-danny",
-  "lease_id": "lease_7b7d4470d0ca4314",
+  "subject": "mobile:demo-phone",
+  "lease_id": "lease_ebeb99b09e704003",
   "decision": {
     "decision": "DENY",
     "reason": "OUT_OF_SCOPE",
-    "detail": "C:/Users/danny/Secrets/keys.txt is outside ['C:/Users/danny/Photos']"
+    "detail": "C:/Users/demo/Secrets/keys.txt is outside ['hostfs://photos']"
   },
-  "started_at": 1789676756.1147294,
-  "ended_at": 1789676756.1147294,
+  "started_at": 1790037473.7582142,
+  "ended_at": 1790037473.758239,
   "result": {},
   "effects": [],
   "evidence": "DEMONSTRATED",
-  "seal": "sha256:d25c1ef4c834fb42e7abc874bb856ea59611a0291c15830c765116842636f513"
+  "seal": "sha256:c92fe39d96cc1528a3a002617bc81b966a17ec271d02ee385efdaa1809388b52"
 }

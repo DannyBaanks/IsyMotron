@@ -1,8 +1,8 @@
 {
   "contract": "NemoHostContract/v0",
-  "receipt_id": "rcpt_2a4220f283a642be",
-  "request_digest": "sha256:711d439501de7ff7afae46cc9bdb72ccdc6caca24cb63ff7306b278d76b0a653",
-  "request_id": "req_59b93d02e1b5444f",
+  "receipt_id": "rcpt_c22ff378de6b474a",
+  "request_digest": "sha256:d4176f6046d03ba156e357bcc61400a9f4df56f58e88fed778e4439d1a110e7a",
+  "request_id": "req_7df283ed9cf8437d",
   "host": {
     "host_id": "win98-retrobox",
     "display_name": "RetroBox (Windows 98 SE)",
@@ -12,17 +12,17 @@
     "contract": "NemoHostContract/v0"
   },
   "capability": "process.inspect",
-  "subject": "mobile:iphone-danny",
+  "subject": "mobile:demo-phone",
   "lease_id": null,
   "decision": {
     "decision": "DENY",
     "reason": "CAPABILITY_UNAVAILABLE",
     "detail": "win98-retrobox does not implement process.inspect"
   },
-  "started_at": 1789676756.1157298,
-  "ended_at": 1789676756.1157298,
+  "started_at": 1790037473.7582808,
+  "ended_at": 1790037473.7582893,
   "result": {},
   "effects": [],
   "evidence": "DEMONSTRATED",
-  "seal": "sha256:77ac76af7e55464ff82c05f1d819f2c0426ba97f5edf458a99f847169d9c3cbe"
+  "seal": "sha256:123a7a1fdcd20865e1cd7c6e18b020f758d646fbb44a7aa4517129980d822a83"
 }
