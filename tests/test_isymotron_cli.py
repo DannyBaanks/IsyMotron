@@ -455,3 +455,36 @@ def test_the_cli_doc_lists_every_verb():
 def test_the_cli_doc_is_linked_from_the_readme():
     readme = (REPO / "README.md").read_text(encoding="utf-8")
     assert "docs/CLI.md" in readme
+
+
+# -- M9: the frozen binary answers the same verbs ----------------------------
+
+def test_frozen_binary_refuses_pass_through_verbs(monkeypatch, capsys):
+    """No interpreter and no repository tree inside the binary: refuse out
+    loud instead of failing somewhere deeper."""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    code = cli.run_pass_through(["tools/host_cli.py"], [])
+    out = capsys.readouterr().out
+    assert code == 2
+    assert "needs the source checkout" in out
+
+
+def test_console_dispatches_cli_verbs_and_leaves_its_own_flags_alone():
+    from console import __main__ as console_main
+
+    # console-owned arguments must not be hijacked
+    assert console_main.run_cli_verb([]) is None
+    assert console_main.run_cli_verb(["--port", "9000"]) is None
+    assert console_main.run_cli_verb(["--lan", "--no-browser"]) is None
+    assert console_main.run_cli_verb(["zzz"]) is None
+
+    # a verb name is dispatched to the CLI
+    assert console_main.run_cli_verb(["where"]) == 0
+
+
+def test_the_binary_declares_the_cli_surface():
+    """Static guards: without these the frozen build silently loses the verbs."""
+    src = (REPO / "build_exe.py").read_text(encoding="utf-8")
+    assert '"isymotron_cli"' in src, "the CLI module must be a hidden import"
+    assert 'os.path.join(ROOT, "tools")' in src, "tools/ must be on the build path"
+    assert 'subprocess.run([exe, "help"]' in src, "the smoke test must try `help`"

@@ -96,6 +96,12 @@ produced by the same code the CLI calls.
 |---|---|
 | Windows | `isymotron.ps1` — delegates everything except `install` (which needs PowerShell to set the user PATH) |
 | Linux / macOS | `tools/isymotron` — a six-line shim that execs `python3 tools/isymotron_cli.py` |
+| The frozen `IsyMotron.exe` | `console/__main__.py` dispatches on the first argument: a verb name runs the CLI, anything else (its own `--port`/`--lan`/...) still starts the console. `IsyMotron.exe help` works this way. |
+
+Verbs that shell out to a script need the repository tree, which the frozen
+binary does not carry: they are refused there with a clear message and exit 2,
+rather than failing deeper. The verbs implemented inside the CLI (`help`,
+`where`, `keys`, `install`) work from the binary.
 
 The shims hold no logic; the verb table stays in one file. The POSIX shim is
 deliberately **not** at the repository root: on a case-insensitive filesystem a
@@ -108,3 +114,7 @@ root file named `isymotron` would collide with the `IsyMotron/` directory.
   on the record rather than silent.
 - The interactive menu's Windows backend (`msvcrt`) is exercised by CI only
   implicitly; the arrow-key loop is covered by pty tests on Linux.
+- Inside the frozen binary, pass-through verbs (everything except `help`,
+  `where`, `keys` and `install`) are refused: it has no interpreter and no
+  repository tree. Only `IsyMotron.exe help` is covered by the build's smoke
+  test; the refusal path is covered by a unit test, not by a built binary.

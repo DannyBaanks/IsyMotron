@@ -42,6 +42,9 @@ HIDDEN = [
     "console.server",
     "avatar.model", "avatar.protocol", "avatar.inbox",
     "avatar.pack", "avatar.window",
+    # The command surface is imported by console/__main__.py so the frozen
+    # binary answers `IsyMotron.exe help` too.
+    "isymotron_cli",
 ]
 
 
@@ -102,6 +105,15 @@ def smoke_test(exe: str) -> bool:
                     print(f"  FAILED: expected 401 without a token, got {exc.code}")
                     return False
             print("  refuses /api/state without a token (401)")
+
+            # The command surface must answer from the frozen binary too.
+            cli = subprocess.run([exe, "help"], capture_output=True, text=True,
+                                 timeout=60)
+            if cli.returncode != 0 or "Usage: isymotron" not in cli.stdout:
+                print(f"  FAILED: `help` did not answer from the binary "
+                      f"(exit {cli.returncode})")
+                return False
+            print("  answers `help` from the frozen binary")
             return hosts > 0
         except (OSError, ValueError) as exc:
             print(f"  FAILED: {type(exc).__name__}: {exc}")
@@ -149,6 +161,7 @@ def main(argv=None) -> int:
         "--icon", os.path.join(ROOT, "console", "static", "icon.ico"),
         "--paths", os.path.join(ROOT, "core"),
         "--paths", os.path.join(ROOT, "hosts"),
+        "--paths", os.path.join(ROOT, "tools"),
         "--paths", ROOT,
     ]
     for src, dest in DATA:

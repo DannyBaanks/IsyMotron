@@ -25,7 +25,7 @@ def _bootstrap_paths() -> str:
         root = sys._MEIPASS                      # type: ignore[attr-defined]
     else:
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for sub in ("", "core", "hosts"):
+    for sub in ("", "core", "hosts", "tools"):
         p = os.path.join(root, sub) if sub else root
         if p not in sys.path:
             sys.path.insert(0, p)
@@ -33,6 +33,25 @@ def _bootstrap_paths() -> str:
 
 
 ROOT = _bootstrap_paths()
+
+
+def run_cli_verb(argv) -> "int | None":
+    """If the first argument names a CLI verb, run the CLI instead of the
+    console. Returns None when the arguments are the console's own.
+
+    The frozen binary answers `IsyMotron.exe help` this way. Verbs that need the
+    source checkout are refused by the CLI itself, out loud.
+    """
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args:
+        return None
+    try:
+        import isymotron_cli
+    except ImportError:
+        return None
+    if args[0] not in isymotron_cli.VERBS:
+        return None
+    return isymotron_cli.main(args)
 
 from console.server import (ConsoleState, lan_address, serve,  # noqa: E402
                             write_avatar_token)
@@ -106,6 +125,12 @@ def provider_factory(awareness):
 
 
 def main(argv=None) -> int:
+    args_list = list(sys.argv[1:] if argv is None else argv)
+
+    dispatched = run_cli_verb(args_list)
+    if dispatched is not None:
+        return dispatched
+
     ap = argparse.ArgumentParser(prog="IsyMotron")
     ap.add_argument("--port", type=int, default=8760)
     ap.add_argument("--lan", action="store_true",
@@ -119,7 +144,7 @@ def main(argv=None) -> int:
     ap.add_argument("--avatar-worker", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--url-file",
                     help="write the console URL here once serving (for scripts)")
-    args = ap.parse_args(argv)
+    args = ap.parse_args(args_list)
 
     if args.avatar_worker:
         # The avatar runs in its own process: Tk wants the main thread, and a

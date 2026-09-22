@@ -305,11 +305,28 @@ def repo_version() -> str:
     return f"isymotron 1.0.0 {revision}".strip()
 
 
+def is_frozen() -> bool:
+    """True inside the PyInstaller binary."""
+    return bool(getattr(sys, "frozen", False))
+
+
 def run_pass_through(argv_prefix, rest: list[str]) -> int:
     """Run an entrypoint with the caller's arguments forwarded verbatim, and
     propagate its exit code unchanged. Flags the subcommand understands reach
     it untouched; there is no `--` separator to remember because the top-level
-    dispatch parses no flags at all."""
+    dispatch parses no flags at all.
+
+    In the frozen binary there is no Python interpreter and no repository tree
+    to hand these to, so the verb is refused out loud instead of failing
+    somewhere deeper.
+    """
+    if is_frozen():
+        print(_style("error:", "red", "bold")
+              + " this verb needs the source checkout: the frozen binary has no"
+                " interpreter and no repository to run it from.")
+        print("       use a verb implemented in the CLI itself"
+              " (help, where, keys, install), or run it from the repository.")
+        return 2
     try:
         return subprocess.run([sys.executable, *argv_prefix, *rest],
                               cwd=str(REPO), env=child_env()).returncode
