@@ -23,6 +23,7 @@ from typing import Any
 from isymotron.contracts import CapabilityManifest, ExecutionRequest, HostIdentity
 from isymotron.host import Host, ScopeViolation
 from isymotron.policy import normalize_path
+from isymotron.process import ProcessError, observe
 from isymotron.resources import app_entries, fs_roots
 from isymotron.verdicts import DenyReason
 
@@ -48,10 +49,12 @@ FS_WRITE = CapabilityManifest(
     returns=("path", "bytes", "overwrote", "sha256"),
 )
 APPS_LAUNCH = CapabilityManifest(
-    id="apps.launch", version="0.1",
-    summary="Launch an allowlisted local application.",
+    id="apps.launch", version="0.2",
+    summary=("Launch an allowlisted local application. The result seals the "
+             "launched instance's process fingerprint: instance + artifact "
+             "identity, not a benign-process certificate."),
     params=("app", "args"),
-    returns=("app", "exe", "pid", "args"),
+    returns=("app", "exe", "pid", "args", "proc"),
 )
 SYSTEM_INFO = CapabilityManifest(
     id="system.info", version="0.1",
@@ -193,7 +196,8 @@ class Win11Host(Host):
                 stderr=subprocess.DEVNULL,
                 creationflags=getattr(subprocess, "DETACHED_PROCESS", 0),
             )
-            return ({"app": app, "exe": exe, "pid": proc.pid, "args": args},
+            return ({"app": app, "exe": exe, "pid": proc.pid, "args": args,
+                     "proc": _observe_launch(proc.pid)},
                     [{"kind": "process.spawn", "app": app, "pid": proc.pid}])
 
         if req.capability == "system.info":
@@ -229,6 +233,26 @@ class Win11Host(Host):
                 return found
         # Unreachable after an ALLOW, but never fall through to "just run it".
         raise ScopeViolation(DenyReason.OUT_OF_SCOPE, f"{app} is not on the allowlist")
+
+
+def _observe_launch(pid: int) -> dict:
+    """Observe a just-launched process: the trust root of launch identity.
+
+    The engine itself does the observing, at spawn time, so a later `verify`
+    against the sealed fingerprint detects post-launch drift and PID reuse.
+    The sealed shape is `ProcessIdentity.to_dict()`, restored with
+    `ProcessIdentity.from_dict()` — no new vocabulary.
+
+    On observation failure no identity is fabricated: the failure is recorded
+    explicitly and any later verdict over it is ERROR, never PASS.
+
+    Boundary: this establishes instance + artifact identity. It does not
+    certify the in-memory image, and it does not make the process benign.
+    """
+    try:
+        return observe(pid).to_dict()
+    except ProcessError as exc:
+        return {"error": exc.reason, "detail": exc.detail}
 
 
 def _release_tag() -> str:

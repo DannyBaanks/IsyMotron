@@ -1,13 +1,18 @@
 # Windows process source — experiment and implementation protocol
 
-**Status.** The process identity verifier (`core/isymotron/process.py`) is
-`DEMONSTRATED` on Linux only. `WindowsProcessSource` does not exist, and every
-Windows claim is `NOT_DEMONSTRATED`. This document is the exact protocol to
-change that: measure first, implement second, claim last.
+**Status.** Steps 1–3 are done (2026-09-22, Windows 11, sealed in
+`evidence/WINDOWS_PROCESS_V0/`): the experiment measured one layer (no `STRONG`
+tier), `pid` + `CreationTime` instance identity with detectable reuse, a loader
+lock that refuses unlink/replace (`WinError 5` / `Errno 13`), and fail-closed
+observer limits. `WindowsProcessSource` exists in `core/isymotron/process.py`,
+`apps.launch` seals the launch-time fingerprint into the receipt
+(`hosts/windows/win11.py`), and both are gated by tests. What remains
+`NOT_DEMONSTRATED` is listed in `evidence/WINDOWS_PROCESS_V0/RUN.md`
+(other-user spawn, the observe→verify TOCTOU window, any `STRONG` tier).
 
-**Do not** implement a Windows source before completing step 1. In this
-repository, evidence comes before implementation; a source written from
-assumptions has to be marked `NOT_DEMONSTRATED` anyway, so it is wasted work.
+**Do not** widen the Windows claim beyond that list without new measurements.
+A source written from assumptions has to be marked `NOT_DEMONSTRATED` anyway,
+so it is wasted work.
 
 ---
 

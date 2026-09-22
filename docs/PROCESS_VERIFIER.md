@@ -103,7 +103,7 @@ refuses to count an unreadable image.
 | Platform | Status |
 |---|---|
 | Linux | `DEMONSTRATED` (this repository, `/proc` source) |
-| Windows | `NOT_DEMONSTRATED` — the seam is ready (`ProcessSource`); it needs a real-machine experiment before any claim |
+| Windows | `DEMONSTRATED, scoped` — launch-time identity via `WindowsProcessSource` (`core/isymotron/process.py`): `pid` + `CreationTime` instance identity, executable hash, owner SID, raw PEB command line; `apps.launch` seals the fingerprint into the receipt at spawn time (`hosts/windows/win11.py`), so a later `verify` detects drift and PID reuse. `exe_deleted` is always `False` (the loader refuses unlink/replace), there is no `STRONG` tier. Evidence: `evidence/WINDOWS_PROCESS_V0/`, the Windows third of `tests/test_process_identity.py`, launch integration in `tests/test_win11_real.py` |
 | macOS | `NOT_DEMONSTRATED` — no source, no hardware |
 
 Next experiment (before any Windows implementation): determine whether

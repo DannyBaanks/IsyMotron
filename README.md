@@ -92,7 +92,7 @@ The labels below are deliberately narrower than marketing claims.
 | Malbolge lesson with machine verdicts and sealed receipts | **DEMONSTRATED, scoped** | [`learning/`](learning/), [`evidence/MALBOLGE_V0/`](evidence/MALBOLGE_V0/) |
 | Nebius Token Factory provider execution | **DEMONSTRATED** | Sealed keyed run 2026-09-22: round trip, plan and adversarial refusal all pass. [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
 | Receipts verifiable by re-derivation (Quine Gate) | **DEMONSTRATED, scoped** | [`tests/test_quine_gate_rederivation.py`](tests/test_quine_gate_rederivation.py), [`evidence/QUINE_GATE/RUN.md`](evidence/QUINE_GATE/RUN.md) |
-| Process identity: instance + artifact drift, with sealed baselines | **DEMONSTRATED, scoped (Linux)** | [`tests/test_process_identity.py`](tests/test_process_identity.py), [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md) |
+| Process identity: instance + artifact drift, with sealed baselines | **DEMONSTRATED, scoped (Linux full; Windows launch-time identity)** | [`tests/test_process_identity.py`](tests/test_process_identity.py), [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md) |
 | A real Windows 10 host | **NOT_DEMONSTRATED** | Windows 11 is the demonstrated real host; Windows 10 remains the product target |
 | Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
 
@@ -305,9 +305,9 @@ python3 tools/process_verify.py verify <pid> --baseline proc.baseline.json
 Honest boundaries, measured: the executable hash is the **file**, not the
 memory image; a malicious process has a perfectly verifiable identity; and
 `ps` and `/proc` are one kernel layer, so corroboration is single-layer and
-there is no `STRONG` tier. Linux is `DEMONSTRATED`; Windows is
-`NOT_DEMONSTRATED` (the seam is ready, the real-machine experiment is not
-done). See [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md).
+there is no `STRONG` tier. Linux is `DEMONSTRATED` in full; Windows is
+`DEMONSTRATED` scoped to launch-time identity (`WindowsProcessSource` plus the
+`apps.launch` seal: same single layer, `exe_deleted` always `False`). See [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md).
 
 ## Quickstart
 

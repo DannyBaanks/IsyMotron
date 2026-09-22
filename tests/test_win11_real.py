@@ -268,3 +268,68 @@ def test_all_eight_operations_on_the_real_host(sandbox):
     host = make_host(sandbox, [], {})
     for op in OPERATIONS:
         assert callable(getattr(host, op))
+
+
+# -- step 3: launch seals the instance fingerprint into the receipt ---------
+#
+# The engine observes at spawn time (the trust root) and the receipt seals
+# the fingerprint, so a later `verify` detects post-launch drift and PID
+# reuse. Boundary kept: instance + artifact identity only — not a
+# certificate of the in-memory image, not a benign-process verdict.
+
+def _kill(pid: int) -> None:
+    subprocess.run(["taskkill", "/PID", str(pid), "/F"],
+                   capture_output=True, timeout=20)
+
+
+def _launch_sleep(host, exe: str):
+    from isymotron.process import ProcessIdentity
+    r = act(host, "apps.launch", app=exe,
+            args=["-c", "import time; time.sleep(20)"])
+    assert r.decision.decision is Decision.ALLOW
+    assert r.verify(), "the launch receipt must seal with the fingerprint inside"
+    proof = r.result["proc"]
+    assert "fingerprint" in proof and "observations" in proof, proof
+    pid = r.result["pid"]
+    baseline = ProcessIdentity.from_dict({
+        "pid": pid, "platform": proof["platform"],
+        "observations": proof["observations"],
+        "fingerprint": proof["fingerprint"], "strength": proof["strength"],
+    })
+    return pid, baseline
+
+
+def test_launch_seals_a_verifiable_fingerprint(sandbox, tmp_path):
+    import shutil
+    from isymotron.process import ERROR, PASS, STANDARD, verify
+    copy = tmp_path / "launched.exe"
+    shutil.copy2(sys.executable, copy)
+    host = make_host(sandbox, ["apps.launch"],
+                     {"apps.launch": {"allowlist": [str(copy)]}})
+    pid, baseline = _launch_sleep(host, str(copy))
+    try:
+        assert baseline.strength == STANDARD
+        assert verify(pid, baseline).status == PASS
+    finally:
+        _kill(pid)
+    # The instance is gone: the same sealed baseline now fails closed.
+    assert verify(pid, baseline).status == ERROR
+
+
+def test_sealed_fingerprint_catches_instance_reuse(sandbox, tmp_path):
+    from dataclasses import replace
+    from isymotron.process import DENY, INSTANCE_MISMATCH, verdict_for
+    import shutil
+    copy = tmp_path / "launched.exe"
+    shutil.copy2(sys.executable, copy)
+    host = make_host(sandbox, ["apps.launch"],
+                     {"apps.launch": {"allowlist": [str(copy)]}})
+    pid, baseline = _launch_sleep(host, str(copy))
+    try:
+        # A different instance behind the same pid: the sealed receipt says DENY.
+        impostor = replace(baseline, observations=dict(
+            baseline.observations, starttime="1", proc_inode="1"))
+        v = verdict_for(baseline, impostor)
+        assert v.status == DENY and v.reason == INSTANCE_MISMATCH
+    finally:
+        _kill(pid)
