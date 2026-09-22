@@ -135,7 +135,7 @@ Live (real Nemotron, `tests/test_live_model.py`, 5 passed in 14.58s):
 Reproduce:
 
 ```
-python -m pytest -q                        # 221 passed, 7 skipped (Linux native, 2026-09-22)
+python -m pytest -q                        # 334 passed, 7 skipped (Linux native, 2026-09-22)
 python -m pytest tests/test_live_model.py  # 5 passed in 14.58s  (needs a key)
 python tools/nemotron_check.py             # the M3 probe, writes evidence/M3/
 ```

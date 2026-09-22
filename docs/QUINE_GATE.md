@@ -44,10 +44,13 @@ the ledger unchanged).
 | Anchored chain (GENESIS + HEAD) | `core/isymotron/chain.py` |
 | Genealogy ledger (state transitions) | `core/isymotron/genealogy.py` |
 | Evidence manifest verification | `core/isymotron/evidence.py` |
+| Transparency log (published heads) | `core/isymotron/transparency.py` |
 | Bundle report (per property) | `core/isymotron/bundle.py` |
 | Host wiring (emits v1, stores claims) | `core/isymotron/host.py` |
 | CLI: verify a bundle offline | `tools/quine_gate_verify.py` |
 | CLI: live demo, writes sealed evidence | `tools/quine_gate_demo.py` |
+| CLI: publish a head to the log | `tools/quine_gate_publish.py` |
+| Reproducibility image (digest-pinned) | `Dockerfile` |
 | Sealed demo package | `evidence/QUINE_GATE/` |
 
 ## Commands
@@ -77,9 +80,26 @@ trust root is **git**, which is already an append-only log:
 2. Commit it. The commit *is* the anchor.
 3. Optional, stronger: `git tag evidence-head-<n> && git push origin evidence-head-<n>`.
 
+Published heads are also batched in an append-only transparency log
+(`evidence/QUINE_GATE/HEADS.jsonl`, one JSON line per head, monotonic `seq`).
+A chain alone cannot choose between two divergent histories — both recompute
+cleanly — but two logs that disagree at a shared `seq` are a `CONFLICT` either
+side can detect, and a log presented as current that is only an older prefix
+is `STALE` (a rollback). The log does not replace the anchor; it makes the
+anchors comparable. Publish with `tools/quine_gate_publish.py`.
+
 Releases add a second, independent anchor: CI publishes a Sigstore-backed
 build attestation for `IsyMotron.exe` (`actions/attest-build-provenance`), so
 the shipped binary's provenance does not depend on any key in this repo.
+
+## Reproducibility image (M9, minimal)
+
+`Dockerfile` pins the base image by digest (`python:3.12-slim@sha256:2f17fc04…`)
+plus `git` and `pytest`, so the full offline gate suite reproduces inside it:
+`332 passed, 9 skipped` on 2026-09-22 (`evidence/QUINE_GATE/RUN_DOCKER.md`).
+Honest scope: digest-pinned, **not** bit-for-bit reproducible; VM packaging
+and Windows/Linux parity inside a VM remain post-hackathon (no hypervisor
+access on the dev host, and Windows media/licensing stays out of scope).
 
 ## Sealing
 

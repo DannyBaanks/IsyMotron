@@ -1,0 +1,18 @@
+# Keep the image build context to what the offline gate suite needs.
+.git
+.venv
+.venv-linux
+__pycache__
+.pytest_cache
+.ruff_cache
+web/node_modules
+web/.next
+node_modules
+dist
+build
+demo-recordings
+IsyMotron/session
+var
+*.mp4
+*.log
+*.pyc
