@@ -38,6 +38,10 @@ jobs:
       - name: The CLI boots, reaches evidence, and refuses unknown commands
         # Also re-proves on a real Windows checkout that sealed evidence hashes
         # still match: this is the check a CRLF checkout broke once.
+        #
+        # `exit 0` at the end on purpose: the pwsh wrapper GitHub runs ends with
+        # `exit $LASTEXITCODE`, so the step would otherwise inherit the 2 from
+        # the deliberate refusals below and go red after passing every check.
         run: |
           python tools/isymotron_cli.py help
           python tools/isymotron_cli.py where
@@ -47,6 +51,7 @@ jobs:
           if ($LASTEXITCODE -ne 2) { throw "expected exit 2 from an unknown command" }
           python tools/isymotron_cli.py process verify 1 --baseline missing.json
           if ($LASTEXITCODE -ne 2) { throw "expected exit 2 from a missing baseline" }
+          exit 0
 
   binary:
     runs-on: windows-latest
