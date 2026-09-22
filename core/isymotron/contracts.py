@@ -15,6 +15,12 @@ from .verdicts import Decision, DenyReason, Evidence
 
 CONTRACT = "NemoHostContract/v0"
 
+#: Receipt contract v1 (Quine Gate, milestone M1). Adds provenance digests and
+#: a ``reproduce`` block. A v1 receipt emits the extra keys in its payload; a
+#: v0 receipt does not, so the key set -- and therefore the seal -- of every
+#: receipt already emitted is unchanged. See ``ExecutionReceipt.payload``.
+CONTRACT_V1 = "NemoHostContract/v1"
+
 
 def _now() -> float:
     return time.time()
@@ -213,9 +219,20 @@ class ExecutionReceipt:
     evidence: Evidence
     seal: str = ""
 
+    # -- v1 provenance (CONTRACT_V1) ---------------------------------------
+    # v0 receipts leave every field below at its default, so `payload()`
+    # reproduces the exact v0 key set and already-emitted seals keep
+    # verifying. A v1 receipt opts in by setting `contract=CONTRACT_V1`.
+    contract: str = CONTRACT
+    policy_digest: str | None = None
+    capability_digest: str | None = None
+    result_digest: str | None = None
+    reproduce: Mapping[str, Any] | None = None
+    seal_kind: str = "unkeyed"
+
     def payload(self) -> dict:
-        return {
-            "contract": CONTRACT,
+        base = {
+            "contract": self.contract,
             "receipt_id": self.receipt_id,
             "request_digest": self.request_digest,
             "request_id": self.request_id,
@@ -230,6 +247,15 @@ class ExecutionReceipt:
             "effects": [dict(e) for e in self.effects],
             "evidence": self.evidence.value,
         }
+        if self.contract == CONTRACT_V1:
+            # Provenance is part of the sealed bytes: changing a digest is as
+            # visible as changing the decision.
+            base["policy_digest"] = self.policy_digest
+            base["capability_digest"] = self.capability_digest
+            base["result_digest"] = self.result_digest
+            base["reproduce"] = dict(self.reproduce) if self.reproduce is not None else None
+            base["seal_kind"] = self.seal_kind
+        return base
 
     def sealed(self) -> "ExecutionReceipt":
         from dataclasses import replace
@@ -242,6 +268,41 @@ class ExecutionReceipt:
         d = self.payload()
         d["seal"] = self.seal
         return d
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "ExecutionReceipt":
+        """Round-trip a receipt from its JSON. Required by the Quine Gate
+        verifier (M2/M7), which reads receipts off disk. Unknown keys are
+        dropped; a tampered value still fails its own seal at ``verify()``."""
+        host = data.get("host") or {}
+        decision = data.get("decision") or {}
+        reason = decision.get("reason")
+        return cls(
+            receipt_id=data["receipt_id"],
+            request_digest=data["request_digest"],
+            request_id=data["request_id"],
+            host=HostIdentity(**dict(host)),
+            capability=data["capability"],
+            subject=data["subject"],
+            lease_id=data.get("lease_id"),
+            decision=PolicyDecision(
+                Decision(decision["decision"]),
+                DenyReason(reason) if reason else None,
+                decision.get("detail", ""),
+            ),
+            started_at=data["started_at"],
+            ended_at=data["ended_at"],
+            result=data.get("result", {}),
+            effects=data.get("effects", ()),
+            evidence=Evidence(data["evidence"]),
+            seal=data.get("seal", ""),
+            contract=data.get("contract", CONTRACT),
+            policy_digest=data.get("policy_digest"),
+            capability_digest=data.get("capability_digest"),
+            result_digest=data.get("result_digest"),
+            reproduce=data.get("reproduce"),
+            seal_kind=data.get("seal_kind", "unkeyed"),
+        )
 
 
 def new_receipt_id() -> str:
