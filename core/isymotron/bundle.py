@@ -6,8 +6,10 @@ A bundle is a directory a third party can check offline::
       receipt.json   ExecutionReceipt v1 (to_dict shape)
       claim.json     ClaimBundle (to_dict shape)
       chain.json     [state, ...]                 (optional)
-      anchors.json   {"genesis": "...", "head": "..."}  (optional)
       hashes.json    SHA-256 artifact manifest     (optional)
+
+Anchors are NOT part of the bundle: they are passed in by the caller, because
+an anchor stored next to the chain it anchors can be rewritten with it.
 
 ``verify_bundle`` reports each property separately. It deliberately has no
 single "secure" verdict: artifact identity, state integrity, transition
@@ -62,8 +64,18 @@ def _prop(status: str, detail: str = "") -> dict:
     return {"status": status, "detail": detail}
 
 
-def verify_bundle(bundle_dir: str | Path, key: str | None = None) -> BundleReport:
-    """Verify a bundle directory. Never raises on bad input."""
+def verify_bundle(bundle_dir: str | Path, key: str | None = None, *,
+                  anchored_genesis: str | None = None,
+                  anchored_head: str | None = None) -> BundleReport:
+    """Verify a bundle directory.
+
+    Anchors must come from OUTSIDE the bundle. A file inside the bundle cannot
+    anchor it: an attacker who rewrites the chain would rewrite the anchor
+    with it. If the caller supplies no anchor, the ``anchor`` property is
+    ``NOT_VERIFIABLE`` -- never taken from ``anchors.json``.
+
+    Never raises on bad input.
+    """
     base = Path(bundle_dir)
     props: dict[str, dict] = {}
 
@@ -111,11 +123,12 @@ def verify_bundle(bundle_dir: str | Path, key: str | None = None) -> BundleRepor
         props["artifact_identity"] = _prop(NOT_VERIFIABLE, "no hashes.json")
 
     # -- chain: integrity, transitions, anchor -----------------------------
+    # `anchors.json` inside the bundle is NOT read: an anchor that travels with
+    # the thing it anchors is not an anchor. Only the caller's values count.
     chain = _read_json(base / "chain.json")
-    anchors = _read_json(base / "anchors.json") or {}
     if isinstance(chain, list) and chain:
-        cv = verify_chain(chain, anchored_genesis=anchors.get("genesis"),
-                          anchored_head=anchors.get("head"))
+        cv = verify_chain(chain, anchored_genesis=anchored_genesis,
+                          anchored_head=anchored_head)
         props["state_integrity"] = _prop(
             PASS if cv.internal_ok else REJECT,
             "chain hashes recompute and link" if cv.internal_ok else "chain is inconsistent")
