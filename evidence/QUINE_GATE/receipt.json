@@ -1,0 +1,38 @@
+{
+  "contract": "NemoHostContract/v1",
+  "receipt_id": "rcpt_5aa6b04295bd48f2",
+  "request_digest": "sha256:b720ae48229c7c9987ef2e32920ec415272548125004d07985522c098b50ba9a",
+  "request_id": "req_abfd823fcc604988",
+  "host": {
+    "host_id": "win11-demo",
+    "display_name": "Demo (Windows 11)",
+    "os_family": "windows",
+    "os_release": "11-24h2",
+    "engine": "nt-modern/0.1",
+    "contract": "NemoHostContract/v0"
+  },
+  "capability": "filesystem.read",
+  "subject": "mobile:demo-phone",
+  "lease_id": "lease_4f3778afd38048c8",
+  "decision": {
+    "decision": "DENY",
+    "reason": "OUT_OF_SCOPE",
+    "detail": "C:/Users/demo/Secrets/keys.txt is outside ['hostfs://photos']"
+  },
+  "started_at": 1790062203.3788567,
+  "ended_at": 1790062203.3789241,
+  "result": {},
+  "effects": [],
+  "evidence": "DEMONSTRATED",
+  "policy_digest": "sha256:f8435f4e7ee22bb88fc01230d84042d0aa1db53e84907e787bc6cd872d99ff17",
+  "capability_digest": "sha256:7f63f5ea9ef774f89c324c214ab4138c55b163dd4fd439ae736e9b939b55b461",
+  "result_digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "reproduce": {
+    "tool": "nt-modern/0.1",
+    "request_digest": "sha256:b720ae48229c7c9987ef2e32920ec415272548125004d07985522c098b50ba9a",
+    "decided_at": 1790062203.3788567
+  },
+  "seal_kind": "unkeyed",
+  "claim_digest": "sha256:e9434b4118da4908aba0baf96dd100db7a4ecddb234480e3515f11b765622520",
+  "seal": "sha256:61757428115fb508d625684f95632a857a56a266cba9c9b332bb41c4095ac5aa"
+}

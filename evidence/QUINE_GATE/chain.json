@@ -1,0 +1,48 @@
+[
+  {
+    "parent": null,
+    "transition": {
+      "kind": "genesis",
+      "label": "S0",
+      "operation": "",
+      "inputs": [],
+      "policy_digest": null,
+      "artifact_digest": null,
+      "output_digest": null,
+      "note": ""
+    },
+    "sha": "sha256:79a67df39398cd387fcd7aae2b240de0b86c2baffe385d161fa2f80492710967"
+  },
+  {
+    "parent": "sha256:79a67df39398cd387fcd7aae2b240de0b86c2baffe385d161fa2f80492710967",
+    "transition": {
+      "kind": "execute",
+      "label": "S1",
+      "operation": "filesystem.read",
+      "inputs": [
+        "sha256:c690e44b214df98e300e04cd54ea8b41cc2606d341d1376960b63dca8ddadf50"
+      ],
+      "policy_digest": "sha256:f8435f4e7ee22bb88fc01230d84042d0aa1db53e84907e787bc6cd872d99ff17",
+      "artifact_digest": "sha256:7f63f5ea9ef774f89c324c214ab4138c55b163dd4fd439ae736e9b939b55b461",
+      "output_digest": "sha256:9bea5e0baf48acc16b3d9b090a8fee81498209509520c4f16b4a97f6ceb7e56d",
+      "note": "ALLOW"
+    },
+    "sha": "sha256:69eb7de86a9f2daa97d04c118d2e185d01fa51783afe05bfd6870bb88ebe2aa6"
+  },
+  {
+    "parent": "sha256:69eb7de86a9f2daa97d04c118d2e185d01fa51783afe05bfd6870bb88ebe2aa6",
+    "transition": {
+      "kind": "execute",
+      "label": "S2",
+      "operation": "filesystem.read",
+      "inputs": [
+        "sha256:b720ae48229c7c9987ef2e32920ec415272548125004d07985522c098b50ba9a"
+      ],
+      "policy_digest": "sha256:f8435f4e7ee22bb88fc01230d84042d0aa1db53e84907e787bc6cd872d99ff17",
+      "artifact_digest": "sha256:7f63f5ea9ef774f89c324c214ab4138c55b163dd4fd439ae736e9b939b55b461",
+      "output_digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "note": "DENY"
+    },
+    "sha": "sha256:6e2e04dd6492c3b820df09ac51e62434909259d44f2857ece60d903152df2430"
+  }
+]
