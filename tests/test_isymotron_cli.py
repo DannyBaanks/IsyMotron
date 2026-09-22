@@ -153,10 +153,9 @@ def test_version_mentions_the_product():
 
 
 def test_unimplemented_verbs_fail_closed():
-    for name, milestone in (("keys", "M3"), ("install", "M6")):
-        done = _run(name)
-        assert done.returncode == 2, f"{name} must not look like it worked"
-        assert milestone in done.stdout
+    done = _run("install")
+    assert done.returncode == 2, "install must not look like it worked"
+    assert "M6" in done.stdout
 
 
 def test_a_verb_passes_through_and_propagates_the_exit_code():
@@ -215,3 +214,85 @@ def test_flags_reach_the_child_verbatim():
     assert cli.build_argv(cli.VERBS["console"], ["--lan", "--no-browser"],
                           executable="PY") == \
         ["PY", "-m", "console", "--lan", "--no-browser"]
+
+
+# -- M3: keys — stored outside the repo, never echoed ------------------------
+
+import os  # noqa: E402  (kept local to this section on purpose)
+
+SECRET = "nvapi-SUPERSECRET-0123456789"
+
+
+def _keyed_run(*args, store, stdin_text=None, env_extra=None):
+    import subprocess
+    env = dict(os.environ, ISYMOTRON_KEY_STORE=str(store))
+    env.update(env_extra or {})
+    return subprocess.run([sys.executable, str(CLI_PATH), *args], cwd=str(REPO),
+                          capture_output=True, text=True, timeout=30,
+                          env=env, input=stdin_text)
+
+
+def test_keys_set_stores_outside_the_repo_and_never_prints_the_secret(tmp_path):
+    store = tmp_path / "keys.env"
+    done = _keyed_run("keys", "set", "NVIDIA_NIM_API_KEY",
+                      store=store, stdin_text=SECRET + "\n")
+    assert done.returncode == 0, done.stdout
+    assert SECRET not in done.stdout, "the value must never be echoed"
+
+    assert store.is_file()
+    if os.name != "nt":
+        assert (store.stat().st_mode & 0o777) == 0o600, "the store must be private"
+    assert SECRET in store.read_text(encoding="utf-8")
+
+    listed = _keyed_run("keys", "list", store=store)
+    assert listed.returncode == 0
+    assert SECRET not in listed.stdout, "list must show a fingerprint, not the value"
+    assert "sha256:" in listed.stdout
+    assert "NVIDIA_NIM_API_KEY" in listed.stdout
+
+    unset = _keyed_run("keys", "unset", "NVIDIA_NIM_API_KEY", store=store)
+    assert unset.returncode == 0
+    assert SECRET not in store.read_text(encoding="utf-8")
+    assert "missing" in _keyed_run("keys", "list", store=store).stdout
+
+
+def test_keys_shows_non_secret_config_plainly(tmp_path):
+    store = tmp_path / "keys.env"
+    _keyed_run("keys", "set", "ISYMOTRON_PROVIDER", store=store, stdin_text="nebius\n")
+    listed = _keyed_run("keys", "list", store=store).stdout
+    assert "nebius" in listed
+
+
+def test_keys_rejects_unknown_names_and_invalid_provider(tmp_path):
+    store = tmp_path / "keys.env"
+    bad_name = _keyed_run("keys", "set", "AWS_SECRET", store=store, stdin_text="x\n")
+    assert bad_name.returncode == 2
+    bad_value = _keyed_run("keys", "set", "ISYMOTRON_PROVIDER",
+                           store=store, stdin_text="gemini\n")
+    assert bad_value.returncode == 2
+    assert "nvidia" in bad_value.stdout
+
+
+def test_keys_refuses_to_write_inside_the_repository(tmp_path):
+    inside = REPO / "keys.env"
+    done = _keyed_run("keys", "set", "NEBIUS_API_KEY",
+                      store=inside, stdin_text="x\n")
+    assert done.returncode == 2
+    assert "inside the repository" in done.stdout
+    assert not inside.exists()
+
+
+def test_keys_check_reports_missing_and_ok(tmp_path):
+    store = tmp_path / "keys.env"
+    assert _keyed_run("keys", "check", store=store).returncode == 2
+    _keyed_run("keys", "set", "NVIDIA_NIM_API_KEY", store=store, stdin_text=SECRET + "\n")
+    partial = _keyed_run("keys", "check", store=store)
+    assert "missing" in partial.stdout and "ok" in partial.stdout
+
+
+def test_child_env_injects_the_store(monkeypatch, tmp_path):
+    store = tmp_path / "keys.env"
+    store.write_text("NEBIUS_API_KEY=injected-value\n", encoding="utf-8")
+    monkeypatch.setenv("ISYMOTRON_KEY_STORE", str(store))
+    env = cli.child_env()
+    assert env["NEBIUS_API_KEY"] == "injected-value"

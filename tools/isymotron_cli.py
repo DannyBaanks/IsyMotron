@@ -306,7 +306,8 @@ def run_entrypoint(verb: Verb, rest: list[str]) -> int:
     remember because the top-level dispatch parses no flags at all.
     """
     try:
-        return subprocess.run(build_argv(verb, rest), cwd=str(REPO)).returncode
+        return subprocess.run(build_argv(verb, rest), cwd=str(REPO),
+                              env=child_env()).returncode
     except KeyboardInterrupt:  # pragma: no cover - interactive
         return 130
     except OSError as exc:
@@ -332,6 +333,200 @@ def build_argv(verb: Verb, rest: list[str], *,
     return [program, *verb.argv, *args]
 
 
+# ─── keys (M3): secrets live outside the repo and are never echoed ──────────
+
+#: Values that must never be printed once stored.
+SECRET_KEYS: tuple[str, ...] = (
+    "NEBIUS_API_KEY", "NVIDIA_NIM_API_KEY", "ISYMOTRON_RECEIPT_KEY",
+)
+#: Non-secret configuration the same command manages.
+CONFIG_KEYS: tuple[str, ...] = ("ISYMOTRON_PROVIDER",)
+KNOWN_KEYS: tuple[str, ...] = SECRET_KEYS + CONFIG_KEYS
+PROVIDER_VALUES: tuple[str, ...] = ("nvidia", "nebius")
+
+STORE_ENV = "ISYMOTRON_KEY_STORE"
+
+
+def default_store_path() -> Path:
+    """The store lives outside the repository, per platform.
+
+    One file on every platform (not the registry): a single auditable store,
+    no registry mutation, and the CLI injects it into every child it runs, so
+    nothing else needs to see it.
+    """
+    override = os.environ.get(STORE_ENV)
+    if override:
+        return Path(override)
+    if os.name == "nt":
+        base = Path(os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming"))
+        return base / "isymotron" / "keys.env"
+    base = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config"))
+    return base / "isymotron" / "keys.env"
+
+
+def load_store(path: Path | None = None) -> dict[str, str]:
+    target = path or default_store_path()
+    values: dict[str, str] = {}
+    try:
+        text = target.read_text(encoding="utf-8")
+    except OSError:
+        return values
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        values[name.strip()] = value.strip()
+    return values
+
+
+def save_store(values: dict[str, str], path: Path | None = None) -> Path:
+    target = (path or default_store_path()).resolve()
+    if REPO.resolve() in target.parents:
+        raise ValueError(
+            f"refusing to write secrets inside the repository ({target}); "
+            f"set {STORE_ENV} elsewhere")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(target.parent, 0o700)
+    except OSError:
+        pass
+    body = "".join(f"{name}={values[name]}\n" for name in sorted(values))
+    # Atomic: a reader never sees a half-written store. newline="\n" so the
+    # store is byte-stable across platforms.
+    tmp = target.with_name(target.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(body)
+    try:
+        os.chmod(tmp, 0o600)
+    except OSError:
+        pass
+    os.replace(tmp, target)
+    return target
+
+
+def fingerprint(value: str) -> str:
+    import hashlib
+    return "sha256:" + hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+
+
+def child_env() -> dict[str, str]:
+    """The environment every child of the CLI runs with: the process
+    environment plus the stored keys, so the user never has to export."""
+    env = dict(os.environ)
+    env.update(load_store())
+    return env
+
+
+KEYS_USAGE = "usage: isymotron keys {list|set <NAME>|unset <NAME>|check [--live]}"
+
+
+def _read_secret(name: str) -> str:
+    """Hidden on a terminal; one line from stdin when it is piped (tests,
+    automation). Never from argv, so a secret cannot land in shell history."""
+    if _is_tty():
+        import getpass
+        return getpass.getpass(f"{name}: ")
+    return sys.stdin.readline().rstrip("\n")
+
+
+def _validate_value(name: str, value: str) -> str | None:
+    if not value:
+        return "empty value"
+    if value != value.strip():
+        return "value has leading or trailing whitespace"
+    if name == "ISYMOTRON_PROVIDER" and value not in PROVIDER_VALUES:
+        return f"{name} must be one of {', '.join(PROVIDER_VALUES)}"
+    return None
+
+
+def _keys_problem(message: str) -> int:
+    print(_style("error:", "red", "bold") + f" {message}")
+    print(KEYS_USAGE)
+    return 2
+
+
+def cmd_keys(rest: list[str]) -> int:
+    action = rest[0] if rest else "list"
+    args = rest[1:]
+    store_path = default_store_path()
+
+    if action == "list":
+        values = load_store(store_path)
+        print(f"store: {store_path}")
+        for name in KNOWN_KEYS:
+            value = values.get(name)
+            if value is None:
+                print(f"  {name:<24} missing")
+            elif name in SECRET_KEYS:
+                print(f"  {name:<24} set  {fingerprint(value)}")
+            else:
+                print(f"  {name:<24} set  {value}")
+        return 0
+
+    if action == "set":
+        if not args:
+            return _keys_problem("keys set needs a key name")
+        name = args[0]
+        if name not in KNOWN_KEYS:
+            return _keys_problem(f"unknown key {name!r}; known: {', '.join(KNOWN_KEYS)}")
+        value = _read_secret(name)
+        problem = _validate_value(name, value)
+        if problem:
+            return _keys_problem(problem)
+        values = load_store(store_path)
+        values[name] = value
+        try:
+            target = save_store(values, store_path)
+        except ValueError as exc:
+            return _keys_problem(str(exc))
+        shown = fingerprint(value) if name in SECRET_KEYS else value
+        print(f"{name}: stored ({shown}) -> {target}")
+        return 0
+
+    if action == "unset":
+        if not args:
+            return _keys_problem("keys unset needs a key name")
+        name = args[0]
+        values = load_store(store_path)
+        if name not in values:
+            print(f"{name}: was not set")
+            return 0
+        del values[name]
+        try:
+            save_store(values, store_path)
+        except ValueError as exc:
+            return _keys_problem(str(exc))
+        print(f"{name}: unset")
+        return 0
+
+    if action == "check":
+        values = load_store(store_path)
+        ok = True
+        for name in KNOWN_KEYS:
+            value = values.get(name)
+            if value is None:
+                print(f"  {name:<24} missing")
+                ok = False
+                continue
+            problem = _validate_value(name, value)
+            if problem:
+                print(f"  {name:<24} invalid: {problem}")
+                ok = False
+            else:
+                shown = fingerprint(value) if name in SECRET_KEYS else value
+                print(f"  {name:<24} ok  {shown}")
+        if "--live" in args:
+            provider_key = values.get("NEBIUS_API_KEY") or values.get("NVIDIA_NIM_API_KEY")
+            if not provider_key:
+                return _keys_problem("--live needs a provider key stored first")
+            print("running the provider probe with the stored key (live network call)")
+            return run_entrypoint(VERBS["nemotron"], [])
+        return 0 if ok else 2
+
+    return _keys_problem(f"unknown keys action {action!r}")
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
 
@@ -355,12 +550,13 @@ def main(argv: list[str] | None = None) -> int:
     if command == "where":
         print(REPO)
         return 0
-    if command in ("keys", "install"):
+    if command == "keys":
+        return cmd_keys(rest)
+    if command == "install":
         # Deliberate fail-closed: a verb that exists in the table but has no
         # implementation yet must not look like it worked.
         print(_style("error:", "red", "bold")
-              + f" '{command}' is not implemented in this build"
-              + f" (plan milestone {'M3' if command == 'keys' else 'M6'})")
+              + " 'install' is not implemented in this build (plan milestone M6)")
         return 2
 
     verb = VERBS.get(command)
