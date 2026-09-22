@@ -76,7 +76,7 @@ VERBS: dict[str, Verb] = {
     "test": Verb(
         name="test",
         summary="the acceptance suite (default: -q)",
-        argv=("-m", "pytest", "-q"),
+        argv=("-m", "pytest"),
         entrypoint="-m pytest",
     ),
     "build": Verb(
@@ -302,16 +302,34 @@ def run_entrypoint(verb: Verb, rest: list[str]) -> int:
     """Run a verb's entrypoint and propagate its exit code unchanged.
 
     The argv is a pass-through: `rest` is forwarded verbatim, so a flag the
-    subcommand understands reaches it untouched.
+    subcommand understands reaches it untouched. There is no `--` separator to
+    remember because the top-level dispatch parses no flags at all.
     """
-    argv = [sys.executable, *verb.argv, *rest]
     try:
-        return subprocess.run(argv, cwd=str(REPO)).returncode
+        return subprocess.run(build_argv(verb, rest), cwd=str(REPO)).returncode
     except KeyboardInterrupt:  # pragma: no cover - interactive
         return 130
     except OSError as exc:
         print(_style("error:", "red", "bold") + f" could not run {verb.name}: {exc}")
         return 2
+
+
+#: Arguments added when the caller passes none. Parity with isymotron.ps1,
+#: which runs `pytest -q` for a bare `test` and `host_cli.py status` for a bare
+#: `host`.
+DEFAULT_ARGS: dict[str, tuple[str, ...]] = {
+    "test": ("-q",),
+    "host": ("status",),
+}
+
+
+def build_argv(verb: Verb, rest: list[str], *,
+               executable: str | None = None) -> list[str]:
+    """The exact argv for a verb. Pure, so parity can be tested without
+    running anything."""
+    program = executable or sys.executable
+    args = list(rest) if rest else list(DEFAULT_ARGS.get(verb.name, ()))
+    return [program, *verb.argv, *args]
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -169,3 +169,49 @@ def test_a_verb_passes_through_and_propagates_the_exit_code():
     missing = _run("process", "verify", "1", "--baseline", str(REPO / "nope.json"))
     assert missing.returncode == 2
     assert "NO_BASELINE" in missing.stdout
+
+
+# -- M2: parity with the invocations isymotron.ps1 already documented ---------
+
+#: verb -> argv after the interpreter, exactly as the PowerShell CLI ran them.
+PS1_PARITY = {
+    "start": ["-m", "console", "--avatar"],
+    "console": ["-m", "console"],
+    "pet": ["-m", "console", "--avatar-worker", "--port", "8760"],
+    "test": ["-m", "pytest", "-q"],
+    "build": ["build_exe.py"],
+    "spoof": ["tools/avatar_spoof.py"],
+    "host": ["tools/host_cli.py", "status"],
+    "demo": ["tools/m0_demo.py"],
+    "learn": ["-m", "learning"],
+}
+
+
+def test_argv_matches_the_powershell_cli_for_every_inherited_verb():
+    for name, expected in PS1_PARITY.items():
+        argv = cli.build_argv(cli.VERBS[name], [], executable="PY")
+        assert argv == ["PY", *expected], f"{name} drifted from isymotron.ps1"
+
+
+def test_defaults_only_apply_when_no_arguments_are_passed():
+    # a bare `test` is `pytest -q`; with arguments there is no implicit -q
+    assert cli.build_argv(cli.VERBS["test"], [], executable="PY") == \
+        ["PY", "-m", "pytest", "-q"]
+    assert cli.build_argv(cli.VERBS["test"], ["-k", "keys"], executable="PY") == \
+        ["PY", "-m", "pytest", "-k", "keys"]
+    # a bare `host` is `host_cli.py status`
+    assert cli.build_argv(cli.VERBS["host"], [], executable="PY") == \
+        ["PY", "tools/host_cli.py", "status"]
+    assert cli.build_argv(cli.VERBS["host"], ["grant", "filesystem.read"],
+                          executable="PY") == \
+        ["PY", "tools/host_cli.py", "grant", "filesystem.read"]
+
+
+def test_flags_reach_the_child_verbatim():
+    flags = ["grant", "filesystem.read", "--root", "C:/Users/demo/Photos"]
+    assert cli.build_argv(cli.VERBS["host"], flags, executable="PY") == \
+        ["PY", "tools/host_cli.py", *flags]
+    # a flag-like argument is forwarded, never swallowed by the top level
+    assert cli.build_argv(cli.VERBS["console"], ["--lan", "--no-browser"],
+                          executable="PY") == \
+        ["PY", "-m", "console", "--lan", "--no-browser"]
