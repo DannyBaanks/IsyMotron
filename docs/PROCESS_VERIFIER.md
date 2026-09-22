@@ -109,4 +109,6 @@ refuses to count an unreadable image.
 Next experiment (before any Windows implementation): determine whether
 `Get-Process`/WMI and a handle-based observation (`NtQueryInformationProcess`)
 are genuinely two layers or the same one, and measure the TOCTOU window between
-observing and verifying.
+observing and verifying. The step-by-step protocol, with its stop conditions
+and required evidence package, is in
+[`docs/WINDOWS_PROCESS_VERIFIER.md`](WINDOWS_PROCESS_VERIFIER.md).
