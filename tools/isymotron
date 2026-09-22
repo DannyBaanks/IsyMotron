@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Thin POSIX shim. The command surface lives in tools/isymotron_cli.py; keep
+# this file dumb so the verb table stays in exactly one place.
+#
+# This shim deliberately does NOT live at the repository root: on a
+# case-insensitive filesystem (Windows) a root file named `isymotron` would
+# collide with the `IsyMotron/` directory.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec python3 "$here/isymotron_cli.py" "$@"

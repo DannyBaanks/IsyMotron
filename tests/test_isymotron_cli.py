@@ -162,10 +162,11 @@ def test_version_mentions_the_product():
     assert done.stdout.startswith("isymotron")
 
 
-def test_unimplemented_verbs_fail_closed():
+def test_install_prints_the_reachability_command():
     done = _run("install")
-    assert done.returncode == 2, "install must not look like it worked"
-    assert "M6" in done.stdout
+    assert done.returncode == 0
+    # POSIX prints the symlink command; Windows points at the PowerShell shim.
+    assert "ln -sf" in done.stdout or "isymotron.ps1 install" in done.stdout
 
 
 def test_a_verb_passes_through_and_propagates_the_exit_code():
@@ -412,3 +413,32 @@ def test_menu_number_key_selects_an_entry():
 def test_menu_ctrl_c_aborts_with_130():
     code, out = _run_in_pty(b"\x03")
     assert code == 130, (code, out)
+
+
+# -- M6: shims — one surface, two entrypoints --------------------------------
+
+@LINUX_ONLY
+def test_posix_shim_reaches_the_same_cli():
+    done = subprocess.run(["bash", str(REPO / "tools" / "isymotron"), "where"],
+                          cwd=str(REPO), capture_output=True, text=True, timeout=30)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == str(REPO)
+
+
+@LINUX_ONLY
+def test_posix_shim_is_executable():
+    assert (REPO / "tools" / "isymotron").stat().st_mode & 0o111
+
+
+@LINUX_ONLY
+def test_posix_shim_propagates_the_exit_code():
+    done = subprocess.run(["bash", str(REPO / "tools" / "isymotron"), "zzz"],
+                          cwd=str(REPO), capture_output=True, text=True, timeout=30)
+    assert done.returncode == 2
+
+
+def test_powershell_shim_delegates_instead_of_duplicating_the_table():
+    """The whole point of the plan: one verb table, not two that drift."""
+    ps1 = (REPO / "isymotron.ps1").read_text(encoding="utf-8")
+    assert "isymotron_cli.py" in ps1, "the Windows shim must delegate"
+    assert "$Verbs" not in ps1, "a second verb table is the thing that rots"

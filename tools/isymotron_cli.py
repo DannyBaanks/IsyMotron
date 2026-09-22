@@ -746,6 +746,21 @@ def interactive_menu() -> int:
         print()
 
 
+def cmd_install() -> int:
+    """Print the one command that makes `isymotron` reachable from a new
+    shell. It does not mutate PATH: the human runs the command, so nothing
+    changes behind their back."""
+    if os.name == "nt":
+        print("Windows: run `isymotron.ps1 install` from this repository;")
+        print("it adds the repository to your user PATH.")
+        return 0
+    shim = REPO / "tools" / "isymotron"
+    target = Path.home() / ".local" / "bin" / "isymotron"
+    print(f"mkdir -p {target.parent} && ln -sf {shim} {target}")
+    print("then, from a new shell: isymotron help")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
 
@@ -773,11 +788,7 @@ def main(argv: list[str] | None = None) -> int:
     if command == "keys":
         return cmd_keys(rest)
     if command == "install":
-        # Deliberate fail-closed: a verb that exists in the table but has no
-        # implementation yet must not look like it worked.
-        print(_style("error:", "red", "bold")
-              + " 'install' is not implemented in this build (plan milestone M6)")
-        return 2
+        return cmd_install()
 
     if command == "evidence":
         return cmd_evidence(rest)
