@@ -110,7 +110,7 @@ def append_entry(path: str | Path, *, genesis: str, head: str,
         timestamp=timestamp or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         note=note,
     )
-    with open(path, "a", encoding="utf-8") as handle:
+    with open(path, "a", encoding="utf-8", newline="\n") as handle:
         handle.write(json.dumps(entry.to_dict()) + "\n")
     return entry
 

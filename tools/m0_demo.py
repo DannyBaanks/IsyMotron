@@ -128,7 +128,8 @@ def main() -> int:
     show(r); receipts.append(("07_legacy_launch_denied", r))
 
     for name, rcpt in receipts:
-        with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8") as fh:
+        with open(os.path.join(OUT, f"{name}.json"), "w", encoding="utf-8",
+                  newline="\n") as fh:
             json.dump(rcpt.to_dict(), fh, indent=2, ensure_ascii=False)
 
     # Quine Gate: a receipt earns authority by reproduction, so each one
@@ -141,7 +142,7 @@ def main() -> int:
         claim = hosts[rcpt.host.host_id].claim_bundle(rcpt.receipt_id)
         if rcpt.claim_digest and claim is not None:
             path = os.path.join(claims_dir, f"{name}.claim.json")
-            with open(path, "w", encoding="utf-8") as fh:
+            with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 json.dump(claim.to_dict(), fh, indent=2, ensure_ascii=False)
             claimed.append((name, rcpt, claim))
 
@@ -152,7 +153,8 @@ def main() -> int:
     for name, _, _ in claimed:
         manifest["artifacts"][f"claims/{name}.claim.json"] = \
             sha256_file(os.path.join(claims_dir, f"{name}.claim.json"))
-    with open(os.path.join(OUT, "hashes.json"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(OUT, "hashes.json"), "w", encoding="utf-8",
+              newline="\n") as fh:
         json.dump(manifest, fh, indent=2)
         fh.write("\n")
 

@@ -118,3 +118,12 @@ def test_absolute_path_is_refused(tmp_path):
     result = verify_manifest(manifest)
     assert not result.passed
     assert result.artifacts[0].actual is None
+
+
+def test_gitattributes_pins_evidence_against_eol_conversion():
+    """The manifests hash exact bytes, so a checkout that rewrites CRLF breaks
+    every hash. Measured on windows-latest CI (2026-09-22): run.txt hashed as
+    the CRLF variant and all four manifests failed. The pin must stay."""
+    attrs = (REPO / ".gitattributes").read_text(encoding="utf-8")
+    assert "evidence/** -text" in attrs, \
+        "evidence must be checked out byte-exact on every platform"

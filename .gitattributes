@@ -1,0 +1,8 @@
+# Sealed evidence must be byte-identical on every platform: the manifests in
+# evidence/**/hashes.json are SHA-256 over the exact bytes. Git's end-of-line
+# conversion (core.autocrlf on Windows) rewrites them on checkout and breaks
+# every hash. Measured on windows-latest CI, 2026-09-22: run.txt hashed as
+# a51562b9… (CRLF) instead of baf7d0c5… (LF).
+#
+# `-text` disables the conversion; the files stay diffable.
+evidence/** -text

@@ -213,16 +213,21 @@ def run_demo(out: Path) -> dict:
     # -- 6. write the sealed package and verify it from disk -----------------
     _rule(f"6. write + verify the bundle on disk ({out})")
     out.mkdir(parents=True, exist_ok=True)
+    # newline="\n" everywhere: sealed evidence must hash the same on Windows as
+    # on Linux. The platform default would write CRLF and change every digest.
     (out / "receipt.json").write_text(json.dumps(deny_receipt.to_dict(), indent=2) + "\n",
-                                      encoding="utf-8")
+                                      encoding="utf-8", newline="\n")
     (out / "claim.json").write_text(json.dumps(deny_claim.to_dict(), indent=2) + "\n",
-                                    encoding="utf-8")
-    (out / "chain.json").write_text(json.dumps(states, indent=2) + "\n", encoding="utf-8")
+                                    encoding="utf-8", newline="\n")
+    (out / "chain.json").write_text(json.dumps(states, indent=2) + "\n",
+                                    encoding="utf-8", newline="\n")
     anchors = {"genesis": ledger.genesis, "head": ledger.head}
-    (out / "RUN.md").write_text(_run_md(out, deny_receipt, steps, anchors), encoding="utf-8")
+    (out / "RUN.md").write_text(_run_md(out, deny_receipt, steps, anchors),
+                                encoding="utf-8", newline="\n")
     manifest = {"algorithm": "SHA-256",
                 "artifacts": {name: sha256_file(out / name) for name in ARTIFACTS}}
-    (out / "hashes.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    (out / "hashes.json").write_text(json.dumps(manifest, indent=2) + "\n",
+                                     encoding="utf-8", newline="\n")
 
     report = verify_bundle(out, key=key, anchored_genesis=anchors["genesis"],
                            anchored_head=anchors["head"])
