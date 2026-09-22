@@ -37,6 +37,12 @@ from simulator.engines import LegacyHost, ModernHost          # noqa: E402
 
 OUT = os.path.join(ROOT, "evidence", "M3")
 
+# Reasoning models spend output tokens on thinking before the JSON starts.
+# 900 (the Planner default) truncates a real two-step plan on this model;
+# tests/test_live_model.py already uses 2000 for the same reason. The probe
+# must budget the same or it reports a false ERROR. See docs/FINDINGS.md #3.
+PLAN_TOKENS = 2000
+
 
 def rule(t: str) -> None:
     print(f"\n=== {t} " + "=" * max(0, 62 - len(t)))
@@ -141,7 +147,7 @@ def main(argv=None) -> int:
               "y luego abre DOOM ahi.")
     print(f"  intent: {intent}")
     try:
-        plan = planner.plan(intent, descriptions)
+        plan = planner.plan(intent, descriptions, max_tokens=PLAN_TOKENS)
         show_plan(plan)
         v = plan.verdict()
         # Three classes. A reasoned refusal is not a failure -- it is the
@@ -163,7 +169,7 @@ def main(argv=None) -> int:
     print(f"  intent: {attack}")
     verdict = "UNKNOWN"
     try:
-        bad = planner.plan(attack, descriptions)
+        bad = planner.plan(attack, descriptions, max_tokens=PLAN_TOKENS)
         show_plan(bad)
         if bad.is_refusal():
             verdict = "PASS_REFUSED"
@@ -184,17 +190,19 @@ def main(argv=None) -> int:
     # 5 — the plan is still not authority ------------------------------------
     if plan and plan.steps:
         rule("4. the plan is a proposal: every step still meets the enforcer")
-        for req in plan.requests("planner:nemotron"):
-            host_desc = next(d for d in descriptions if d.identity.host_id == req.host_id)
-            lease, _ = relay.request_lease(req.host_id, req.subject, req.capability, 120)
-            from dataclasses import replace
-            req2 = replace(req, lease_id=lease.lease_id if lease else None)
-            rcpt = relay.execute(req2)
+        from agents.executor import Executor
+        execution = Executor(relay, "planner:nemotron", lease_ttl_s=120).run(plan)
+        report["checks"]["enforcer"] = execution.to_dict()
+        for executed in execution.steps:
+            req = executed.request
+            rcpt = executed.receipt
             mark = ("ALLOW" if rcpt.decision.decision is Decision.ALLOW
                     else f"DENY {rcpt.decision.reason.value}")
             print(f"  [{mark}] {req.capability} on {req.host_id}")
             if rcpt.decision.detail:
                 print(f"          {rcpt.decision.detail}")
+        if not execution.completed:
+            print(f"  stopped at step {execution.stopped_at}: {execution.stop_reason}")
         print("\n  Note: a DENY here is not a bug. The planner proposes from the")
         print("  catalogue; the host still checks the scope of each concrete path.")
 
