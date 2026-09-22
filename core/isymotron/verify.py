@@ -174,14 +174,15 @@ def rederive(bundle: ClaimBundle) -> PolicyDecision:
 
 
 def verify_receipt(receipt: ExecutionReceipt | None,
-                   bundle: ClaimBundle | None) -> Verification:
+                   bundle: ClaimBundle | None,
+                   key: str | None = None) -> Verification:
     """Verify a receipt by re-deriving it. Fail-closed on every axis."""
     if receipt is None or bundle is None:
         return Verification(False, NOT_VERIFIABLE,
                             "no receipt/bundle pair to reproduce", None,
                             False, False, False)
 
-    if not receipt.verify():
+    if not receipt.verify(key):
         return Verification(False, "REJECT", "receipt seal does not verify",
                             None, False, False, False)
 
