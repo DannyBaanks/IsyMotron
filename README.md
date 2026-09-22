@@ -91,6 +91,7 @@ The labels below are deliberately narrower than marketing claims.
 | Console and read-only avatar authority channel | **DEMONSTRATED** | [`tests/test_console.py`](tests/test_console.py), [`tests/test_avatar_adversarial.py`](tests/test_avatar_adversarial.py), [`evidence/AV9/`](evidence/AV9/) |
 | Malbolge lesson with machine verdicts and sealed receipts | **DEMONSTRATED, scoped** | [`learning/`](learning/), [`evidence/MALBOLGE_V0/`](evidence/MALBOLGE_V0/) |
 | Nebius Token Factory provider execution | **DEMONSTRATED** | Sealed keyed run 2026-09-22: round trip, plan and adversarial refusal all pass. [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
+| Receipts verifiable by re-derivation (Quine Gate) | **DEMONSTRATED, scoped** | [`tests/test_quine_gate_rederivation.py`](tests/test_quine_gate_rederivation.py), [`evidence/QUINE_GATE/RUN.md`](evidence/QUINE_GATE/RUN.md) |
 | A real Windows 10 host | **NOT_DEMONSTRATED** | Windows 11 is the demonstrated real host; Windows 10 remains the product target |
 | Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
 
@@ -243,6 +244,31 @@ The live provider tests run only when a provider key is present; otherwise they
 skip without making the offline contract suite depend on an external service.
 The exact current count belongs to the CI run, not to a hand-maintained badge.
 
+## Quine Gate: evidence that reproduces itself
+
+A receipt is an *affirmation*; the authority is the reproduction. An
+execution receipt carries the digests of what produced it — request, policy
+state, capability, result — and points at its *claim bundle*. The verifier
+re-runs the real `Enforcer` over that claim and compares: a `DENY` edited into
+`ALLOW` and re-sealed is rejected even though its own seal is self-consistent.
+
+The full live sequence (legit → PASS, mutate → REJECT, fork → CONFLICT,
+rollback → CONFLICT, reproduce → PASS) runs with one command and leaves a
+sealed package behind:
+
+```bash
+python3 tools/quine_gate_demo.py        # writes + verifies evidence/QUINE_GATE/
+python3 tools/quine_gate_verify.py evidence/QUINE_GATE \
+    --genesis <from evidence/QUINE_GATE/RUN.md> --head <from RUN.md>
+```
+
+The report never says "secure". Each property is stated on its own —
+`reproducibility: PASS`, `anchor: PASS`, and, honestly,
+`occurrence: NOT_DEMONSTRATED`, `host_attestation: ABSENT`. Reproduction
+proves the decision is a function of the anchored inputs; it does not prove
+the run happened. Architecture and threat matrix:
+[`docs/QUINE_GATE.md`](docs/QUINE_GATE.md).
+
 ## Quickstart
 
 ### Windows 10/11
@@ -287,7 +313,8 @@ does not claim pre-suspend notifications or a desktop avatar without Tk.
 ## Repository map
 
 ```text
-core/isymotron/     contract, policy, leases, receipts, awareness, Doctor
+core/isymotron/     contract, policy, leases, receipts, awareness, Doctor,
+                    Quine Gate: seal, claim bundle, chain, genealogy, bundle
 hosts/windows/      real Windows host, grants and power provider
 hosts/simulator/    deterministic fixture engines
 agents/             provider, planner and executor roles
@@ -307,6 +334,9 @@ docs/               architecture, findings and operational guides
 - A remote console may use granted authority but cannot widen it.
 - The avatar has a separate read-only token and cannot POST authority actions.
 - Receipts are produced for both `ALLOW` and `DENY` outcomes.
+- A receipt's authority is reproduction, not its seal: the verifier re-runs the
+  policy over the anchored claim, so a re-sealed `DENY→ALLOW` is rejected
+  ([`docs/QUINE_GATE.md`](docs/QUINE_GATE.md)).
 - A denied receipt has no protected result payload.
 - The Python sandbox/Doctor is a scoped verification provider, not a universal
   OS security boundary; see [`docs/SANDBOX_V0.md`](docs/SANDBOX_V0.md).
