@@ -35,6 +35,19 @@ jobs:
           NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
           ISYMOTRON_PROVIDER: ${{ vars.ISYMOTRON_PROVIDER || 'nvidia' }}
 
+      - name: The CLI boots, reaches evidence, and refuses unknown commands
+        # Also re-proves on a real Windows checkout that sealed evidence hashes
+        # still match: this is the check a CRLF checkout broke once.
+        run: |
+          python tools/isymotron_cli.py help
+          python tools/isymotron_cli.py where
+          python tools/isymotron_cli.py --version
+          python tools/isymotron_cli.py evidence verify evidence/M3/hashes.json
+          python tools/isymotron_cli.py zzz
+          if ($LASTEXITCODE -ne 2) { throw "expected exit 2 from an unknown command" }
+          python tools/isymotron_cli.py process verify 1 --baseline missing.json
+          if ($LASTEXITCODE -ne 2) { throw "expected exit 2 from a missing baseline" }
+
   binary:
     runs-on: windows-latest
     needs: gates
