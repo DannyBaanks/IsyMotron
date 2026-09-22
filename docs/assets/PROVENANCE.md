@@ -6,6 +6,7 @@
 | `architecture.svg` | Authored in-repo | Architecture diagram | Original project documentation; 2026-09-21 |
 | `authority-flow.svg` | Authored in-repo | Authority decision flow | Original project documentation; 2026-09-21 |
 | `capability-fabric.svg` | Authored in-repo | Capability map | Derived from `hosts/windows/win11.py` and `hosts/simulator/engines.py`; 2026-09-21 |
+| `malbolgato-clean.gif` | Derived from the `malbolge-cat` avatar pack | README mascot / Malbolge teaching cat | Companion (`0aae576`, MIT, the author's own prior work); see `avatar/packs/NOTICE` |
 | `screenshots/05-desktop-avatar.png` | Copied unchanged | Real desktop avatar evidence | Source: `evidence/AV5/desktop_avatar.png` |
 
 The generated hero is deliberately separated from evidence. It must not be

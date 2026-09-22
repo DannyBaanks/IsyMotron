@@ -74,9 +74,6 @@ generated hero above remains illustrative artwork, not proof of a product run.
   <a href="isymotron-demo-final.mp4">Watch the ISyMotron demo video</a>
 </video>
 <br /><sub>ShitVid + OBS demo: policy check, sealed capability lease and explicit host denial.</sub>
-<br /><br />
-<img src="docs/assets/malbolgato-clean.gif" alt="Malbolgato animated avatar" width="192" />
-<br /><sub>Malbolgato, the packaged read-only avatar mascot.</sub>
 </div>
 
 ## What is demonstrated
@@ -96,6 +93,93 @@ The labels below are deliberately narrower than marketing claims.
 | Nebius Token Factory provider execution | **DEMONSTRATED** | Sealed keyed run 2026-09-22: round trip, plan and adversarial refusal all pass. [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
 | A real Windows 10 host | **NOT_DEMONSTRATED** | Windows 11 is the demonstrated real host; Windows 10 remains the product target |
 | Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
+
+## Learn Malbolge with Malbolgato
+
+<p align="center">
+  <img src="docs/assets/malbolgato-clean.gif" alt="Malbolgato, the read-only avatar, teaching Malbolge" width="150" />
+</p>
+
+Malbolge is named after the eighth circle of Dante's Inferno. Published in 1998
+with nothing but a reference interpreter, it became the language where the first
+"Hello World" was **not written by a human — it was found by an automated beam
+search** (Lou Scheffer). It is widely described as the hardest programming
+language ever put on a machine.
+
+**IsyMotron teaches it anyway — and grades you with machinery, not opinions.**
+
+The first lesson is source encoding: every printable character in a Malbolge
+program decodes to an instruction *depending on where it sits*:
+
+```text
+    op    = (ASCII(char) + c) mod 94       the decode, at position c
+
+    r     = (op - c) mod 94                the inverse: you choose the
+    ASCII = r        if 33 <= r <= 93        instruction, you derive the
+    ASCII = r + 94   if 0  <= r <= 32        character
+    char  = chr(ASCII)
+```
+
+The cat asks, you answer. Then three real machines take your answer — none of
+them is a model:
+
+```text
+      your '3'
+         |
+         +-- classic_codec.decode ....... opcode 68 (nop)
+         |      the positional codec, vendored byte-for-byte (sha256 recorded)
+         |
+         +-- malbolge-oracle XLAT1 ...... reference instruction 'o'
+         |      reference semantics transcribed from the 1998 interpreter
+         |      without consulting any other implementation
+         |
+         +-- Oracle.run ................. a 19-cell program with YOUR
+                character at position 17 runs on the reference machine:
+                halted, reason=halt_opcode, 19 steps
+         |
+         v
+  VERDICT: PASS   (verdict_source: machine; receipt rcpt_091a3441c935452f; seal ok)
+```
+
+That last line is real output, captured on this repository. The receipt id is
+generated fresh on every run; the sealed verdict is what matters. Every outcome
+is a tamper-evident `learning-receipt-v1`:
+
+| your answer | the machines say | verdict |
+|---|---|---|
+| `3` | opcode 68 (nop) — reference `'o'`, clean 19-step halt | **PASS** |
+| `4` | opcode 69 — not nop | **FAIL** |
+| `zz` | out of contract | **INVALID** |
+| *(tooling unloaded)* | no tooling, no verdict | **UNAVAILABLE** |
+
+**CAT SPEAKS. TOOLING PROVES.**
+
+- No model is anywhere in the verification path. The lesson passes with no API
+  key at all — a lesson that needed a paid opinion to grade you would be
+  architecturally wrong.
+- No tooling, no verdict: an unloaded verifier answers `UNAVAILABLE`, never
+  "the model said it was right".
+- A receipt whose verdict is edited breaks its own seal. That is a test.
+- The cat announces the machine's verdict live through the open channel — a
+  bubble it can speak but never forge.
+
+```powershell
+isymotron learn malbolge                     # the whole lesson, interactive
+isymotron learn malbolge --exercise 1 --answer 3
+isymotron learn malbolge --all               # every exercise, interactive
+isymotron learn malbolge-advanced --all      # L3-L13, interactive
+```
+
+Verdicts, provenance and the capability roadmap (L0–L13, each mapped to the
+discovered tooling behind it):
+[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md) ·
+[`evidence/MALBOLGE_V0/capability_map.md`](evidence/MALBOLGE_V0/capability_map.md).
+The vendored tooling is recorded byte-for-byte in
+[`learning/packs/malbolge/vendor/PROVENANCE.md`](learning/packs/malbolge/vendor/PROVENANCE.md).
+
+What V0 claims is exactly what was demonstrated: **learn → build → execute →
+verify → receipt**, on a real lesson, with machine verdicts — not "IsyMotron
+masters Malbolge". The rest of the curriculum is earned one milestone at a time.
 
 ## The capability fabric
 
