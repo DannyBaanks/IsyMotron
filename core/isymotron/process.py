@@ -29,6 +29,7 @@ What this does NOT establish
 """
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import os
@@ -186,6 +187,262 @@ class LinuxProcessSource:
         return obs
 
 
+class WindowsProcessSource:
+    """Read-only observations from Win32 handles (ctypes only, no third party).
+
+    Instance identity is ``pid`` + ``CreationTime`` from ``GetProcessTimes``
+    (measured step 1, E2: PID reuse always shows a new CreationTime).
+    Windows has no ``/proc/<pid>`` inode, so ``proc_inode`` is *defined*
+    equal to ``starttime``: a CreationTime-derived identity, not an
+    independent handle.
+
+    ``exe_deleted`` is always ``False``: the loader holds the running image
+    with an exclusive share lock, so deleting or replacing the file under a
+    live process is refused (measured step 1, E3: ``WinError 5`` /
+    ``Errno 13``) instead of being observable. There is nothing to detect,
+    so no reason code is invented for it.
+
+    ``cmdline`` is a best-effort raw read of ``CommandLine`` from the
+    target's PEB (same-bitness only); COM/WMI is deliberately not used.
+    Every failure path yields an explicit ``<unreadable: ...>`` marker,
+    never a silent empty value.
+    """
+
+    platform = "windows"
+
+    def get_observations(self, pid: int) -> dict:
+        if sys.platform != "win32":
+            raise ProcessError(UNSUPPORTED_PLATFORM,
+                               "WindowsProcessSource needs sys.platform == 'win32'")
+        import ctypes
+        from ctypes import wintypes
+
+        k = ctypes.windll.kernel32
+        k.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        k.OpenProcess.restype = wintypes.HANDLE
+        k.CloseHandle.argtypes = (wintypes.HANDLE,)
+        k.CloseHandle.restype = wintypes.BOOL
+        k.GetLastError.restype = wintypes.DWORD
+
+        obs: dict[str, Any] = {"pid": pid}
+        # PROCESS_QUERY_LIMITED_INFORMATION: enough for times + image path.
+        handle, err = _win_open(k, pid, 0x1000)
+        if handle is None:
+            marker = f"<unreadable: OpenProcess error {err}>"
+            obs.update({
+                "proc_inode": marker, "starttime": marker,
+                "exe_link": marker, "exe_deleted": False,
+                "exe_sha256": marker, "uid": marker, "cmdline": marker,
+            })
+            return obs
+        try:
+            creation = _win_creation(k, handle)
+            if creation is None:
+                marker = "<unreadable: GetProcessTimes>"
+                obs["starttime"] = marker
+                obs["proc_inode"] = marker
+            else:
+                # No inode analog on Windows: identity IS the CreationTime.
+                obs["starttime"] = str(creation)
+                obs["proc_inode"] = str(creation)
+            # Loader lock (step-1 E3): unlink/replace is refused, not observable.
+            obs["exe_deleted"] = False
+            image = _win_image(k, handle)
+            if image is None:
+                obs["exe_link"] = "<unreadable: QueryFullProcessImageNameW>"
+                obs["exe_sha256"] = "<unreadable: no image path>"
+            else:
+                obs["exe_link"] = image
+                try:
+                    obs["exe_sha256"] = _sha256_file(image)
+                except OSError as exc:
+                    obs["exe_sha256"] = f"<unreadable: {exc.__class__.__name__}>"
+            obs["uid"] = _win_owner_sid(k, handle)
+            obs["cmdline"] = _win_cmdline(k, handle, pid)
+        finally:
+            k.CloseHandle(handle)
+        return obs
+
+
+class _WinFileTime(ctypes.Structure):
+    _fields_ = [("low", ctypes.c_ulong), ("high", ctypes.c_ulong)]
+
+
+def _win_open(k, pid: int, access: int):
+    """OpenProcess wrapper: (handle, None) or (None, GetLastError)."""
+    handle = k.OpenProcess(access, False, pid)
+    if not handle:
+        return None, k.GetLastError()
+    return handle, None
+
+
+def _win_creation(k, handle):
+    """Combined CreationTime FILETIME, or None."""
+    import ctypes
+    from ctypes import wintypes
+    k.GetProcessTimes.argtypes = (
+        wintypes.HANDLE, ctypes.POINTER(_WinFileTime), ctypes.POINTER(_WinFileTime),
+        ctypes.POINTER(_WinFileTime), ctypes.POINTER(_WinFileTime))
+    k.GetProcessTimes.restype = wintypes.BOOL
+    ct, et, kt, ut = _WinFileTime(), _WinFileTime(), _WinFileTime(), _WinFileTime()
+    if not k.GetProcessTimes(handle, ctypes.byref(ct), ctypes.byref(et),
+                             ctypes.byref(kt), ctypes.byref(ut)):
+        return None
+    return (ct.high << 32) | ct.low
+
+
+def _win_image(k, handle) -> str | None:
+    """Full image path via QueryFullProcessImageNameW, or None."""
+    import ctypes
+    from ctypes import wintypes
+    k.QueryFullProcessImageNameW.argtypes = (
+        wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+        ctypes.POINTER(wintypes.DWORD))
+    k.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    buf = ctypes.create_unicode_buffer(32768)
+    size = wintypes.DWORD(len(buf))
+    if not k.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+        return None
+    return buf.value
+
+
+def _win_owner_sid(k, handle) -> str:
+    """Owner SID string via OpenProcessToken + GetTokenInformation."""
+    import ctypes
+    from ctypes import wintypes
+    k.OpenProcessToken.argtypes = (
+        wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE))
+    k.OpenProcessToken.restype = wintypes.BOOL
+    tok = wintypes.HANDLE()
+    if not k.OpenProcessToken(handle, 0x0008, ctypes.byref(tok)):  # TOKEN_QUERY
+        return f"<unreadable: OpenProcessToken error {k.GetLastError()}>"
+    try:
+        adv = ctypes.windll.advapi32
+        adv.GetTokenInformation.argtypes = (
+            wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID,
+            wintypes.DWORD, ctypes.POINTER(wintypes.DWORD))
+        adv.GetTokenInformation.restype = wintypes.BOOL
+        need = wintypes.DWORD(0)
+        adv.GetTokenInformation(tok, 1, None, 0, ctypes.byref(need))  # TokenUser; size probe
+        if not need.value:
+            return f"<unreadable: GetTokenInformation error {k.GetLastError()}>"
+        raw = ctypes.create_string_buffer(need.value)
+        if not adv.GetTokenInformation(tok, 1, raw, need, ctypes.byref(need)):
+            return f"<unreadable: GetTokenInformation error {k.GetLastError()}>"
+        ptr_size = ctypes.sizeof(ctypes.c_void_p)
+        sid_addr = int.from_bytes(raw.raw[:ptr_size], "little")
+        if not sid_addr:
+            return "<unreadable: null SID>"
+        adv.ConvertSidToStringSidW.argtypes = (wintypes.LPVOID, ctypes.POINTER(wintypes.LPWSTR))
+        adv.ConvertSidToStringSidW.restype = wintypes.BOOL
+        out = wintypes.LPWSTR()
+        if not adv.ConvertSidToStringSidW(sid_addr, ctypes.byref(out)):
+            return f"<unreadable: ConvertSidToStringSid error {k.GetLastError()}>"
+        try:
+            return out.value
+        finally:
+            k.LocalFree.argtypes = (wintypes.HANDLE,)
+            k.LocalFree.restype = wintypes.HANDLE
+            k.LocalFree(out)
+    finally:
+        k.CloseHandle(tok)
+
+
+def _win_is_wow64(k, handle) -> bool:
+    """True if the target is a 32-bit process under 64-bit Windows."""
+    import ctypes
+    from ctypes import wintypes
+    k.IsWow64Process.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL))
+    k.IsWow64Process.restype = wintypes.BOOL
+    flag = wintypes.BOOL(False)
+    if not k.IsWow64Process(handle, ctypes.byref(flag)):
+        return False
+    return bool(flag.value)
+
+
+def _win_read(k, handle, address: int, size: int):
+    """ReadProcessMemory wrapper: bytes or None."""
+    import ctypes
+    from ctypes import wintypes
+    k.ReadProcessMemory.argtypes = (
+        wintypes.HANDLE, wintypes.LPCVOID, wintypes.LPVOID,
+        ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t))
+    k.ReadProcessMemory.restype = wintypes.BOOL
+    buf = ctypes.create_string_buffer(size)
+    done = ctypes.c_size_t(0)
+    if not k.ReadProcessMemory(handle, address, buf, size, ctypes.byref(done)):
+        return None
+    return buf.raw[:done.value]
+
+
+def _win_peb(k, handle):
+    """PEB base address via NtQueryInformationProcess, or None."""
+    import ctypes
+    ntdll = ctypes.windll.ntdll
+    ntdll.NtQueryInformationProcess.argtypes = (
+        ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
+        ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong))
+    ntdll.NtQueryInformationProcess.restype = ctypes.c_long
+    ptr = ctypes.sizeof(ctypes.c_void_p)
+    buf = ctypes.create_string_buffer(ptr * 6)
+    retlen = ctypes.c_ulong(0)
+    if ntdll.NtQueryInformationProcess(handle, 0, buf, len(buf),
+                                       ctypes.byref(retlen)) != 0:
+        return None
+    return int.from_bytes(buf.raw[ptr:2 * ptr], "little")
+
+
+def _win_cmdline(k, handle, pid: int) -> str:
+    """Raw CommandLine from the target's PEB; unreadable marker on failure.
+
+    PEB offsets used (stable across Windows 10/11):
+    64-bit PEB.ProcessParameters at +0x20, CommandLine at params +0x70;
+    32-bit PEB.ProcessParameters at +0x10, CommandLine at params +0x40.
+    Cross-bitness reads are refused explicitly instead of guessing.
+    """
+    PROCESS_QUERY_INFORMATION = 0x0400
+    PROCESS_VM_READ = 0x0010
+    probe, err = _win_open(k, pid, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ)
+    if probe is None:
+        return f"<unreadable: OpenProcess error {err}>"
+    try:
+        import ctypes
+        ptr = ctypes.sizeof(ctypes.c_void_p)
+        if ptr == 8:
+            if _win_is_wow64(k, probe):
+                return "<unreadable: cross-bitness PEB read not implemented>"
+            peb_off, cmd_off, addr_off = 0x20, 0x70, 8
+        elif ptr == 4:
+            if not _win_is_wow64(k, probe):
+                return "<unreadable: cross-bitness PEB read not implemented>"
+            peb_off, cmd_off, addr_off = 0x10, 0x40, 4
+        else:
+            return "<unreadable: unknown pointer size>"
+        peb = _win_peb(k, probe)
+        if peb is None:
+            return "<unreadable: NtQueryInformationProcess>"
+        params_raw = _win_read(k, probe, peb + peb_off, ptr)
+        if params_raw is None:
+            return "<unreadable: PEB.ProcessParameters>"
+        params = int.from_bytes(params_raw, "little")
+        if not params:
+            return "<unreadable: null ProcessParameters>"
+        # UNICODE_STRING: Length@0 (u16), Buffer@(8|4).
+        cmd_raw = _win_read(k, probe, params + cmd_off, 16 if ptr == 8 else 8)
+        if cmd_raw is None:
+            return "<unreadable: RTL_USER_PROCESS_PARAMETERS.CommandLine>"
+        length = int.from_bytes(cmd_raw[:2], "little")
+        buf_addr = int.from_bytes(cmd_raw[addr_off:addr_off + ptr], "little")
+        if not buf_addr or not length or length > 32768:
+            return "<unreadable: empty CommandLine>"
+        text_raw = _win_read(k, probe, buf_addr, length)
+        if text_raw is None:
+            return "<unreadable: CommandLine buffer>"
+        return text_raw.decode("utf-16-le", "replace").rstrip("\x00")
+    finally:
+        k.CloseHandle(probe)
+
+
 class UnsupportedProcessSource:
     """An explicit refusal, not a silent empty observation set."""
 
@@ -197,8 +454,11 @@ class UnsupportedProcessSource:
 
 
 def get_source() -> ProcessSource:
-    return LinuxProcessSource() if sys.platform.startswith("linux") \
-        else UnsupportedProcessSource()
+    if sys.platform.startswith("linux"):
+        return LinuxProcessSource()
+    if sys.platform == "win32":
+        return WindowsProcessSource()
+    return UnsupportedProcessSource()
 
 
 def _sha256_file(path: str) -> str:
