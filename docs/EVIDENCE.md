@@ -135,7 +135,7 @@ Live (real Nemotron, `tests/test_live_model.py`, 5 passed in 14.58s):
 Reproduce:
 
 ```
-python -m pytest -q                        # 69 passed in 2.41s
+python -m pytest -q                        # 221 passed, 7 skipped (Linux native, 2026-09-22)
 python -m pytest tests/test_live_model.py  # 5 passed in 14.58s  (needs a key)
 python tools/nemotron_check.py             # the M3 probe, writes evidence/M3/
 ```
@@ -205,8 +205,8 @@ Platform status: Windows `DEMONSTRATED`; Linux native awareness
 state); macOS `NOT_DEMONSTRATED` (no hardware, no stub);
 pre-suspend notification `NOT_DEMONSTRATED` (no message pump, never claimed).
 
-Linux evidence (2026-09-21): `.venv-linux/bin/python -m pytest -q` produced
-`219 passed, 9 skipped` on Ubuntu 24.04.5 LTS / Python 3.12.3. The Linux
+Linux evidence (2026-09-22): `.venv-linux/bin/python -m pytest -q` produced
+`221 passed, 7 skipped` on Ubuntu 24.04.5 LTS / Python 3.12.3. The Linux
 provider reads `CLOCK_BOOTTIME - CLOCK_MONOTONIC` and
 `/sys/class/net/*/operstate`; no root access or network request is required.
 The result demonstrates retrospective continuity and network-state observation,

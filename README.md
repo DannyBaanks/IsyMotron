@@ -10,9 +10,10 @@
 
 [![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-76B900.svg)](LICENSE)
-[![Platform: Windows 10/11](https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-202124.svg)](#what-is-demonstrated)
+[![Platform: Windows 11 (10=product scope)](https://img.shields.io/badge/platform-Windows%2011%20%2810%3Dproduct%20scope%29-202124.svg)](#what-is-demonstrated)
+[![Track: Best Apps and Agents](https://img.shields.io/badge/track-Best%20Apps%20%26%20Agents-76B900.svg)](#what-is-demonstrated)
 
-<sub>Hackathon project for the Nebius × NVIDIA / Devpost challenge.</sub>
+<sub>Hackathon project for the Nebius × NVIDIA / Devpost challenge. `docs/GUIA.es.md` is supplementary Spanish documentation; all submission materials are in English.</sub>
 
 </div>
 
@@ -197,6 +198,7 @@ agents/             provider, planner and executor roles
 relay/              transport-only loopback relay
 console/            local web console and avatar API
 avatar/             trust-separated web/desktop avatar
+web/                Next.js surface (optional, requires console backend)
 learning/           Malbolge lesson packs and verifiers
 evidence/           sealed run artifacts and screenshots
 tests/              contract, host, planner, console and adversarial gates
