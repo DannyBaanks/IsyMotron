@@ -5,6 +5,21 @@
 # This shim deliberately does NOT live at the repository root: on a
 # case-insensitive filesystem (Windows) a root file named `isymotron` would
 # collide with the `IsyMotron/` directory.
+#
+# It is meant to be symlinked into ~/.local/bin, so it resolves its own
+# symlinks before locating the Python module: called through a link, the naive
+# `dirname "${BASH_SOURCE[0]}"` points at the link's directory, not the repo's.
 set -euo pipefail
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+    dir="$(cd "$(dirname "$src")" && pwd)"
+    src="$(readlink "$src")"
+    case "$src" in
+        /*) ;;                    # absolute target
+        *) src="$dir/$src" ;;     # relative target, resolved against the link
+    esac
+done
+here="$(cd "$(dirname "$src")" && pwd)"
+
 exec python3 "$here/isymotron_cli.py" "$@"

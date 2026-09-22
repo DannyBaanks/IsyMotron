@@ -431,6 +431,19 @@ def test_posix_shim_is_executable():
 
 
 @LINUX_ONLY
+def test_posix_shim_works_through_a_symlink(tmp_path):
+    """`isymotron install` symlinks it into ~/.local/bin: invoked through the
+    link, the shim must still find the module in the repository, not next to
+    the link."""
+    link = tmp_path / "isymotron"
+    link.symlink_to(REPO / "tools" / "isymotron")
+    done = subprocess.run(["bash", str(link), "where"], cwd=str(tmp_path),
+                          capture_output=True, text=True, timeout=30)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == str(REPO)
+
+
+@LINUX_ONLY
 def test_posix_shim_propagates_the_exit_code():
     done = subprocess.run(["bash", str(REPO / "tools" / "isymotron"), "zzz"],
                           cwd=str(REPO), capture_output=True, text=True, timeout=30)
