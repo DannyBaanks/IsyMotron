@@ -7,6 +7,8 @@ excluded on the record. Deleting a verb has to turn this suite red.
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import sys
 from pathlib import Path
 
@@ -218,8 +220,6 @@ def test_flags_reach_the_child_verbatim():
 
 # -- M3: keys — stored outside the repo, never echoed ------------------------
 
-import os  # noqa: E402  (kept local to this section on purpose)
-
 SECRET = "nvapi-SUPERSECRET-0123456789"
 
 
@@ -296,3 +296,56 @@ def test_child_env_injects_the_store(monkeypatch, tmp_path):
     monkeypatch.setenv("ISYMOTRON_KEY_STORE", str(store))
     env = cli.child_env()
     assert env["NEBIUS_API_KEY"] == "injected-value"
+
+
+# -- M4: every capability is reachable from the one command ------------------
+
+def test_grouped_verb_needs_a_known_subcommand():
+    bare = _run("quine")
+    assert bare.returncode == 2
+    for sub in ("demo", "verify", "publish"):
+        assert sub in bare.stdout
+
+    bogus = _run("quine", "bogus")
+    assert bogus.returncode == 2
+    assert "unknown quine subcommand 'bogus'" in bogus.stdout
+
+
+def test_grouped_verb_routes_to_its_subcommand_entrypoint():
+    # argparse's own help proves the routing without running the demo.
+    done = _run("quine", "verify", "--help")
+    assert done.returncode == 0
+    assert "bundle" in done.stdout
+
+
+def test_evidence_verify_reports_a_real_manifest():
+    done = _run("evidence", "verify", "evidence/M3/hashes.json")
+    assert done.returncode == 0, done.stdout
+    payload = json.loads(done.stdout)
+    assert payload["passed"] is True
+    assert payload["algorithm"] == "SHA-256"
+
+
+def test_evidence_verify_exit_codes(tmp_path):
+    artifact = tmp_path / "a.txt"
+    artifact.write_bytes(b"bytes")
+    manifest = tmp_path / "hashes.json"
+    manifest.write_text(json.dumps({
+        "algorithm": "SHA-256",
+        "artifacts": {"a.txt": "0" * 64},          # wrong on purpose
+    }), encoding="utf-8")
+
+    mismatch = _run("evidence", "verify", str(manifest))
+    assert mismatch.returncode == 1, mismatch.stdout        # ran, found a mismatch
+    unreadable = _run("evidence", "verify", str(tmp_path / "nope.json"))
+    assert unreadable.returncode == 2, unreadable.stdout    # could not verify
+    assert _run("evidence", "verify").returncode == 2       # usage error
+
+
+def test_new_verbs_are_wired():
+    for name in ("nemotron", "host-watch"):
+        done = _run(name, "--help")
+        assert done.returncode == 0, f"{name} did not reach its entrypoint"
+    # process is wired through the same pass-through
+    done = _run("process", "observe", "--help")
+    assert done.returncode == 0

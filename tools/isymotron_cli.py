@@ -17,6 +17,7 @@ never widens a grant or mints a receipt.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -25,6 +26,11 @@ from pathlib import Path
 from typing import Mapping
 
 REPO = Path(__file__).resolve().parent.parent
+
+# Import the in-repo library the same way every other tools/*.py does.
+for _path in (REPO, REPO / "core"):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 
 @dataclass(frozen=True)
@@ -298,21 +304,25 @@ def repo_version() -> str:
     return f"isymotron 1.0.0 {revision}".strip()
 
 
-def run_entrypoint(verb: Verb, rest: list[str]) -> int:
-    """Run a verb's entrypoint and propagate its exit code unchanged.
-
-    The argv is a pass-through: `rest` is forwarded verbatim, so a flag the
-    subcommand understands reaches it untouched. There is no `--` separator to
-    remember because the top-level dispatch parses no flags at all.
-    """
+def run_pass_through(argv_prefix, rest: list[str]) -> int:
+    """Run an entrypoint with the caller's arguments forwarded verbatim, and
+    propagate its exit code unchanged. Flags the subcommand understands reach
+    it untouched; there is no `--` separator to remember because the top-level
+    dispatch parses no flags at all."""
     try:
-        return subprocess.run(build_argv(verb, rest), cwd=str(REPO),
-                              env=child_env()).returncode
+        return subprocess.run([sys.executable, *argv_prefix, *rest],
+                              cwd=str(REPO), env=child_env()).returncode
     except KeyboardInterrupt:  # pragma: no cover - interactive
         return 130
     except OSError as exc:
-        print(_style("error:", "red", "bold") + f" could not run {verb.name}: {exc}")
+        print(_style("error:", "red", "bold")
+              + f" could not run {' '.join(argv_prefix)}: {exc}")
         return 2
+
+
+def run_entrypoint(verb: Verb, rest: list[str]) -> int:
+    """Run a single-entrypoint verb."""
+    return run_pass_through(verb.argv, verb_args(verb, rest))
 
 
 #: Arguments added when the caller passes none. Parity with isymotron.ps1,
@@ -324,13 +334,16 @@ DEFAULT_ARGS: dict[str, tuple[str, ...]] = {
 }
 
 
+def verb_args(verb: Verb, rest: list[str]) -> list[str]:
+    """The caller's arguments, or the verb's documented defaults."""
+    return list(rest) if rest else list(DEFAULT_ARGS.get(verb.name, ()))
+
+
 def build_argv(verb: Verb, rest: list[str], *,
                executable: str | None = None) -> list[str]:
     """The exact argv for a verb. Pure, so parity can be tested without
     running anything."""
-    program = executable or sys.executable
-    args = list(rest) if rest else list(DEFAULT_ARGS.get(verb.name, ()))
-    return [program, *verb.argv, *args]
+    return [executable or sys.executable, *verb.argv, *verb_args(verb, rest)]
 
 
 # ─── keys (M3): secrets live outside the repo and are never echoed ──────────
@@ -527,6 +540,40 @@ def cmd_keys(rest: list[str]) -> int:
     return _keys_problem(f"unknown keys action {action!r}")
 
 
+EVIDENCE_USAGE = "usage: isymotron evidence verify <manifest.json>"
+
+
+def cmd_evidence(rest: list[str]) -> int:
+    """`evidence verify`: the manifest checker had no CLI until now."""
+    if len(rest) != 2 or rest[0] != "verify":
+        print(_style("error:", "red", "bold")
+              + " evidence takes: verify <manifest.json>")
+        print(EVIDENCE_USAGE)
+        return 2
+    from isymotron.evidence import verify_manifest
+    result = verify_manifest(rest[1])
+    print(json.dumps(result.to_dict(), indent=2))
+    if result.passed:
+        return 0
+    # it ran and found a mismatch -> 1; it could not verify at all -> 2
+    return 1 if result.artifacts else 2
+
+
+def run_grouped(verb: Verb, rest: list[str]) -> int:
+    if not rest:
+        print_usage_error(
+            f"'{verb.name}' needs a subcommand: {' | '.join(verb.subcommands)}")
+        return 2
+    sub, tail = rest[0], rest[1:]
+    entry = verb.subcommands.get(sub)
+    if entry is None:
+        print_usage_error(
+            f"unknown {verb.name} subcommand '{sub}': "
+            + " | ".join(verb.subcommands))
+        return 2
+    return run_pass_through([entry], tail)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
 
@@ -559,11 +606,16 @@ def main(argv: list[str] | None = None) -> int:
               + " 'install' is not implemented in this build (plan milestone M6)")
         return 2
 
+    if command == "evidence":
+        return cmd_evidence(rest)
+
     verb = VERBS.get(command)
     if verb is None:
         print_usage_error(f"unknown command '{command}'")
         return 2
-    if verb.entrypoint is None and not verb.subcommands:
+    if verb.subcommands:
+        return run_grouped(verb, rest)
+    if verb.entrypoint is None:
         print(_style("error:", "red", "bold") + f" '{command}' has no entrypoint wired yet")
         return 2
     return run_entrypoint(verb, rest)
