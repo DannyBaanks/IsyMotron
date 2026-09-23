@@ -49,6 +49,10 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `evidence` | `verify <manifest.json>` — the `hashes.json` checker |
 | `nemotron` | probe the provider seam (`--provider nebius\|nvidia`, `--models`) |
 | `host-watch` | watch host awareness over time (`--seconds`, `--tick`, `--probe`) |
+| `session` | `ver | armar | quitar` — session management (like munder) |
+| `avatar` | `lienzo | compilar | editar | inspect` — avatar management |
+| `repaint` | request UI repaint without restart |
+| `ctl` | `ping | status | stop` — control channel |
 
 Flags after a verb are forwarded **verbatim** to the command that implements
 it. The top-level dispatch parses no flags, so there is no `--` separator to

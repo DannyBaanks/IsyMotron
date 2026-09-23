@@ -158,11 +158,49 @@ VERBS: dict[str, Verb] = {
         argv=("tools/nemotron_check.py",),
         entrypoint="tools/nemotron_check.py",
     ),
-    "host-watch": Verb(
+"host-watch": Verb(
         name="host-watch",
         summary="watch host awareness over time (--seconds, --tick, --probe)",
         argv=("tools/host_watch.py",),
         entrypoint="tools/host_watch.py",
+    ),
+    # -- session management (munder-style) -----------------------------------
+    "session": Verb(
+        name="session",
+        summary="session management: ver | armar | quitar (like munder)",
+        subcommands={
+            "ver": "tools/session_ver.py",
+            "armar": "tools/session_armar.py",
+            "quitar": "tools/session_quitar.py",
+        },
+    ),
+    # -- avatar management (munder-style) ------------------------------------
+    "avatar": Verb(
+        name="avatar",
+        summary="avatar management: lienzo | compilar | editar | inspect",
+        subcommands={
+            "lienzo": "tools/avatar_lienzo.py",
+            "compilar": "tools/avatar_compilar.py",
+            "editar": "tools/avatar_editar.py",
+            "inspect": "tools/avatar_inspect.py",
+        },
+    ),
+    # -- repaint (like munder repaint) ---------------------------------------
+    "repaint": Verb(
+        name="repaint",
+        summary="request UI repaint without restart (broadcasts ui:repaint)",
+        argv=("tools/repaint.py",),
+        entrypoint="tools/repaint.py",
+    ),
+    # -- control channel (ctl ping like munder) -------------------------------
+    "ctl": Verb(
+        name="ctl",
+        summary="control channel: ping | status | stop",
+        subcommands={
+            "ping": "tools/ctl_ping.py",
+            "status": "tools/ctl_status.py",
+            "stop": "tools/ctl_stop.py",
+        },
     ),
 }
 
