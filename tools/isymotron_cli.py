@@ -174,13 +174,13 @@ VERBS: dict[str, Verb] = {
             "quitar": "tools/session_quitar.py",
         },
     ),
-    # -- avatar management (munder-style) ------------------------------------
+    # -- avatar management (generic PNG surface: blank canvas, model edit,
+    # matrix inspect). No cast, no renderer: IsyMotron is not Munder (COMPOSE).
     "avatar": Verb(
         name="avatar",
-        summary="avatar management: lienzo | compilar | editar | inspect",
+        summary="avatar management: lienzo | editar | inspect",
         subcommands={
             "lienzo": "tools/avatar_lienzo.py",
-            "compilar": "tools/avatar_compilar.py",
             "editar": "tools/avatar_editar.py",
             "inspect": "tools/avatar_inspect.py",
         },

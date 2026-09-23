@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""isymotron avatar lienzo -- create blank 18x28 RGBA canvas (like munder avatar lienzo)."""
+"""isymotron avatar lienzo -- create a blank 18x28 RGBA canvas PNG."""
 from __future__ import annotations
 
 import sys

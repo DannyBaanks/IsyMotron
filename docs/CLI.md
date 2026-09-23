@@ -50,7 +50,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `nemotron` | probe the provider seam (`--provider nebius\|nvidia`, `--models`) |
 | `host-watch` | watch host awareness over time (`--seconds`, `--tick`, `--probe`) |
 | `session` | `ver | armar | quitar` — session management (like munder) |
-| `avatar` | `lienzo | compilar | editar | inspect` — avatar management |
+| `avatar` | `lienzo | editar | inspect` — generic PNG avatar ops (blank canvas, model edit, matrix inspect of a file; no cast, no renderer) |
 | `repaint` | request UI repaint without restart |
 | `ctl` | `ping | status | stop` — control channel |
 

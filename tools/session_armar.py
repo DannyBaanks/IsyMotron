@@ -38,7 +38,7 @@ def main() -> int:
         prog="isymotron session armar",
         description="Create a new agent in the session (like munder 'sesion armar')"
     )
-    parser.add_argument("--nombre", "-n", help="Agent name (e.g., jim)")
+    parser.add_argument("--nombre", "-n", help="Agent name (e.g., aria)")
     parser.add_argument("--comando", "-c", help="Command to run (e.g., 'claude --model opus')")
     parser.add_argument("--cwd", "-d", help="Working directory (default: ~/Development)")
     parser.add_argument("--proveedor", "-p", help="Provider: claude, codex, gemini, opencode, antigravity, qwen, cursor, pi, copilot")
@@ -61,7 +61,7 @@ def main() -> int:
     if args.interactivo:
         # Interactive mode - prompt for missing values
         if not args.nombre:
-            nombre = input("  Nombre del agente (ej. jim): ").strip()
+            nombre = input("  Nombre del agente (ej. aria): ").strip()
         if not args.comando:
             comando = input("  Comando (ej. claude --model opus): ").strip()
         if not args.cwd:

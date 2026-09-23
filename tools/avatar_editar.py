@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""isymotron avatar editar -- edita un PNG con un modelo (como munder avatar editar).
+"""isymotron avatar editar -- edita un PNG con un modelo (endpoint openai-compatible).
 
 La key viaja SOLO en el header Authorization de una llamada que el usuario
 pidió explícitamente; jamás se imprime, loguea ni escribe.
