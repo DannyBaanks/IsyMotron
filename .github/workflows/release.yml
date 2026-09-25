@@ -2,6 +2,8 @@
 # each binary on its own OS, and publishes a GitHub Release on a v* tag.
 #
 #   git tag v1.1.0 && git push origin v1.1.0        # publish
+#   Actions -> release -> Run workflow, tag=v1.1.0   # publish; CI creates the tag
+#                                                    # on the commit it just built
 #   Actions -> release -> Run workflow               # dry build, no publish
 #
 # A tag with -rc / -beta / -alpha publishes as a PRE-RELEASE, so it gets a
@@ -19,6 +21,13 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Publish as this tag (e.g. v1.1.0-rc.1), created on the dispatched
+          commit. Leave empty for a dry build that publishes nothing.
+        required: false
+        default: ''
 
 permissions:
   contents: write      # create the Release and upload the assets
@@ -46,12 +55,15 @@ jobs:
         with:
           python-version: "3.12"
       - name: The tag names this tree's version
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         shell: bash
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          want="${GITHUB_REF_NAME#v}"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::bad tag '$TAG'"; exit 1; }
+          want="${TAG#v}"
           have=$(python -c "import sys; sys.path.insert(0, 'tools'); import isymotron_cli; print(isymotron_cli.VERSION)")
-          [ "$want" = "$have" ] || { echo "::error::tag $GITHUB_REF_NAME but VERSION is $have"; exit 1; }
+          [ "$want" = "$have" ] || { echo "::error::tag $TAG but VERSION is $have"; exit 1; }
       - name: Install PyInstaller
         run: python -m pip install -r requirements-build.txt
       - name: Build (one-file, smoke test included)
@@ -88,7 +100,7 @@ jobs:
         # dry run should not mint public attestations for unreleased builds.
         # Verify with:
         #   gh attestation verify <asset> --repo DannyBaanks/IsyMotron
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: release/IsyMotron*
@@ -102,7 +114,7 @@ jobs:
   publish:
     name: publish
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -129,8 +141,8 @@ jobs:
         # release body resolves relative links against /releases/tag/, where
         # `../blob/...` goes nowhere.
         env:
-          TAG: ${{ github.ref_name }}
-          BASE: https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          BASE: https://github.com/${{ github.repository }}/blob/${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
           if [ -f "src/docs/releases/$TAG.md" ]; then
@@ -156,9 +168,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: IsyMotron ${{ github.ref_name }}
-          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          # A dispatched tag does not exist yet: it is created HERE, on the
+          # exact commit the build jobs compiled, smoke-tested and attested.
+          target_commitish: ${{ github.sha }}
+          name: IsyMotron ${{ inputs.tag || github.ref_name }}
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-rc') || contains(inputs.tag || github.ref_name, '-beta') || contains(inputs.tag || github.ref_name, '-alpha') }}
           body_path: notes.md
           files: |
             release/IsyMotron*
