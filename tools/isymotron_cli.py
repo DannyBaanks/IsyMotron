@@ -504,6 +504,8 @@ def _validate_value(name: str, value: str) -> str | None:
         return "empty value"
     if value != value.strip():
         return "value has leading or trailing whitespace"
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return "value contains control characters (pasted terminal escape?)"
     if name == "ISYMOTRON_PROVIDER" and value not in PROVIDER_VALUES:
         return f"{name} must be one of {', '.join(PROVIDER_VALUES)}"
     return None

@@ -174,4 +174,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    if {"-h", "--help"} & set(sys.argv[1:]):
+        print("usage: isymotron demo")
+        print("M0 walkthrough: simulated hosts, writes evidence/M0/. Takes no arguments.")
+    else:
+        raise SystemExit(main())
