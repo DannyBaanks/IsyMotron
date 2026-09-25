@@ -89,8 +89,12 @@ def build_world(args):
         awareness = HostAwarenessEngine(host.identify().host_id,
                                         WindowsPowerProvider())
     else:
-        print(f"note: no real host engine for {sys.platform}; "
-              f"running with fixtures only.")
+        # Said loudly and verbatim (build_exe.py's smoke test requires this
+        # line): a binary that starts here is not a host that acts here.
+        print(f"NOT_DEMONSTRATED: no real host backend for {sys.platform}. "
+              f"Only simulated fixtures (--demo-host) can attach; nothing "
+              f"here acts on this machine. See docs/PLATFORM_SUPPORT.md.",
+              flush=True)
 
     if args.demo_host:
         from simulator.engines import LegacyHost
@@ -158,6 +162,8 @@ def main(argv=None) -> int:
     hosts = relay.hosts()
     if not hosts:
         print("  No host could be attached. Nothing to serve.")
+        if sys.platform != "win32":
+            print("  Start with --demo-host to explore the console on fixtures.")
         return 2
     for h in hosts:
         desc = relay.describe(h["host_id"])

@@ -1,5 +1,16 @@
-# Release workflow: builds IsyMotron.exe on tag and publishes a GitHub Release.
-# Trigger: push a tag matching v* (e.g., git tag v1.0.0 && git push origin v1.0.0)
+# Release workflow: builds IsyMotron for Windows, Linux and macOS, smoke-tests
+# each binary on its own OS, and publishes a GitHub Release on a v* tag.
+#
+#   git tag v1.1.0 && git push origin v1.1.0        # publish
+#   Actions -> release -> Run workflow               # dry build, no publish
+#
+# A tag with -rc / -beta / -alpha publishes as a PRE-RELEASE, so it gets a
+# public download page without becoming /releases/latest.
+#
+# Windows keeps its v1.0.0 asset name (IsyMotron.exe), so existing download
+# links keep their shape. Linux/macOS ship as tar.gz (keeps the exec bit) with
+# docs/PLATFORM_SUPPORT.md inside: those binaries START, but have no real host
+# backend and are NOT_DEMONSTRATED as hosts.
 
 name: release
 
@@ -7,51 +18,126 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
-  contents: write      # create the Release and upload the asset
+  contents: write      # create the Release and upload the assets
   id-token: write      # OIDC used by the provenance attestation
   attestations: write  # publish the attestation
 
 jobs:
-  build-and-release:
-    runs-on: windows-latest
+  build:
+    name: build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          # Older glibc builder -> the binary runs on more distributions.
+          - os: ubuntu-22.04
+            platform: linux
+          - os: macos-latest
+            platform: macos
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install PyInstaller
-        run: pip install pyinstaller
-      - name: Build IsyMotron.exe (one-file, smoke test included)
+        run: python -m pip install -r requirements-build.txt
+      - name: Build (one-file, smoke test included)
         run: python build_exe.py
-      - name: Verify artifact exists
+
+      - name: Package
+        shell: bash
         run: |
-          if (Test-Path "dist/IsyMotron.exe") {
-            $size = (Get-Item "dist/IsyMotron.exe").Length / 1MB
-            Write-Host "IsyMotron.exe found ($([math]::Round($size, 1)) MB)"
-          } else {
-            Write-Error "dist/IsyMotron.exe not found"
-            exit 1
-          }
-        shell: pwsh
+          set -euo pipefail
+          mkdir -p release
+          if [ "${{ matrix.platform }}" = windows ]; then
+            cp dist/IsyMotron.exe release/IsyMotron.exe
+          else
+            arch=$(python -c "import platform; m=platform.machine().lower(); print({'amd64':'x86_64','aarch64':'arm64'}.get(m,m))")
+            name="IsyMotron-${{ matrix.platform }}-${arch}"
+            mkdir -p "stage/$name"
+            cp dist/IsyMotron "stage/$name/IsyMotron"
+            cp docs/PLATFORM_SUPPORT.md "stage/$name/PLATFORM_SUPPORT.md"
+            tar -C stage -czf "release/$name.tar.gz" "$name"
+          fi
+          cp dist/smoke-${{ matrix.platform }}.json release/
+          cd release
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum IsyMotron* > "SHA256SUMS-${{ matrix.platform }}.txt"
+          else
+            shasum -a 256 IsyMotron* > "SHA256SUMS-${{ matrix.platform }}.txt"
+          fi
+          cat "SHA256SUMS-${{ matrix.platform }}.txt"
+          ls -la
+
       - name: Attest build provenance (Quine Gate M3)
-        # External anchor for the artifact digest. Public, Sigstore-backed, and
-        # independent of any key stored in the repository. Verify with:
-        #   gh attestation verify dist/IsyMotron.exe --repo DannyBaanks/IsyMotron
+        # External anchor for each artifact digest. Public, Sigstore-backed,
+        # and independent of any key stored in the repository. Tags only: a
+        # dry run should not mint public attestations for unreleased builds.
+        # Verify with:
+        #   gh attestation verify <asset> --repo DannyBaanks/IsyMotron
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: dist/IsyMotron.exe
+          subject-path: release/IsyMotron*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: release/*
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Flatten + merge checksums
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+          cat release/SHA256SUMS-*.txt | sort -k2 > release/SHA256SUMS.txt
+          rm release/SHA256SUMS-*.txt
+          # The merged file must cover every binary asset, and match it.
+          (cd release && sha256sum -c SHA256SUMS.txt)
+          test "$(ls release/IsyMotron* | wc -l)" -eq "$(wc -l < release/SHA256SUMS.txt)"
+          ls -la release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: IsyMotron ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
           body: |
-            Windows 10/11 capability fabric — deny-by-default, leases, sealed receipts.
+            Capability fabric — deny-by-default, leases, sealed receipts.
             See [README](../blob/${{ github.sha }}/README.md) for quickstart.
-          files: dist/IsyMotron.exe
+
+            | Asset | Builds + starts (smoke) | Real host |
+            |---|---|---|
+            | `IsyMotron.exe` (Windows 10/11) | DEMONSTRATED | DEMONSTRATED on Windows 11 (reference platform) |
+            | `IsyMotron-linux-*.tar.gz` | DEMONSTRATED | **NOT_DEMONSTRATED** — starts on simulated fixtures (`--demo-host`) only |
+            | `IsyMotron-macos-*.tar.gz` | DEMONSTRATED | **NOT_DEMONSTRATED** — starts on simulated fixtures (`--demo-host`) only |
+
+            Linux and macOS binaries are engineering builds: the console and the
+            contract run, but nothing acts on the machine. See
+            [docs/PLATFORM_SUPPORT.md](../blob/${{ github.sha }}/docs/PLATFORM_SUPPORT.md).
+            `smoke-<platform>.json` records what each binary's smoke test proved.
+
+            Verify: `sha256sum -c SHA256SUMS.txt` and
+            `gh attestation verify <asset> --repo DannyBaanks/IsyMotron`.
+          files: |
+            release/IsyMotron*
+            release/SHA256SUMS.txt
+            release/smoke-*.json
+          fail_on_unmatched_files: true
           draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

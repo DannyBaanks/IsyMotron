@@ -16,6 +16,6 @@ COPY . .
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir pytest
+    && pip install --no-cache-dir -r requirements-dev.txt
 
 CMD ["python", "-m", "pytest", "-q"]

@@ -228,12 +228,19 @@ same seam also reaches NVIDIA NIM (`evidence/M3/probe_nvidia.json`); its earlier
 
 ## Verification
 
-The CI workflow runs on `windows-latest`, because the real host gate exercises
-Windows filesystem semantics, NTFS junctions and process state. It also builds
-the packaged executable and runs its HTTP/authentication smoke test.
+The CI workflow runs the suite on Windows, Linux and macOS. Windows is the
+reference, because the real host gate exercises Windows filesystem semantics,
+NTFS junctions and process state; Linux and macOS prove the core is portable.
+Each OS also builds the packaged binary and runs its smoke test. A binary that
+starts is not a host: Linux and macOS have no real host backend yet and are
+`NOT_DEMONSTRATED` as hosts ([`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md)).
+
+The runtime is standard-library only. Tests need `requirements-dev.txt`
+(pytest, and Pillow as the PNG test oracle).
 
 ```powershell
 # From the repository root on Windows
+py -m pip install -r requirements-dev.txt
 py -m pytest -q
 py tests/test_m0_gate.py -q
 py tests/test_win11_real.py -q
@@ -345,6 +352,13 @@ $env:ISYMOTRON_PROVIDER = "nebius"
 py tools/nemotron_check.py
 # NVIDIA NIM is the same seam: $env:NVIDIA_NIM_API_KEY + ISYMOTRON_PROVIDER = "nvidia"
 ```
+
+### Linux and macOS (engineering builds)
+
+Release assets `IsyMotron-linux-*.tar.gz` and `IsyMotron-macos-*.tar.gz` build
+and start, but only on simulated fixtures (`./IsyMotron --demo-host`): there is
+no real host backend for either OS yet, and the binary says so on start. See
+[`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md).
 
 Linux native host awareness is demonstrated for retrospective suspend timing
 and local interface state. The product host scope remains Windows 10/11; Linux

@@ -14,6 +14,20 @@ for _path in (REPO, REPO / "core"):
         sys.path.insert(0, str(_path))
 
 
+def _call(method: str, url: str, token: str, timeout: float, body=None):
+    """(status, text) over stdlib urllib -- the runtime has no third-party deps."""
+    import urllib.error
+    import urllib.request
+    data = None if body is None else json.dumps(body).encode()
+    req = urllib.request.Request(url, data=data, method=method, headers={
+        "Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode("utf-8", "replace")
+
+
 def main() -> int:
     import argparse
     parser = argparse.ArgumentParser(
@@ -43,7 +57,6 @@ def main() -> int:
     
     except ImportError:
         # Fallback: use CLI control channel
-        import requests
         try:
             user_data = os.path.expanduser("~/.config/isymotron")
             cfg_path = os.path.join(user_data, "isymotron-control.json")
@@ -54,18 +67,14 @@ def main() -> int:
             with open(cfg_path) as f:
                 cfg = json.load(cfg)
             
-            import requests
-            resp = requests.post(
-                f"http://127.0.0.1:{cfg['port']}/repaint",
-                headers={"Authorization": f"Bearer {cfg['token']}"},
-                timeout=5
-            )
-            if resp.status_code == 200:
-                data = resp.json()
+            status, text = _call("POST", f"http://127.0.0.1:{cfg['port']}/repaint",
+                                 cfg['token'], 5)
+            if status == 200:
+                data = json.loads(text)
                 print(f"Repintado pedido a {data.get('windows', 0)} ventana(s)")
                 return 0
             else:
-                print(f"Error: {resp.status_code} - {resp.text}")
+                print(f"Error: {status} - {text}")
                 return 1
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
