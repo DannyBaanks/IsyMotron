@@ -45,6 +45,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: The tag names this tree's version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have=$(python -c "import sys; sys.path.insert(0, 'tools'); import isymotron_cli; print(isymotron_cli.VERSION)")
+          [ "$want" = "$have" ] || { echo "::error::tag $GITHUB_REF_NAME but VERSION is $have"; exit 1; }
       - name: Install PyInstaller
         run: python -m pip install -r requirements-build.txt
       - name: Build (one-file, smoke test included)
@@ -112,29 +119,47 @@ jobs:
           (cd release && sha256sum -c SHA256SUMS.txt)
           test "$(ls release/IsyMotron* | wc -l)" -eq "$(wc -l < release/SHA256SUMS.txt)"
           ls -la release
+      - uses: actions/checkout@v4
+        with:
+          path: src
+          sparse-checkout: docs/releases
+      - name: Release notes
+        # A tag with a hand-written notes file (docs/releases/<tag>.md) uses it;
+        # any other tag gets the generic support table. Links are absolute: a
+        # release body resolves relative links against /releases/tag/, where
+        # `../blob/...` goes nowhere.
+        env:
+          TAG: ${{ github.ref_name }}
+          BASE: https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -f "src/docs/releases/$TAG.md" ]; then
+            cp "src/docs/releases/$TAG.md" notes.md
+          else
+            cat > notes.md <<EOF
+          Capability fabric — deny-by-default, leases, sealed receipts.
+          See the [README]($BASE/README.md) for the quickstart.
+
+          | Asset | Builds + starts (smoke) | Real host |
+          |---|---|---|
+          | \`IsyMotron.exe\` (Windows 10/11) | DEMONSTRATED | DEMONSTRATED on Windows 11 (reference platform) |
+          | \`IsyMotron-linux-*.tar.gz\` | DEMONSTRATED | DEMONSTRATED (\`linux-real\`; parity per \`tests/test_host_parity.py\`) |
+          | \`IsyMotron-macos-*.tar.gz\` | DEMONSTRATED | **NOT_DEMONSTRATED**: simulated fixtures (\`--demo-host\`) only |
+
+          Support matrix: [docs/PLATFORM_SUPPORT.md]($BASE/docs/PLATFORM_SUPPORT.md).
+          Verify: \`sha256sum -c SHA256SUMS.txt\` and
+          \`gh attestation verify <asset> --repo ${{ github.repository }}\`.
+          EOF
+            sed -i 's/^          //' notes.md
+          fi
+          cat notes.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: IsyMotron ${{ github.ref_name }}
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
-          body: |
-            Capability fabric — deny-by-default, leases, sealed receipts.
-            See [README](../blob/${{ github.sha }}/README.md) for quickstart.
-
-            | Asset | Builds + starts (smoke) | Real host |
-            |---|---|---|
-            | `IsyMotron.exe` (Windows 10/11) | DEMONSTRATED | DEMONSTRATED on Windows 11 (reference platform) |
-            | `IsyMotron-linux-*.tar.gz` | DEMONSTRATED | DEMONSTRATED (`linux-real`; parity with Windows per `tests/test_host_parity.py`) |
-            | `IsyMotron-macos-*.tar.gz` | DEMONSTRATED | **NOT_DEMONSTRATED** — starts on simulated fixtures (`--demo-host`) only |
-
-            The macOS binary is an engineering build: the console and the
-            contract run, but nothing acts on the machine. See
-            [docs/PLATFORM_SUPPORT.md](../blob/${{ github.sha }}/docs/PLATFORM_SUPPORT.md).
-            `smoke-<platform>.json` records what each binary's smoke test proved.
-
-            Verify: `sha256sum -c SHA256SUMS.txt` and
-            `gh attestation verify <asset> --repo DannyBaanks/IsyMotron`.
+          body_path: notes.md
           files: |
             release/IsyMotron*
             release/SHA256SUMS.txt

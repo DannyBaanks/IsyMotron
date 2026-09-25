@@ -10,7 +10,9 @@
 
 [![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-76B900.svg)](LICENSE)
-[![Platform: Windows 11 (10=product scope)](https://img.shields.io/badge/platform-Windows%2011%20%2810%3Dproduct%20scope%29-202124.svg)](#what-is-demonstrated)
+[![Release](https://img.shields.io/github/v/release/DannyBaanks/IsyMotron?include_prereleases&label=release&color=76B900)](https://github.com/DannyBaanks/IsyMotron/releases)
+[![Real host: Windows 11 · Linux](https://img.shields.io/badge/real%20host-Windows%2011%20%C2%B7%20Linux-202124.svg)](docs/PLATFORM_SUPPORT.md)
+[![Builds: Windows · Linux · macOS](https://img.shields.io/badge/builds-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-202124.svg)](docs/PLATFORM_SUPPORT.md)
 [![Track: Best Apps and Agents](https://img.shields.io/badge/track-Best%20Apps%20%26%20Agents-76B900.svg)](#what-is-demonstrated)
 
 <sub>Hackathon project for the Nebius × NVIDIA / Devpost challenge. `docs/GUIA.es.md` is supplementary Spanish documentation; all submission materials are in English.</sub>
@@ -18,6 +20,23 @@
 </div>
 
 > The model proposes. The local host decides. Execution produces evidence.
+
+## Get it
+
+| Platform | Download | What it is today |
+|---|---|---|
+| **Windows 10/11** | `IsyMotron.exe` | Real host (`nt-real`), the reference platform |
+| **Linux x86_64** | `IsyMotron-linux-x86_64.tar.gz` | Real host (`linux-real`), parity with Windows [row by row](docs/PLATFORM_SUPPORT.md#parity-what-the-same-means-m2) |
+| **macOS (Apple Silicon)** | `IsyMotron-macos-arm64.tar.gz` | Engineering build: console and contract on simulated fixtures; no real host yet |
+
+All three come from [Releases](https://github.com/DannyBaanks/IsyMotron/releases)
+with `SHA256SUMS.txt`, a Sigstore attestation per asset and a smoke receipt per
+platform. No Python needed to run them; from source, only the standard library.
+
+```bash
+sha256sum -c SHA256SUMS.txt
+gh attestation verify IsyMotron-linux-x86_64.tar.gz --repo DannyBaanks/IsyMotron
+```
 
 ## Why this matters
 
@@ -85,6 +104,10 @@ The labels below are deliberately narrower than marketing claims.
 |---|---|---|
 | Deny-by-default contract with leases, scopes and sealed receipts | **DEMONSTRATED** | [`tests/test_m0_gate.py`](tests/test_m0_gate.py) |
 | Real filesystem and process surface on a Windows host | **DEMONSTRATED** | [`tests/test_win11_real.py`](tests/test_win11_real.py), [`evidence/M1/`](evidence/M1/) |
+| Real Linux host with the same contract (`linux-real`) | **DEMONSTRATED** | [`tests/test_linux_real.py`](tests/test_linux_real.py), CI on `ubuntu-latest` |
+| Windows ↔ Linux host parity, one scenario table on both CIs | **DEMONSTRATED, scoped** (the case-folding row differs by design) | [`tests/test_host_parity.py`](tests/test_host_parity.py), [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md) |
+| Binaries for Windows, Linux and macOS, smoke-tested per OS, hashed and attested | **DEMONSTRATED** | [`build_exe.py`](build_exe.py), [`.github/workflows/release.yml`](.github/workflows/release.yml) |
+| Runtime is Python standard library only | **DEMONSTRATED** | [`tests/test_png_codec.py`](tests/test_png_codec.py) imports the runtime with site-packages hidden |
 | Planner refuses hallucinated or ungranted capabilities | **DEMONSTRATED** | [`tests/test_planner.py`](tests/test_planner.py) |
 | Live Nemotron planning path (Nebius Token Factory) | **DEMONSTRATED, scoped** | [`tests/test_live_model.py`](tests/test_live_model.py), [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
 | Host-awareness attribution: suspend is not provider failure | **DEMONSTRATED** | [`tests/test_awareness.py`](tests/test_awareness.py), [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md) |
@@ -94,6 +117,7 @@ The labels below are deliberately narrower than marketing claims.
 | Receipts verifiable by re-derivation (Quine Gate) | **DEMONSTRATED, scoped** | [`tests/test_quine_gate_rederivation.py`](tests/test_quine_gate_rederivation.py), [`evidence/QUINE_GATE/RUN.md`](evidence/QUINE_GATE/RUN.md) |
 | Process identity: instance + artifact drift, with sealed baselines | **DEMONSTRATED, scoped (Linux full; Windows launch-time identity)** | [`tests/test_process_identity.py`](tests/test_process_identity.py), [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md) |
 | A real Windows 10 host | **NOT_DEMONSTRATED** | Windows 11 is the demonstrated real host; Windows 10 remains the product target |
+| A real macOS host | **NOT_DEMONSTRATED** | The macOS binary starts on fixtures and says so; `MacHost` is M3 |
 | Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
 
 ## Learn Malbolge with Malbolgato
@@ -249,6 +273,13 @@ py tests/test_planner.py -q
 py tests/test_console.py -q
 ```
 
+```bash
+# Linux (or macOS for everything but the host gates)
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest -q
+python3 -m pytest -q tests/test_host_parity.py tests/test_linux_real.py
+```
+
 The live provider tests run only when a provider key is present; otherwise they
 skip without making the offline contract suite depend on an external service.
 The exact current count belongs to the CI run, not to a hand-maintained badge.
@@ -321,10 +352,11 @@ there is no `STRONG` tier. Linux is `DEMONSTRATED` in full; Windows is
 
 ### Windows 10/11
 
-**Prebuilt test build:** download [`IsyMotron.exe`](https://github.com/DannyBaanks/IsyMotron/releases/download/v1.0.0/IsyMotron.exe)
-from the [v1.0.0 release](https://github.com/DannyBaanks/IsyMotron/releases/latest)
-(Windows 10/11, no Python required). It is the same binary the CI builds and
-smoke-tests on every run.
+**Prebuilt:** `IsyMotron.exe` from [Releases](https://github.com/DannyBaanks/IsyMotron/releases)
+(Windows 10/11, no Python required) — the stable
+[v1.0.0](https://github.com/DannyBaanks/IsyMotron/releases/tag/v1.0.0), or the
+[v1.1.0-rc.1](https://github.com/DannyBaanks/IsyMotron/releases/tag/v1.1.0-rc.1)
+candidate. It is the same binary the CI builds and smoke-tests on every run.
 
 Or build from source:
 
@@ -359,8 +391,16 @@ py tools/nemotron_check.py
 A real host since M2 (`linux-real`): same contract, same capabilities, same
 two scope checks as Windows, plus Linux-only hardening (case-sensitive
 resolved paths, descriptor re-check, `O_NOFOLLOW` writes, no FIFOs, no
-overwrite of hard-linked files). Release asset `IsyMotron-linux-*.tar.gz`, or
-from source:
+overwrite of hard-linked files).
+
+Prebuilt:
+
+```bash
+tar -xzf IsyMotron-linux-x86_64.tar.gz
+./IsyMotron-linux-x86_64/IsyMotron              # console on 127.0.0.1, real host attached
+```
+
+From source (Python 3.10+, nothing to install):
 
 ```bash
 python3 tools/isymotron_cli.py host status
@@ -374,13 +414,19 @@ Windows" means, row by row: [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.m
 
 ### macOS (engineering build)
 
-`IsyMotron-macos-*.tar.gz` builds and starts, but only on simulated fixtures
-(`./IsyMotron --demo-host`): there is no real macOS host backend yet (M3), and
-the binary says so on start.
+`IsyMotron-macos-arm64.tar.gz` builds and starts, but only on simulated
+fixtures: there is no real macOS host backend yet (M3), and the binary says so
+on start.
 
-Linux native host awareness is demonstrated for retrospective suspend timing
-and local interface state. The product host scope remains Windows 10/11; Linux
-does not claim pre-suspend notifications or a desktop avatar without Tk.
+```bash
+tar -xzf IsyMotron-macos-arm64.tar.gz
+xattr -d com.apple.quarantine IsyMotron-macos-arm64/IsyMotron   # after verifying the checksum
+./IsyMotron-macos-arm64/IsyMotron --demo-host
+```
+
+Linux host awareness covers retrospective suspend timing and local interface
+state; it does not claim pre-suspend notifications, or a desktop avatar where
+Tk is missing.
 
 ## Repository map
 
@@ -388,7 +434,9 @@ does not claim pre-suspend notifications or a desktop avatar without Tk.
 core/isymotron/     contract, policy, leases, receipts, awareness, Doctor,
                     Quine Gate: seal, claim bundle, chain, genealogy, bundle,
                     process identity
-hosts/windows/      real Windows host, grants and power provider
+hosts/native.py     the one place that picks this OS's real engine
+hosts/windows/      real Windows host, grant file format and power provider
+hosts/linux/        real Linux host and power provider
 hosts/simulator/    deterministic fixture engines
 agents/             provider, planner and executor roles
 relay/              transport-only loopback relay
@@ -413,17 +461,24 @@ docs/               architecture, findings and operational guides
 - A denied receipt has no protected result payload.
 - The Python sandbox/Doctor is a scoped verification provider, not a universal
   OS security boundary; see [`docs/SANDBOX_V0.md`](docs/SANDBOX_V0.md).
-- Network paths, device paths, NTFS alternate data streams and TOCTOU races
-  remain explicitly unverified; see [`docs/FINDINGS.md`](docs/FINDINGS.md).
+- The engine re-checks every path after the OS resolves it, and a scope check
+  follows its filesystem's idea of identity: case-insensitive on NTFS,
+  case-sensitive on Linux ([Finding 10](docs/FINDINGS.md)).
+- On Linux the opened descriptor itself is re-checked, closing the window
+  between resolving a name and opening it. On Windows, network paths, device
+  paths, NTFS alternate data streams and that same race remain explicitly
+  unverified; see [`docs/FINDINGS.md`](docs/FINDINGS.md).
 
 ## Roadmap
 
-| NOW | NEXT | RESEARCH |
-|---|---|---|
-| Typed host contract | Sealed Nebius evidence ✓ | Marketplace trust at scale |
-| Local authority and receipts | Real Windows 10 verification | Additional host generations |
-| Nemotron planner/executor | Harden malformed grant handling | Network relay transports |
-| Console + avatar demo | CI count refresh and evidence refresh | Stronger OS-level sandbox providers |
+| Milestone | Status |
+|---|---|
+| M1 — three-platform build, release, checksums, attestations; stdlib-only runtime | **done** (v1.1.0-rc.1) |
+| M2 — real Linux host with demonstrated parity | **done** (v1.1.0-rc.1) |
+| M3 — real macOS host (APFS case-folding needs its own answer) | next |
+| M4 — network relay with secure pairing, replacing the loopback relay | planned |
+| M5 — mobile approver app: approves leases and reads receipts, never executes | planned |
+| Real Windows 10 verification | open |
 
 ## License
 
