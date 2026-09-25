@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IsyMotron — Oficinas enlazadas</title>
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="link.css">
+</head>
+<body class="link-body">
+<main class="link-wrap">
+  <h1 class="link-title">Oficinas enlazadas</h1>
+  <section class="link-card" aria-label="Esta oficina">
+    <h2 class="link-h">Esta oficina</h2>
+    <p class="link-line"><span class="link-k">Nombre</span> <span id="link-me-name">…</span></p>
+    <p class="link-line"><span class="link-k">Huella</span> <code id="link-me-fp">…</code></p>
+  </section>
+  <section class="link-card" aria-label="Enlazadas">
+    <h2 class="link-h">Enlazadas</h2>
+    <div id="link-peers"><p class="link-dim">Cargando…</p></div>
+  </section>
+  <section class="link-card" aria-label="Delegar">
+    <h2 class="link-h">Delegar trabajo</h2>
+    <form id="link-send">
+      <label class="link-label">Oficina <input id="link-to" class="link-input" required></label>
+      <label class="link-label">Título <input id="link-title" class="link-input" required></label>
+      <label class="link-label">Detalle <textarea id="link-body" class="link-input" rows="3" required></textarea></label>
+      <button class="link-btn" type="submit">Delegar (pide confirmación)</button>
+    </form>
+    <p id="link-result" class="link-dim" role="status"></p>
+  </section>
+</main>
+<script src="link.js"></script>
+</body>
+</html>

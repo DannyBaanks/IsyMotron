@@ -7,9 +7,7 @@ Passthrough delgado: toda la verdad vive en core/isymotron/link/.
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -18,47 +16,9 @@ for _path in (REPO, REPO / "core"):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from isymotron.link import envelope, identity, pairing, receipts  # noqa: E402
+from isymotron.link import identity, pairing, receipts  # noqa: E402
+from isymotron.link.remote import LinkCallError, post_json, resolve_peer, sealed_call  # noqa: E402
 from isymotron.link.server import LinkServer  # noqa: E402
-
-
-def _post_json(url: str, payload: dict, timeout_s: float = 15.0) -> tuple[int, dict]:
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-            return resp.status, json.loads(resp.read() or b"{}")
-    except urllib.error.HTTPError as exc:
-        try:
-            body = json.loads(exc.read() or b"{}")
-        except ValueError:
-            body = {"ok": False, "code": f"http_{exc.code}"}
-        return exc.code, body
-    except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        return 0, {"ok": False, "code": "unreachable", "error": str(exc)}
-
-
-def _resolve_peer(directory: Path, query: str) -> dict:
-    peers = identity.load_peers(directory)
-    peer = pairing.find_peer(query, peers)
-    if peer is None:
-        raise SystemExit(f"oficina no emparejada: {query!r}")
-    addresses = peer.get("addresses", [])
-    if not addresses:
-        raise SystemExit(f"{query!r} no tiene direccion conocida")
-    return peer
-
-
-def _sealed_call(peer: dict, own_identity: dict, payload: dict) -> dict:
-    env = envelope.seal(own_identity, peer, payload)
-    for address in peer.get("addresses", []):
-        status, body = _post_json(f"http://{address}/link/v1/call", {"env": env})
-        if status == 200 and body.get("ok"):
-            return body
-        last = body
-    raise SystemExit(f"sin respuesta de {peer.get('name')}: {last}")
 
 
 def cmd_estado(args: argparse.Namespace, directory: Path) -> int:
@@ -98,7 +58,7 @@ def cmd_buscar(args: argparse.Namespace, directory: Path) -> int:
 def cmd_emparejar(args: argparse.Namespace, directory: Path) -> int:
     ident = identity.load_identity(directory)
     own_nonce = pairing.fresh_nonce()
-    status, body = _post_json(
+    status, body = post_json(
         f"http://{args.direccion}/link/v1/pair",
         {**identity.public_card(ident), "nonce": own_nonce, "port": 0},
     )
@@ -143,13 +103,19 @@ def cmd_aceptar(args: argparse.Namespace, directory: Path) -> int:
     return 0
 
 
+def _call_or_exit(directory: Path, oficina: str, payload: dict) -> dict:
+    try:
+        return sealed_call(directory, oficina, payload)
+    except LinkCallError as exc:
+        raise SystemExit(str(exc))
+
+
 def cmd_enviar(args: argparse.Namespace, directory: Path) -> int:
-    ident = identity.load_identity(directory)
-    peer = _resolve_peer(directory, args.oficina)
-    body = _sealed_call(
-        peer, ident,
+    body = _call_or_exit(
+        directory, args.oficina,
         {"op": "delegate", "title": args.titulo or args.texto[:60], "body": args.texto},
     )
+    peer = resolve_peer(directory, args.oficina)
     receipts.append_receipt(
         directory, "link_delegated",
         {"task_id": body["task_id"], "to": peer["office_id"], "title": args.titulo or ""},
@@ -160,27 +126,21 @@ def cmd_enviar(args: argparse.Namespace, directory: Path) -> int:
 
 
 def cmd_tarea(args: argparse.Namespace, directory: Path) -> int:
-    ident = identity.load_identity(directory)
-    peer = _resolve_peer(directory, args.oficina)
-    body = _sealed_call(peer, ident, {"op": "task", "task_id": args.task_id})
+    body = _call_or_exit(directory, args.oficina, {"op": "task", "task_id": args.task_id})
     task = body.get("task", {})
     print(f"  {task.get('title', '')}  {task.get('status', '')}")
     return 0
 
 
 def cmd_mensaje(args: argparse.Namespace, directory: Path) -> int:
-    ident = identity.load_identity(directory)
-    peer = _resolve_peer(directory, args.oficina)
-    _sealed_call(peer, ident, {"op": "message", "task_id": args.task_id, "text": args.texto})
+    _call_or_exit(directory, args.oficina, {"op": "message", "task_id": args.task_id, "text": args.texto})
     print("contexto agregado.")
     return 0
 
 
 def cmd_cancelar(args: argparse.Namespace, directory: Path) -> int:
-    ident = identity.load_identity(directory)
-    peer = _resolve_peer(directory, args.oficina)
-    _sealed_call(
-        peer, ident,
+    _call_or_exit(
+        directory, args.oficina,
         {"op": "cancel", "task_id": args.task_id, "reason": args.motivo or ""},
     )
     print("cancelada.")

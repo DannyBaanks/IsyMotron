@@ -228,7 +228,7 @@ def test_link_modules_are_stdlib_only():
     roots = [Path(__file__).resolve().parent.parent / "core" / "isymotron" / "link"]
     allowed = {
         "__future__", "base64", "hashlib", "hmac", "http", "json", "os",
-        "pathlib", "platform", "socket", "threading", "time",
+        "pathlib", "platform", "socket", "threading", "time", "urllib",
     }
     import ast as _ast
 

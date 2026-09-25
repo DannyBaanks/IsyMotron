@@ -75,6 +75,9 @@ SERVABLE = {
     "app.js": "text/javascript; charset=utf-8",
     "avatar.js": "text/javascript; charset=utf-8",
     "favicon.svg": "image/svg+xml",
+    "link.html": "text/html; charset=utf-8",
+    "link.css": "text/css; charset=utf-8",
+    "link.js": "text/javascript; charset=utf-8",
 }
 
 #: Awareness event types that become avatar `host` events (contract §3.1:
@@ -325,6 +328,8 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
 
         if path in ("/", "/index.html"):
             return self._static("index.html")
+        if path == "/link":
+            return self._static("link.html")
         name = path.lstrip("/")
         if name in SERVABLE:
             return self._static(name)
@@ -359,6 +364,8 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
                 "view": {"state": view.state, "host_frame": view.host_frame,
                          "third_party": view.third_party},
             })
+        if path == "/api/link":
+            return self._json(self._link_status())
         return self._deny("not found", 404)
 
     def do_POST(self) -> None:
@@ -405,6 +412,12 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
             return self._plan(body)
         if path == "/api/run":
             return self._run(body)
+        if path == "/api/link/delegate":
+            return self._link_delegate(body)
+        if path == "/api/link/cancel":
+            return self._link_cancel(body)
+        if path == "/api/link/forget":
+            return self._link_forget(body)
         return self._deny("not found", 404)
 
     # -- handlers -----------------------------------------------------------
@@ -437,6 +450,85 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
         except OSError:
             return self._deny("not found", 404)
         self._send(200, data, ctype)
+
+    # -- linked offices (Munder Link port, M4: additive only) -----------------
+    def _link_dir(self):
+        from isymotron.link import identity as link_identity
+
+        return link_identity.state_dir()
+
+    def _link_status(self) -> None:
+        from isymotron.link import identity as link_identity
+
+        directory = self._link_dir()
+        ident = link_identity.load_identity(directory)
+        peers = link_identity.load_peers(directory)
+        try:
+            inbox = [
+                json.loads(line)
+                for line in (directory / "inbox.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+        except OSError:
+            inbox = []
+        return self._json({
+            "office": {
+                "name": ident["name"],
+                "office_id": ident["office_id"],
+                "fingerprint": link_identity.pretty_fingerprint(ident["office_id"]),
+            },
+            "peers": [
+                {"name": p.get("name"), "office_id": p.get("office_id"),
+                 "query": p.get("name", "").replace("isytron-", "")}
+                for p in peers.values()
+            ],
+            "inbox_queued": sum(1 for e in inbox if e.get("status") == "queued"),
+        })
+
+    def _link_delegate(self, body: dict) -> None:
+        from isymotron.link import receipts
+        from isymotron.link.remote import LinkCallError, sealed_call
+
+        to = str(body.get("to") or "")
+        title = str(body.get("title") or "")
+        text = str(body.get("body") or "")
+        if not to or not title or not text:
+            return self._deny("delegate needs to, title, body", 400)
+        try:
+            result = sealed_call(
+                self._link_dir(), to,
+                {"op": "delegate", "title": title, "body": text},
+            )
+        except LinkCallError as exc:
+            return self._deny(str(exc), 502)
+        receipts.append_receipt(
+            self._link_dir(), "link_delegated",
+            {"task_id": result["task_id"], "to": to, "title": title, "via": "console"},
+        )
+        return self._json({"ok": True, "task_id": result["task_id"]})
+
+    def _link_cancel(self, body: dict) -> None:
+        from isymotron.link.remote import LinkCallError, sealed_call
+
+        to = str(body.get("to") or "")
+        task_id = str(body.get("task_id") or "")
+        if not to or not task_id:
+            return self._deny("cancel needs to, task_id", 400)
+        try:
+            sealed_call(self._link_dir(), to, {"op": "cancel", "task_id": task_id})
+        except LinkCallError as exc:
+            return self._deny(str(exc), 502)
+        return self._json({"ok": True})
+
+    def _link_forget(self, body: dict) -> None:
+        from isymotron.link import pairing
+
+        query = str(body.get("query") or "")
+        if not query:
+            return self._deny("forget needs query", 400)
+        dropped = pairing.forget(query, self._link_dir())
+        if dropped is None:
+            return self._deny(f"unknown office {query!r}", 404)
+        return self._json({"ok": True, "forgot": dropped.get("name")})
 
     def _grant(self, body: dict, revoke: bool) -> None:
         from windows.grants import Grants

@@ -1,0 +1,19 @@
+/* IsyMotron link panel. Regla de M4: todo selector empieza con .link-.
+   Cero reglas globales: ni body, ni :root, ni elementos sueltos. La consola
+   existente no cambia un pixel por este archivo. */
+.link-body{background:#0C0C0C;color:#FFFFFF;font-family:system-ui,sans-serif;margin:0}
+.link-wrap{max-width:720px;margin:0 auto;padding:24px 16px}
+.link-title{font-size:22px;margin:0 0 16px}
+.link-card{background:#161616;border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:16px;margin:0 0 16px}
+.link-h{font-size:15px;margin:0 0 12px;color:#A7A7A7}
+.link-line{margin:6px 0}
+.link-k{display:inline-block;min-width:70px;color:#A7A7A7}
+.link-dim{color:rgba(167,167,167,.55)}
+.link-label{display:block;margin:10px 0}
+.link-input{display:block;width:100%;box-sizing:border-box;margin-top:4px;background:#222222;border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#FFFFFF;padding:8px;font:inherit}
+.link-btn{background:#76B900;border:0;border-radius:4px;color:#0C0C0C;padding:10px 16px;font-weight:700;cursor:pointer}
+.link-btn:hover{background:#91C733}
+.link-peer{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid rgba(255,255,255,.08)}
+.link-peer:first-child{border-top:0}
+.link-cancel{background:none;border:1px solid rgba(255,255,255,.35);border-radius:4px;color:#FFFFFF;padding:4px 10px;cursor:pointer}
+.link-code{font-family:ui-monospace,monospace}
