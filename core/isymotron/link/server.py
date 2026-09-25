@@ -75,28 +75,40 @@ class LinkState:
         return record
 
 
-def handle_pair(state: LinkState, body: dict) -> dict:
+def handle_pair(state: LinkState, body: dict, remote_addr: str = "") -> dict:
     for field in ("office_id", "name", "sign_pub", "box_pub", "nonce"):
         if not body.get(field):
             raise LinkError("bad_card", f"pair needs {field}", 400)
     if body.get("protocol", identity.PROTOCOL) != identity.PROTOCOL:
         raise LinkError("bad_protocol", "foreign link protocol", 400)
+    try:
+        claimed = envelope.digest_public_card_fingerprint(str(body["sign_pub"]))
+    except Exception:
+        raise LinkError("bad_identity", "unreadable signing key", 400) from None
+    if claimed != str(body["office_id"]):
+        raise LinkError("bad_identity", "office_id does not match its key", 400)
+    if str(body["office_id"]) == state.identity["office_id"]:
+        raise LinkError("self", "cannot pair with yourself", 400)
     pending = identity.load_pending(state.directory)
-    if len(pending) >= pairing.MAX_PENDING:
-        raise LinkError("busy", "too many pending pairings", 429)
     office_id = str(body["office_id"])
+    if office_id not in pending and len(pending) >= pairing.MAX_PENDING:
+        raise LinkError("busy", "too many pending pairings", 429)
+    server_nonce = pairing.fresh_nonce()
     code = pairing.short_code(
         state.identity["sign"]["x"], str(body["sign_pub"]),
-        pairing.fresh_nonce(), str(body["nonce"]),
+        server_nonce, str(body["nonce"]),
     )
-    # NOTE: requester nonce is theirs; ours is fresh per request. The code
-    # both humans compare binds both keys and both nonces.
+    try:
+        port = int(body.get("port", 0) or 0)
+    except (TypeError, ValueError):
+        port = 0
+    host = (remote_addr or "").split("%")[0]
     entry = {
         "office_id": office_id,
-        "name": str(body.get("name", office_id)),
+        "name": str(body.get("name", "desconocida"))[:64],
         "sign_pub": str(body["sign_pub"]),
         "box_pub": str(body["box_pub"]),
-        "addresses": [a for a in [body.get("address")] if a],
+        "addresses": [f"{host}:{port}"] if host and port else [],
         "code": code,
         "expires_at": time.time() + pairing.PENDING_TTL_S,
     }
@@ -104,7 +116,7 @@ def handle_pair(state: LinkState, body: dict) -> dict:
     identity.save_pending(pending, state.directory)
     return {
         "peer": identity.public_card(state.identity),
-        "code": code,
+        "nonce": server_nonce,
         "expires_at": entry["expires_at"],
     }
 
@@ -229,7 +241,8 @@ class _Handler(BaseHTTPRequestHandler):
             return
         try:
             if self.path == "/link/v1/pair":
-                self._send(200, {"ok": True, **handle_pair(self.state, body)})
+                remote = (self.client_address[0] if self.client_address else "")
+                self._send(200, {"ok": True, **handle_pair(self.state, body, remote)})
             elif self.path == "/link/v1/call":
                 if "env" not in body:
                     raise LinkError("bad_call", "call needs env", 400)

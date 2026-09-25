@@ -202,6 +202,13 @@ VERBS: dict[str, Verb] = {
             "stop": "tools/ctl_stop.py",
         },
     ),
+    # -- linked offices (Munder Link port, M3: additive only) -----------------
+    "link": Verb(
+        name="link",
+        summary="linked offices: buscar | emparejar | aceptar | enviar | tarea (M3)",
+        argv=("tools/link_cli.py",),
+        entrypoint="tools/link_cli.py",
+    ),
 }
 
 

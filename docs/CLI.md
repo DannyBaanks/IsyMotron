@@ -53,6 +53,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `avatar` | `lienzo | editar | inspect` — generic PNG avatar ops (blank canvas, model edit, matrix inspect of a file; no cast, no renderer) |
 | `repaint` | request UI repaint without restart |
 | `ctl` | `ping | status | stop` — control channel |
+| `link` | `buscar | emparejar | aceptar | enviar | tarea | mensaje | cancelar | olvidar | estado | servir` — linked offices (Munder Link port; EN aliases included) |
 
 Flags after a verb are forwarded **verbatim** to the command that implements
 it. The top-level dispatch parses no flags, so there is no `--` separator to

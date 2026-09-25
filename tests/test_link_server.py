@@ -120,8 +120,24 @@ def test_pair_over_http_and_code_binds_both_sides(tmp_path):
             {**card_a, "nonce": "nonce-a", "port": 1},
         )
         assert status == 200 and body["ok"]
-        assert len(body["code"]) == 6
-        # The asker side records the same ceremony through propose().
+        # The asker computes the code locally from both nonces, like the CLI.
+        code = pairing.short_code(
+            ident_a["sign"]["x"], body["peer"]["sign_pub"], "nonce-a", body["nonce"]
+        )
+        assert len(code) == 6
+        # The asked side stored the same code for `aceptar` to match.
+        pending = identity.load_pending(dir_b)
+        assert len(pending) == 1
+        stored = next(iter(pending.values()))
+        assert stored["code"] == code
+        assert pairing.accept(code, dir_b) is not None
+        # Bad identity binding and self-pairing are refused.
+        bad_id = dict(card_a, office_id="deadbeefdeadbeef", nonce="n2")
+        try:
+            _post(f"http://{server_b.tcp_address}/link/v1/pair", bad_id)
+            raise AssertionError("mismatched id accepted")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
         res = pairing.propose(ident_a, {**identity.public_card(ident_b), "addresses": []}, peer_nonce="nonce-b", directory=dir_a)
         assert len(res["code"]) == 6
         pinned = pairing.accept(res["code"], dir_a)
