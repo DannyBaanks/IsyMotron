@@ -89,7 +89,14 @@ class LinuxPowerProvider(PowerProvider):
         wall = time.time()
         monotonic = time.clock_gettime(time.CLOCK_MONOTONIC)
         boottime = time.clock_gettime(time.CLOCK_BOOTTIME)
-        bias = max(0.0, boottime - monotonic)
+        # The two clocks cannot be read atomically, so their difference
+        # jitters by the time between the reads (tens of ns; measured on CI
+        # run 36195548000: 2.6e-7 s then 2.3e-7 s). Suspended time only ever
+        # grows, so this provider reports its high-water mark: jitter can no
+        # longer read as time running backwards, and a real suspend (ms and
+        # up) still shows as the jump it is.
+        bias = max(0.0, boottime - monotonic, getattr(self, "_bias_high", 0.0))
+        self._bias_high = bias
         return PowerSample(
             wall_time=wall,
             monotonic_time=monotonic,
