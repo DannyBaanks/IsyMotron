@@ -1,0 +1,33 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.1
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  GHSA-5f7q-jpqc-wp7h:
+    - '*':
+        reason: >-
+          OSV/GHSA: rangos solo canary y 16.x; next@15.5.26 no esta afectado
+          (query OSV = NINGUNO, npm audit 0)
+        expires: 2026-10-25T09:21:55.768Z
+        created: 2026-09-25T09:21:55.771Z
+  GHSA-3x4c-7xq6-9pq8:
+    - '*':
+        reason: >-
+          OSV/GHSA: fixed en 15.5.14; next@15.5.26 ya lo incluye (query OSV =
+          NINGUNO, npm audit 0)
+        expires: 2026-10-25T09:22:02.921Z
+        created: 2026-09-25T09:22:02.924Z
+  SNYK-JS-NEXT-15674556:
+    - '*':
+        reason: >-
+          OSV/GHSA-3x4c-7xq6-9pq8: fixed en 15.5.14; next@15.5.26 ya lo incluye
+          (OSV query=NINGUNO, npm audit 0)
+        expires: 2026-10-25T09:23:13.484Z
+        created: 2026-09-25T09:23:13.487Z
+  SNYK-JS-NEXT-15105315:
+    - '*':
+        reason: >-
+          OSV/GHSA-5f7q-jpqc-wp7h: rangos solo canary y 16.x; next@15.5.26 no
+          afectado (OSV query=NINGUNO, npm audit 0)
+        expires: 2026-10-25T09:23:15.549Z
+        created: 2026-09-25T09:23:15.552Z
+patch: {}
