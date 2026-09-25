@@ -12,8 +12,8 @@ PNG codec leaned on Pillow until it was replaced by a stdlib zlib codec.)
 
 A binary that builds and starts is NOT a supported host. The smoke test below
 records the states separately (BUILDABLE, STARTABLE, HOST_SUPPORTED, ...) in
-dist/smoke-<platform>.json. Today only Windows attaches a real host engine;
-Linux and macOS binaries start with simulated fixtures (--demo-host) and are
+dist/smoke-<platform>.json. Windows and Linux attach a real host engine (M2);
+macOS binaries start with simulated fixtures (--demo-host) and are
 NOT_DEMONSTRATED as real hosts. See docs/PLATFORM_SUPPORT.md.
 
 Windows 7 and earlier are out of scope for the product, not out of reach for
@@ -43,9 +43,12 @@ BINARY = "IsyMotron.exe" if WINDOWS else "IsyMotron"
 
 #: Host engines that are real backends acting on this machine, by platform.
 #: Everything else a binary attaches (nt-modern, dos-bridge, ...) is a
-#: simulated fixture. Adding a platform here is a claim: it needs its own
-#: evidence first (docs/PLATFORM_SUPPORT.md), not just a green build.
-REAL_ENGINES = {"windows": ("nt-real/",)}
+#: simulated fixture. The table is hosts/native.py's, so the build cannot
+#: disagree with the runtime about which OS has a real host.
+sys.path.insert(0, os.path.join(ROOT, "hosts"))
+from native import REAL_ENGINES as _NATIVE  # noqa: E402
+
+REAL_ENGINES = {{"win32": "windows"}.get(k, k): (v,) for k, v in _NATIVE.items()}
 
 #: What the console prints when no real host backend exists for the platform.
 #: The smoke test requires it verbatim, so the warning cannot quietly vanish.
@@ -63,6 +66,7 @@ HIDDEN = [
     "isymotron.host", "isymotron.policy", "isymotron.verdicts", "isymotron.canon",
     "isymotron.seal", "isymotron.verify", "isymotron.process",
     "windows.win11", "windows.grants", "windows.power",
+    "linux.host", "linux.power", "native",
     "simulator.engines",
     "agents.provider", "agents.planner", "agents.executor",
     "relay.loopback", "clients.fake_mobile",
@@ -274,7 +278,12 @@ def smoke_test(exe: str) -> "dict | None":
                                "proven by the platform's host tests, not here)"
                                if real else
                                "NOT_DEMONSTRATED (simulated fixtures only)"),
-            "PARITY_DEMONSTRATED": ("REFERENCE PLATFORM" if real else "NOT_DEMONSTRATED"),
+            # Windows is the reference; any other real engine earns parity
+            # from tests/test_host_parity.py on its own CI runner, never here.
+            "PARITY_DEMONSTRATED": (
+                "REFERENCE PLATFORM" if real and PLATFORM == "windows" else
+                "INFERRED (proven by tests/test_host_parity.py on this OS, not here)"
+                if real else "NOT_DEMONSTRATED"),
         },
     }
     return receipt

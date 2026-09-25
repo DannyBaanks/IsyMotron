@@ -232,8 +232,9 @@ The CI workflow runs the suite on Windows, Linux and macOS. Windows is the
 reference, because the real host gate exercises Windows filesystem semantics,
 NTFS junctions and process state; Linux and macOS prove the core is portable.
 Each OS also builds the packaged binary and runs its smoke test. A binary that
-starts is not a host: Linux and macOS have no real host backend yet and are
-`NOT_DEMONSTRATED` as hosts ([`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md)).
+starts is not a host: Windows and Linux have real host engines (Linux since M2,
+with a shared parity suite); macOS has none yet and is `NOT_DEMONSTRATED` as a
+host ([`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md)).
 
 The runtime is standard-library only. Tests need `requirements-dev.txt`
 (pytest, and Pillow as the PNG test oracle).
@@ -353,12 +354,29 @@ py tools/nemotron_check.py
 # NVIDIA NIM is the same seam: $env:NVIDIA_NIM_API_KEY + ISYMOTRON_PROVIDER = "nvidia"
 ```
 
-### Linux and macOS (engineering builds)
+### Linux
 
-Release assets `IsyMotron-linux-*.tar.gz` and `IsyMotron-macos-*.tar.gz` build
-and start, but only on simulated fixtures (`./IsyMotron --demo-host`): there is
-no real host backend for either OS yet, and the binary says so on start. See
-[`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md).
+A real host since M2 (`linux-real`): same contract, same capabilities, same
+two scope checks as Windows, plus Linux-only hardening (case-sensitive
+resolved paths, descriptor re-check, `O_NOFOLLOW` writes, no FIFOs, no
+overwrite of hard-linked files). Release asset `IsyMotron-linux-*.tar.gz`, or
+from source:
+
+```bash
+python3 tools/isymotron_cli.py host status
+python3 tools/isymotron_cli.py host grant filesystem.read --root "$HOME/Pictures"
+python3 tools/isymotron_cli.py host do filesystem.read --path "$HOME/Pictures"
+python3 tools/isymotron_cli.py host do filesystem.read --path "$HOME/pictures" # DENY: a different directory on Linux
+```
+
+Grants live in `$XDG_CONFIG_HOME/isymotron/grants.json`. What "parity with
+Windows" means, row by row: [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md).
+
+### macOS (engineering build)
+
+`IsyMotron-macos-*.tar.gz` builds and starts, but only on simulated fixtures
+(`./IsyMotron --demo-host`): there is no real macOS host backend yet (M3), and
+the binary says so on start.
 
 Linux native host awareness is demonstrated for retrospective suspend timing
 and local interface state. The product host scope remains Windows 10/11; Linux

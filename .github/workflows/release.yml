@@ -9,8 +9,8 @@
 #
 # Windows keeps its v1.0.0 asset name (IsyMotron.exe), so existing download
 # links keep their shape. Linux/macOS ship as tar.gz (keeps the exec bit) with
-# docs/PLATFORM_SUPPORT.md inside: those binaries START, but have no real host
-# backend and are NOT_DEMONSTRATED as hosts.
+# docs/PLATFORM_SUPPORT.md inside. Linux has a real host engine (M2); the
+# macOS binary starts on fixtures only and is NOT_DEMONSTRATED as a host.
 
 name: release
 
@@ -125,10 +125,10 @@ jobs:
             | Asset | Builds + starts (smoke) | Real host |
             |---|---|---|
             | `IsyMotron.exe` (Windows 10/11) | DEMONSTRATED | DEMONSTRATED on Windows 11 (reference platform) |
-            | `IsyMotron-linux-*.tar.gz` | DEMONSTRATED | **NOT_DEMONSTRATED** — starts on simulated fixtures (`--demo-host`) only |
+            | `IsyMotron-linux-*.tar.gz` | DEMONSTRATED | DEMONSTRATED (`linux-real`; parity with Windows per `tests/test_host_parity.py`) |
             | `IsyMotron-macos-*.tar.gz` | DEMONSTRATED | **NOT_DEMONSTRATED** — starts on simulated fixtures (`--demo-host`) only |
 
-            Linux and macOS binaries are engineering builds: the console and the
+            The macOS binary is an engineering build: the console and the
             contract run, but nothing acts on the machine. See
             [docs/PLATFORM_SUPPORT.md](../blob/${{ github.sha }}/docs/PLATFORM_SUPPORT.md).
             `smoke-<platform>.json` records what each binary's smoke test proved.

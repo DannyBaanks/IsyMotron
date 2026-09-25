@@ -149,6 +149,7 @@ def test_runtime_imports_no_third_party_package():
         "mods=['isymotron.'+m.name for m in pkgutil.iter_modules([sys.path[1]+'/isymotron'])]; "
         "mods+=['console.server','agents.provider','agents.planner','agents.executor',"
         "'relay.loopback','avatar.model','avatar.window','isymotron_cli',"
+        "'native','linux.host','linux.power','windows.grants',"
         "'avatar_lienzo','avatar_inspect','avatar_editar','ctl_ping','ctl_status',"
         "'ctl_stop','repaint']; "
         "[importlib.import_module(m) for m in mods]; "

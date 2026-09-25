@@ -1,12 +1,12 @@
 # CI for a Windows-first product that also builds on Linux and macOS.
 #
 # Windows remains the reference: the real host gate exercises actual NTFS,
-# junctions and process state. Linux and macOS run the same suite so the core
-# (contract, policy, receipts, Quine Gate, codec) is proven portable, and build
-# a binary so the artifact substrate is too. A green Linux/macOS job proves
-# the CORE and the BUILD, not a host: those platforms have no real host
-# backend yet and the smoke receipt records NOT_DEMONSTRATED for them
-# (docs/PLATFORM_SUPPORT.md).
+# junctions and process state. Linux runs its own real host gate
+# (tests/test_linux_real.py) and the shared parity table
+# (tests/test_host_parity.py), which runs on Windows too: the same rows green
+# on both runners is the parity claim. macOS runs the suite so the core is
+# proven portable, and builds a binary; it has no real host backend yet and
+# its smoke receipt records NOT_DEMONSTRATED (docs/PLATFORM_SUPPORT.md).
 #
 # Two jobs, each a three-OS matrix:
 #   gates   -- the acceptance suite. The live-model gate self-skips when no
