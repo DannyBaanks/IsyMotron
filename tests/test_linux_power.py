@@ -63,7 +63,11 @@ def test_suspend_bias_never_runs_backwards_under_read_jitter(monkeypatch):
         100.01, 100.01000023,  # mono, boot -> raw bias 2.3e-7 (jitter)
         100.02, 105.02,        # mono, boot -> a real 5 s suspend
     ])
-    monkeypatch.setattr(time, "clock_gettime", lambda clock: next(reads))
+    # raising=False: the clocks are injected, so this runs on every OS --
+    # Windows has no time.clock_gettime, macOS no time.CLOCK_BOOTTIME.
+    monkeypatch.setattr(time, "clock_gettime", lambda clock: next(reads), raising=False)
+    monkeypatch.setattr(time, "CLOCK_MONOTONIC", 1, raising=False)
+    monkeypatch.setattr(time, "CLOCK_BOOTTIME", 7, raising=False)
     monkeypatch.setattr(LinuxPowerProvider, "_network", staticmethod(lambda: NetworkState.UP))
     provider = LinuxPowerProvider()
     a, b, c = provider.sample(), provider.sample(), provider.sample()
