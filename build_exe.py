@@ -83,15 +83,20 @@ def _stop(proc: subprocess.Popen) -> None:
     twice on Windows on 2026-09-18, both times locking the next build with
     PermissionError on dist/IsyMotron.exe. So kill the TREE: taskkill /T on
     Windows, the process group (start_new_session) on POSIX.
+
+    Order matters on Windows: taskkill /T walks the tree from a LIVE parent.
+    Terminating the bootloader first (the old order) left nothing to walk, and
+    the child survived holding the smoke log open -- CI run 36179232526 had to
+    reap it as an orphan.
     """
     if WINDOWS:
-        proc.terminate()
+        subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            pass
-        subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            proc.kill()
+            proc.wait(timeout=10)
         return
     for sig in (signal.SIGTERM, signal.SIGKILL):
         try:
@@ -150,6 +155,7 @@ def smoke_test(exe: str) -> "dict | None":
         url_file = os.path.join(tmp, "url.txt")
         log_path = os.path.join(tmp, "stdout.log")
         engines: list = []
+        base = ""
         log_fh = open(log_path, "wb")
         popen_kw = {} if WINDOWS else {"start_new_session": True}
         proc = subprocess.Popen(argv + ["--url-file", url_file],
@@ -218,7 +224,20 @@ def smoke_test(exe: str) -> "dict | None":
         if proc.poll() is None:
             fail("the binary survived being stopped")
             return None
-        ok("stops when the harness stops it")
+        # The bootloader exiting proves nothing about its child: the port
+        # must stop answering too, or a one-file child is still serving.
+        released = False
+        for _ in range(20):
+            try:
+                urllib.request.urlopen(base, timeout=1).close()
+            except (urllib.error.URLError, OSError):
+                released = True
+                break
+            time.sleep(0.5)
+        if not released:
+            fail("the port still answers after stop: an orphaned child is serving")
+            return None
+        ok("stops when the harness stops it (process gone, port released)")
         log = open(log_path, "rb").read().decode("utf-8", "replace")
 
     real_prefixes = REAL_ENGINES.get(PLATFORM, ())

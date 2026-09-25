@@ -23,6 +23,11 @@ LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"
 
 
 def main(argv: list[str] | None = None) -> int:
+    # A redirected Windows stdout is cp1252: a glyph it lacks (✓, ●) must
+    # degrade to '?', never crash the verb after its work is done.
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(errors="replace")
     import argparse
     parser = argparse.ArgumentParser(
         prog="isymotron avatar inspect",
