@@ -1,0 +1,16 @@
+{
+  "algorithm": "SHA-256",
+  "artifacts": {
+    "accept.log": "5c6d34b1cb44f8b901b6ed7aab49cc76f651c51b6936b97810bf2dca960cf69c",
+    "cancelar.log": "060259c902f56eafca267e0529d91b1f523f3912ed67ad07c04a676f21279599",
+    "claim.json": "adeea2446e3631153fd9fd524e2316bf279c3520ec9e4d51f4acb28be312e579",
+    "enviar.log": "02cf8f2667a9244534bd441bfd6f8d37a47a1528068f46d71ec0102b8c704b32",
+    "estado.log": "596952729428b4cfa2b456e5ff3a6ca67251be7d9a5adb0e2759a1a0af67993b",
+    "inbox-receiver.jsonl": "8819b0c51e15095e43c0106c7c4ceb0094d382765db8d7428f395d5c822fe7bf",
+    "mensaje.log": "af5f800ad970c4e05e953116c731554c5eb5ebb51641609fb5acdfc70661a70a",
+    "pair.log": "6978fe45a1c706c52ebc29a8fdb24948a9a66d967bbe9ed138b1b97d3a503157",
+    "receipts-receiver.jsonl": "c8ac927ea984c7ec0bfabead3e27630fa0e59284e37ff2ed0d2324f08073a06a",
+    "receipts-sender.jsonl": "c9041c88e571292de64aad9b34df17bb255e8bc1f15e4c5a06fc22e6a8d7fb36",
+    "tarea.log": "b3b34bbc2333c2a156443133503a8699d60189a3a3bc84099ca7f4207def3978"
+  }
+}

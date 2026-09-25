@@ -1,0 +1,6 @@
+{
+  "milestone": "M5",
+  "claim": "Port de Munder Link a IsyMotron: emparejamiento con codigo de 6 digitos, delegacion sellada, recibos en ambos lados, panel web, CLI ES/EN",
+  "protocol": "isymotron-link@1",
+  "crypto": "Ed25519 sign + X25519 DH + HKDF-SHA256 + AES-128-GCM (stdlib, oraculo)"
+}

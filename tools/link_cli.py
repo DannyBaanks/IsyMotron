@@ -157,7 +157,14 @@ def cmd_olvidar(args: argparse.Namespace, directory: Path) -> int:
 
 
 def cmd_servir(args: argparse.Namespace, directory: Path) -> int:
-    server = LinkServer(directory, tcp_port=args.port, udp_port=args.udp_port)
+    try:
+        server = LinkServer(directory, tcp_port=args.port, udp_port=args.udp_port)
+    except OSError as exc:
+        # A bind failure must not look like a successful start (trap caught
+        # 2026-09-25: second `servir` bound nowhere and pairings went to the
+        # zombie on the same port).
+        print(f"no pude abrir :{args.port} — ¿ya hay un 'link servir' corriendo? ({exc})")
+        return 1
     print(f"sirviendo enlace en {server.tcp_address} (Ctrl+C para detener)")
     server.start()
     try:
