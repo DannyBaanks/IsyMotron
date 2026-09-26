@@ -263,6 +263,18 @@ a real round trip, a real plan and a real adversarial refusal, with
 same seam also reaches NVIDIA NIM (`evidence/M3/probe_nvidia.json`); its earlier
 `HTTP 503` is kept as a historical negative result.
 
+### Hosted demo
+
+A live console is deployed on Railway (zero local state, simulated fixture
+host, every plan proposed on Nebius Token Factory by default):
+
+**<https://isymotron-production.up.railway.app>**
+
+```bash
+# redeploy after changes (builder is pinned to Dockerfile.deploy via IaC)
+railway up
+```
+
 ### Local models: Ollama and llama.cpp
 
 The same seam plans with a model on your own machine — Llama, Qwen, or anything
