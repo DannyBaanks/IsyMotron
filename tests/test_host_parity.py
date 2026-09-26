@@ -31,7 +31,10 @@ from windows.win11 import CAPABILITIES
 
 SUBJECT = "test:parity"
 WINDOWS = sys.platform == "win32"
-EXPECTED_ENGINE = "nt-real/" if WINDOWS else "linux-real/"
+MACOS = sys.platform == "darwin"
+EXPECTED_ENGINE = ("nt-real/" if WINDOWS 
+                   else "mac-real/" if MACOS 
+                   else "linux-real/")
 
 
 def make_host(granted, scopes):
@@ -48,7 +51,7 @@ def act(host, capability, **params):
 
 
 def dir_link(link: str, target: str) -> bool:
-    """A directory link the OS will follow: junction (Windows) / symlink (Linux)."""
+    """A directory link the OS will follow: junction (Windows) / symlink (Linux/macOS)."""
     if WINDOWS:
         try:
             subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
@@ -193,19 +196,20 @@ def test_listing_carries_size_mtime_newest_first_in_logical_names(box):
 def test_case_variant_of_a_root(box):
     """The one row that MUST differ, because the filesystems differ.
 
-    NTFS: `GRANTED` is the same directory as `granted` -> in scope.
-    ext4: `GRANTED` is a different directory -> out of scope, even though the
+    NTFS / APFS (case-insensitive): `GRANTED` is the same directory as `granted` -> in scope.
+    ext4 (case-sensitive): `GRANTED` is a different directory -> out of scope, even though the
     lexical check (which folds case) says ALLOW. Before M2 the Windows engine
     ran on Linux via tools/host_cli.py and handed this file over.
     """
     upper = box / "GRANTED"
-    if not WINDOWS:
+    if WINDOWS or MACOS:
+        # case-insensitive FS: GRANTED == granted, write into the same dir
+        (box / "granted" / "loot.txt").write_text("SAME DIR", encoding="utf-8")
+    else:
         upper.mkdir()
         (upper / "loot.txt").write_text("OTHER DIR", encoding="utf-8")
-    else:
-        (box / "granted" / "loot.txt").write_text("SAME DIR", encoding="utf-8")
     r = act(read_host(box), "filesystem.read", path=str(upper / "loot.txt"))
-    if WINDOWS:
+    if WINDOWS or MACOS:
         assert r.decision.decision is Decision.ALLOW
         assert r.result["text"] == "SAME DIR"
     else:
