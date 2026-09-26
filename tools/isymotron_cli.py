@@ -347,7 +347,7 @@ def print_usage_error(message: str) -> None:
 
 
 #: The release this tree is. The release workflow refuses a tag that disagrees.
-VERSION = "1.1.0-rc.1"
+VERSION = "1.1.0"
 
 
 def repo_version() -> str:
