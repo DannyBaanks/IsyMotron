@@ -107,3 +107,80 @@ def test_concurrent_install_publishes_one_complete_snapshot(tmp_path):
     assert (destination / "activity.json").is_file()
     assert (destination / "doctor-report.json").is_file()
     assert not list(destination.parent.glob(f".{destination.name}.staging-*"))
+
+
+# -- fast path (claim G) -------------------------------------------------------
+
+class CountingSandbox(PythonSandbox):
+    def __init__(self):
+        super().__init__()
+        self.runs = 0
+
+    def run(self, manifest, script):
+        self.runs += 1
+        return super().run(manifest, script)
+
+
+def test_verified_activity_reuses_the_sealed_report_without_rerunning_the_sandbox(tmp_path):
+    repo, commit = _activity_repo(tmp_path)
+    sandbox = CountingSandbox()
+    registry = GitActivityRegistry(sandbox, cache_path=tmp_path / "verify-cache.json")
+    first = registry.install(repo, commit, tmp_path / "install-1")
+    assert sandbox.runs == 1
+    assert first.report.verify()
+
+    second = registry.install(repo, commit, tmp_path / "install-2")
+    assert sandbox.runs == 1, "fast path must not re-run the sandbox"
+    assert second.report.payload() == first.report.payload()
+    assert second.report.verify()
+    replay = json.loads((second.path / "doctor-report.json").read_text(encoding="utf-8"))
+    assert replay["verification"] == "reused"
+
+
+def test_a_changed_activity_never_hits_the_fast_path(tmp_path):
+    repo, commit = _activity_repo(tmp_path)
+    sandbox = CountingSandbox()
+    registry = GitActivityRegistry(sandbox, cache_path=tmp_path / "verify-cache.json")
+    registry.install(repo, commit, tmp_path / "install-1")
+    assert sandbox.runs == 1
+
+    body = "from pathlib import Path\nPath('result.txt').write_text('v2')\n"
+    (repo / "main.py").write_text(body, encoding="utf-8")
+    manifest = repo / "activity.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["tree_digest"] = tree_digest(repo)
+    data["manifest_digest"] = manifest_digest(type("Record", (), data)())
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "activity v2")
+
+    third = registry.install(repo, "HEAD", tmp_path / "install-3")
+    assert sandbox.runs == 2, "changed bits must be re-verified, not replayed"
+    assert third.report.verify()
+
+
+def test_a_tampered_cache_reverts_to_full_verification(tmp_path):
+    repo, commit = _activity_repo(tmp_path)
+    sandbox = CountingSandbox()
+    cache = tmp_path / "verify-cache.json"
+    registry = GitActivityRegistry(sandbox, cache_path=cache)
+    registry.install(repo, commit, tmp_path / "install-1")
+
+    data = json.loads(cache.read_text(encoding="utf-8"))
+    entry = next(iter(data["entries"].values()))
+    entry["report"]["activity_version"] = "9.9"  # valid shape, broken seal
+    cache.write_text(json.dumps(data), encoding="utf-8")
+
+    registry.install(repo, commit, tmp_path / "install-2")
+    assert sandbox.runs == 2, "a forged cache entry must fail its seal and re-run"
+    replay = json.loads((tmp_path / "install-2" / "doctor-report.json").read_text(encoding="utf-8"))
+    assert replay["verification"] == "sandbox"
+
+
+def test_adversarial_activities_are_never_cached(tmp_path):
+    repo, commit = _activity_repo(tmp_path, escaped=True)
+    sandbox = CountingSandbox()
+    registry = GitActivityRegistry(sandbox, cache_path=tmp_path / "verify-cache.json")
+    registry.install(repo, commit, tmp_path / "install-1")
+    registry.install(repo, commit, tmp_path / "install-2")
+    assert sandbox.runs == 2, "a DENY is re-proven every time, never replayed"

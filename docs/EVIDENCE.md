@@ -24,13 +24,18 @@ There is no `SAFE`. There is no default-pass. An unmeasured claim is
 | **B** — a host denies an action outside local scope even if the model asks | **`DEMONSTRATED`** | Nemotron planned `apps.launch {"app": "DOOM"}`; the allowlist grants `DOOM.EXE`; the host refused with `OUT_OF_SCOPE` and the plan stopped. No prompt instructed the refusal — it came from the grant file. See FINDINGS.md #6, and `test_a_live_plan_still_meets_the_enforcer`. |
 | **C** — Doctor detects an undeclared side effect and blocks promotion | **`DEMONSTRATED` (scoped)** | `tests/test_sandbox.py` runs a Python activity, blocks an outside write/process attempt, and feeds the real trace to Doctor V0. This is not an OS-level hostile-code claim. |
 | **D** — a changed artifact invalidates prior verification | **`DEMONSTRATED` (scoped)** | `tests/test_marketplace.py::test_changed_tree_is_rejected` and `test_manifest_only_tampering_is_rejected` reject changed source or manifest claims; concurrent publication is also covered. |
-| **E** — a publicly accepted activity can still be denied locally | `NOT_DEMONSTRATED` | No marketplace. The mechanism that would enforce it (local grant beats everything) is `DEMONSTRATED` in isolation. |
+| **E** — a publicly accepted activity can still be denied locally | **`DEMONSTRATED` (scoped)** | `test_adversarial_activity_is_denied_locally`: an activity pulled from a valid commit, with good digests, whose code escapes its scope is denied by the local Doctor at install. Scope: the registry is a local Git repo, not a hosted public service, so "publicly accepted" is demonstrated as "known, digest-pinned and distributed", not as "listed on a server". Local grant beats everything is separately `DEMONSTRATED` in the contract suite. |
 | **F** — Windows 10 and Windows 11 serve the same contract via different engines | `NOT_DEMONSTRATED` | Windows 11 is real (`nt-real/0.1`, build 10.0.26200); a real Windows 10 host has not been verified yet. Simulated older engines are fixtures only. |
-| **G** — a verified activity reuses a fast path without repeating verification | `NOT_DEMONSTRATED` | Doctor V0 exists, but no install/cache fast path exists. |
+| **G** — a verified activity reuses a fast path without repeating verification | **`DEMONSTRATED` (scoped)** | `GitActivityRegistry` verification cache: bit-identical `(tree_digest, manifest_digest)` replays the sealed Doctor report without re-running the sandbox (`test_verified_activity_reuses_the_sealed_report_without_rerunning_the_sandbox`). Changed bits always re-verify (`test_a_changed_activity_never_hits_the_fast_path`), a forged cache entry fails its seal and re-runs (`test_a_tampered_cache_reverts_to_full_verification`), and a DENY is never replayed (`test_adversarial_activities_are_never_cached`). Scope: the cache is a local file. |
 | **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` (now measurable) | Spot numbers only, no workload. Round trip 0.75–6.16 s (median 1.56 s over 12); a two-host plan 4.6–22.4 s. **One HTTP 503 in 12 calls** — real, but n=12 is not a rate. A second run that looked like throttling was the laptop being closed mid-measurement, not the provider (FINDINGS.md #7b). Also: `nemotron-nano-3-30b-a3b` is listed by `/models` and returns 404 on invocation — listed is not servable. |
 
 **Two claims crossed on 2026-09-17: A and B.** Both are scoped, and the scope
 is written into the basis line rather than left implied. Seven remain.
+
+**Two more crossed on 2026-09-26: E and G**, when the Git-backed registry and
+its verification cache gained the tests that pin them. Five remain: C is the
+scoped Doctor row below (already `DEMONSTRATED, scoped`), leaving F and H as
+the live ones among the original nine.
 
 Still nine `NOT_DEMONSTRATED` after M1. B and F moved — their basis lines
 cited real hardware instead of a simulator — but neither crossed at that point,
