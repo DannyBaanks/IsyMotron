@@ -13,6 +13,8 @@ def _reload():
 def test_default_path_posix_xdg(monkeypatch, tmp_path):
     monkeypatch.setattr(os, "name", "posix")
     monkeypatch.setenv("HOME", str(tmp_path))
+    # expanduser reads USERPROFILE on a Windows runner, not HOME.
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     monkeypatch.delenv("LOCALAPPDATA", raising=False)
     mod = _reload()
@@ -24,6 +26,8 @@ def test_default_path_posix_xdg(monkeypatch, tmp_path):
 def test_default_path_respects_xdg_config_home(monkeypatch, tmp_path):
     monkeypatch.setattr(os, "name", "posix")
     monkeypatch.setenv("HOME", str(tmp_path))
+    # expanduser reads USERPROFILE on a Windows runner, not HOME.
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     mod = _reload()
     assert mod._default_path() == os.path.join(
@@ -34,6 +38,8 @@ def test_default_path_respects_xdg_config_home(monkeypatch, tmp_path):
 def test_default_path_legacy_fallback(monkeypatch, tmp_path):
     monkeypatch.setattr(os, "name", "posix")
     monkeypatch.setenv("HOME", str(tmp_path))
+    # expanduser reads USERPROFILE on a Windows runner, not HOME.
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     legacy = tmp_path / "IsyMotron" / "grants.json"
     legacy.parent.mkdir(parents=True)
