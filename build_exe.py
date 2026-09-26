@@ -39,8 +39,6 @@ SEP = ";" if os.name == "nt" else ":"
 WINDOWS = sys.platform == "win32"
 PLATFORM = {"win32": "windows", "linux": "linux", "darwin": "macos"}.get(
     sys.platform, sys.platform)
-NATIVE_PLATFORM = {"win32": "win32", "linux": "linux", "darwin": "darwin"}.get(
-    sys.platform, sys.platform)
 BINARY = "IsyMotron.exe" if WINDOWS else "IsyMotron"
 
 #: Host engines that are real backends acting on this machine, by platform.
@@ -50,7 +48,7 @@ BINARY = "IsyMotron.exe" if WINDOWS else "IsyMotron"
 sys.path.insert(0, os.path.join(ROOT, "hosts"))
 from native import REAL_ENGINES as _NATIVE  # noqa: E402
 
-REAL_ENGINES = {{"win32": "windows"}.get(k, k): (v,) for k, v in _NATIVE.items()}
+REAL_ENGINES = dict(_NATIVE)  # keys are sys.platform (win32, linux, darwin)
 
 #: What the console prints when no real host backend exists for the platform.
 #: The smoke test requires it verbatim, so the warning cannot quietly vanish.
@@ -246,7 +244,7 @@ def smoke_test(exe: str) -> "dict | None":
         ok("stops when the harness stops it (process gone, port released)")
         log = open(log_path, "rb").read().decode("utf-8", "replace")
 
-    real_prefixes = REAL_ENGINES.get(NATIVE_PLATFORM, ())
+    real_prefixes = REAL_ENGINES.get(sys.platform, ())
     real = [e for e in engines if e.startswith(real_prefixes)] if real_prefixes else []
     if real_prefixes and not real:
         fail(f"{PLATFORM} must attach a real host engine {real_prefixes}; got {engines}")
