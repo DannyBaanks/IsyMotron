@@ -54,19 +54,30 @@ ENGINE = "linux-real/0.1"
 
 
 class LinuxHost(Host):
-    """The engine that serves NemoHostContract/v0 on Linux."""
+    """The engine that serves NemoHostContract/v0 on Linux.
+
+    The platform seams (guard prefix, identity strings, the fd-verification
+    base, the process lister and the OS naming) are class hooks so a sibling
+    POSIX engine (hosts/mac) reuses the checks instead of copying them.
+    """
+
+    PLATFORM = "linux"
+    OS_FAMILY = "linux"
+    ENGINE = "linux-real/0.1"
+    FD_BASE = "/proc/self/fd"
 
     def __init__(self, grants: Grants | None = None) -> None:
         import sys
-        if not sys.platform.startswith("linux"):
-            raise RuntimeError(f"LinuxHost needs Linux; this is {sys.platform}.")
+        if not sys.platform.startswith(self.PLATFORM):
+            raise RuntimeError(
+                f"{type(self).__name__} needs {self.PLATFORM}; this is {sys.platform}.")
         self.grants = grants or Grants.load()
         identity = HostIdentity(
             host_id=self.grants.host_id,
             display_name=self.grants.display_name,
-            os_family="linux",
-            os_release=_release_tag(),
-            engine=ENGINE,
+            os_family=self.OS_FAMILY,
+            os_release=self._release_tag(),
+            engine=self.ENGINE,
         )
         super().__init__(
             identity,
@@ -76,6 +87,17 @@ class LinuxHost(Host):
             admin_granted=self.grants.admin_granted,
             max_lease_ttl_s=self.grants.max_lease_ttl_s,
         )
+
+    # -- platform seams, overridable by sibling POSIX engines ---------------
+
+    def _os_name(self) -> str:
+        return _os_name()
+
+    def _release_tag(self) -> str:
+        return _release_tag()
+
+    def _proc_names(self) -> list[str]:
+        return _proc_names()
 
     # -- the second, independent scope check --------------------------------
     def _real_roots(self, capability: str) -> list[str]:
@@ -124,9 +146,9 @@ class LinuxHost(Host):
         """What the descriptor ACTUALLY names, re-checked. Closes the window
         between resolving a name and opening it."""
         try:
-            opened = os.readlink(f"/proc/self/fd/{fd}")
+            opened = os.readlink(os.path.join(self.FD_BASE, str(fd)))
         except OSError as exc:
-            # No /proc: the check cannot run, so nothing proceeds.
+            # No path to verify the descriptor through: nothing proceeds.
             raise OSError(f"cannot verify the opened descriptor: {exc}") from exc
         if not self._inside(opened, self._real_roots(capability)):
             raise ScopeViolation(DenyReason.OUT_OF_SCOPE,
@@ -159,13 +181,13 @@ class LinuxHost(Host):
                     [{"kind": "process.spawn", "app": app, "pid": proc.pid}])
 
         if req.capability == "system.info":
-            return ({"os": _os_name(), "build": platform.release(),
+            return ({"os": self._os_name(), "build": platform.release(),
                      "machine": platform.machine(), "cores": os.cpu_count(),
                      "engine": self._identity.engine,
                      "python": platform.python_version()}, [])
 
         if req.capability == "process.inspect":
-            names = _proc_names()
+            names = self._proc_names()
             return ({"count": len(names), "processes": names}, [])
 
         raise NotImplementedError(req.capability)

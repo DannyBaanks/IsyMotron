@@ -16,9 +16,9 @@ apart. Every state below is tracked separately and none implies the next.
 | Platform | Engine | BUILDABLE | PACKAGED | STARTABLE | HOST_SUPPORTED | PARITY_DEMONSTRATED |
 |---|---|---|---|---|---|---|
 | Windows 11 (x64) | `nt-real` | DEMONSTRATED (CI) | DEMONSTRATED (v1.0.0 release) | DEMONSTRATED (CI smoke) | DEMONSTRATED (`tests/test_win11_real.py`) | reference platform |
-| Windows 10 | `nt-real` | same binary | same binary | NOT_DEMONSTRATED | NOT_DEMONSTRATED (product target) | NOT_DEMONSTRATED |
+| ~~Windows 10~~ | `nt-real` | same binary | same binary | OUT_OF_SCOPE (retired 2026-09-26: no licence/hardware) | OUT_OF_SCOPE | OUT_OF_SCOPE |
 | Linux (x86_64) | `linux-real` | CI smoke on `ubuntu-22.04` | release workflow | CI smoke, real engine attached | DEMONSTRATED (`tests/test_linux_real.py`, CI `ubuntu-latest`) | DEMONSTRATED for the rows of `tests/test_host_parity.py` (below) |
-| macOS (arm64) | none (fixtures) | CI smoke on `macos-latest` | release workflow | CI smoke, fixtures only | **NOT_DEMONSTRATED** (M3) | **NOT_DEMONSTRATED** |
+| macOS (arm64) | `mac-real/0.1` | CI smoke on `macos-latest` | release workflow | CI smoke, real engine attached | DEMONSTRATED, scoped (`tests/test_macos_real.py` on `macos-latest`): no awareness clocks, no process-verification source (`UnsupportedProcessSource` by design) | NOT_DEMONSTRATED against the shared parity table |
 
 The CI and release runs are the receipts: each binary job uploads
 `smoke-<platform>.json`, which names the binary's SHA-256, the host engines it

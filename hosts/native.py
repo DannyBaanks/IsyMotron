@@ -4,8 +4,8 @@ Before M2 every entry point imported the Windows engine directly, and
 tools/host_cli.py ran it on Linux: a case-folding engine on a case-sensitive
 filesystem, labelled `nt-real`. The choice now lives here only.
 
-`real_host()` returns None where no engine is demonstrated (macOS until M3).
-None means "no real host": callers attach fixtures or refuse, and say so.
+`real_host()` returns None where no engine is demonstrated. None means
+"no real host": callers attach fixtures or refuse, and say so.
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import sys
 
 #: engine id prefix -> the platform where it is a real backend. Adding a row
 #: is a claim that needs its own evidence (docs/PLATFORM_SUPPORT.md).
-REAL_ENGINES = {"win32": "nt-real/", "linux": "linux-real/"}
+REAL_ENGINES = {"win32": "nt-real/", "linux": "linux-real/", "darwin": "mac-real/"}
 
 
 def platform_key(plat: str | None = None) -> str:
@@ -34,11 +34,14 @@ def real_host(grants=None):
     if key == "linux":
         from linux.host import LinuxHost
         return LinuxHost(grants)
+    if key == "darwin":
+        from mac.host import MacHost
+        return MacHost(grants)
     return None
 
 
 def power_provider():
-    """The native power/awareness provider, or None."""
+    """The native power/awareness provider, or None (macOS: no mechanism yet)."""
     key = platform_key()
     if key == "win32":
         from windows.power import WindowsPowerProvider
