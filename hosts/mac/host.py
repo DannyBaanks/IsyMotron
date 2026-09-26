@@ -40,7 +40,7 @@ from isymotron.host import Host, ScopeViolation
 from isymotron.policy import normalize_path
 from isymotron.process import ProcessError, observe
 from isymotron.resources import app_entries, fs_roots
-from isymotron.verdicts import DenyDecision, DenyReason
+from isymotron.verdicts import DenyReason
 from windows.win11 import CAPABILITIES, MAX_READ_BYTES, _as_text, _iso, _sha
 
 from linux.host import LinuxHost
