@@ -158,6 +158,12 @@ VERBS: dict[str, Verb] = {
         argv=("tools/nemotron_check.py",),
         entrypoint="tools/nemotron_check.py",
     ),
+    "load": Verb(
+        name="load",
+        summary="measure provider continuity under load (claim H; writes provider-load/v0)",
+        argv=("tools/provider_load.py",),
+        entrypoint="tools/provider_load.py",
+    ),
 "host-watch": Verb(
         name="host-watch",
         summary="watch host awareness over time (--seconds, --tick, --probe)",
