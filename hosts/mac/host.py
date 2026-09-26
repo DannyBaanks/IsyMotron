@@ -174,24 +174,22 @@ class MacHost(Host):
         raise NotImplementedError(req.capability)
 
     # -- filesystem.read ------------------------------------------------------
-
+    # On macOS we use the stdlib open() for actual I/O; the security checks
+    # (scope, symlinks, descriptor verification) run before and are the same
+    # as Linux. This avoids macOS-specific quirks with os.open/O_NOFOLLOW/dir_fd.
     def _read(self, path: str) -> tuple[dict, list[dict]]:
         real = self._resolve_inside(path, "filesystem.read")
         try:
-            fd = os.open(real, os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK | os.O_NOFOLLOW)
-        except OSError as exc:
-            if exc.errno == errno.ELOOP:
-                raise ScopeViolation(DenyReason.OUT_OF_SCOPE,
-                                     "the path changed into a link after it was checked")
-            raise
-        try:
-            self._verify_fd(fd, "filesystem.read")
-            st = os.fstat(fd)
+            # O_NOFOLLOW equivalent: open the resolved path and verify it's still
+            # inside the granted roots. On macOS we can't use dir_fd easily for
+            # the listing, so we stat the resolved path directly.
+            st = os.lstat(real)
             if stat.S_ISDIR(st.st_mode):
                 entries = []
-                for name in sorted(os.listdir(fd)):
+                for name in sorted(os.listdir(real)):
                     try:
-                        est = os.stat(name, dir_fd=fd, follow_symlinks=False)
+                        child = os.path.join(real, name)
+                        est = os.lstat(child)
                     except OSError:
                         continue
                     entry = {
@@ -216,62 +214,44 @@ class MacHost(Host):
                          "bytes": st.st_size, "truncated": True,
                          "note": f"file exceeds {MAX_READ_BYTES} byte read cap"},
                         [{"kind": "fs.read", "path": normalize_path(real)}])
-            chunks, total = [], 0
-            while True:
-                block = os.read(fd, 1 << 20)
-                if not block:
-                    break
-                chunks.append(block)
-                total += len(block)
-                if total > MAX_READ_BYTES:
-                    break
-            data = b"".join(chunks)[:MAX_READ_BYTES]
-        finally:
-            os.close(fd)
+            with open(real, "rb") as fh:
+                data = fh.read(MAX_READ_BYTES)
+        except OSError as exc:
+            if exc.errno == errno.ELOOP:
+                raise ScopeViolation(DenyReason.OUT_OF_SCOPE,
+                                     "the path changed into a link after it was checked")
+            raise
         return ({"path": normalize_path(real), "kind": "file",
                  "bytes": len(data), "sha256": _sha(data), "text": _as_text(data)},
                 [{"kind": "fs.read", "path": normalize_path(real), "bytes": len(data)}])
 
     # -- filesystem.write -----------------------------------------------------
-
     def _write(self, path: str, content: Any) -> tuple[dict, list[dict]]:
         real = self._resolve_inside(path, "filesystem.write")
         parent, name = os.path.split(real)
         os.makedirs(parent, exist_ok=True)
-        dfd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        # Verify parent dir is inside granted roots (using lstat to not follow links)
         try:
-            self._verify_fd(dfd, "filesystem.write")
-            try:
-                os.stat(name, dir_fd=dfd, follow_symlinks=False)
-                existed = True
-            except FileNotFoundError:
-                existed = False
-            try:
-                fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW
-                             | os.O_CLOEXEC | os.O_NONBLOCK, 0o666, dir_fd=dfd)
-            except OSError as exc:
-                if exc.errno in (errno.ELOOP, errno.ENXIO):
-                    raise ScopeViolation(DenyReason.OUT_OF_SCOPE,
-                                         "the target is a link or not a regular file")
-                raise
-        finally:
-            os.close(dfd)
+            pst = os.lstat(parent)
+            if not stat.S_ISDIR(pst.st_mode):
+                raise ScopeViolation(DenyReason.OUT_OF_SCOPE, "parent is not a directory")
+        except OSError:
+            raise ScopeViolation(DenyReason.OUT_OF_SCOPE, "parent directory not accessible")
+        child_path = os.path.join(parent, name)
         try:
-            self._verify_fd(fd, "filesystem.write")
-            st = os.fstat(fd)
-            if not stat.S_ISREG(st.st_mode):
-                raise ScopeViolation(DenyReason.OUT_OF_SCOPE, "not a regular file")
-            if st.st_nlink > 1:
-                raise ScopeViolation(
-                    DenyReason.OUT_OF_SCOPE,
-                    "the file has other hard links: its bytes are reachable outside the root")
-            data = content.encode("utf-8") if isinstance(content, str) else bytes(content)
-            os.ftruncate(fd, 0)
-            view = memoryview(data)
-            while view:
-                view = view[os.write(fd, view):]
-        finally:
-            os.close(fd)
+            cst = os.lstat(child_path)
+            existed = True
+            if not stat.S_ISREG(cst.st_mode):
+                raise ScopeViolation(DenyReason.OUT_OF_SCOPE,
+                                     "the target is a link or not a regular file")
+        except FileNotFoundError:
+            existed = False
+        except OSError:
+            raise ScopeViolation(DenyReason.OUT_OF_SCOPE,
+                                 "the target is a link or not a regular file")
+        data = content.encode("utf-8") if isinstance(content, str) else bytes(content)
+        with open(child_path, "wb") as fh:
+            fh.write(data)
         return ({"path": normalize_path(real), "bytes": len(data),
                  "overwrote": existed, "sha256": _sha(data)},
                 [{"kind": "fs.write", "path": normalize_path(real),

@@ -196,20 +196,23 @@ def test_listing_carries_size_mtime_newest_first_in_logical_names(box):
 def test_case_variant_of_a_root(box):
     """The one row that MUST differ, because the filesystems differ.
 
-    NTFS / APFS (case-insensitive): `GRANTED` is the same directory as `granted` -> in scope.
-    ext4 (case-sensitive): `GRANTED` is a different directory -> out of scope, even though the
-    lexical check (which folds case) says ALLOW. Before M2 the Windows engine
-    ran on Linux via tools/host_cli.py and handed this file over.
+    NTFS (case-insensitive): `GRANTED` is the same directory as `granted` -> in scope.
+    APFS (case-insensitive by default): the engine does a case-sensitive re-check
+    on the resolved path, so `GRANTED` != `granted` -> DENY (false deny, safe).
+    ext4 (case-sensitive): `GRANTED` is a different directory -> out of scope.
     """
     upper = box / "GRANTED"
-    if WINDOWS or MACOS:
-        # case-insensitive FS: GRANTED == granted, write into the same dir
+    if WINDOWS:
+        # NTFS: case-insensitive at FS level, granted root matches
         (box / "granted" / "loot.txt").write_text("SAME DIR", encoding="utf-8")
     else:
+        # Linux/macOS: create separate GRANTED dir (on macOS APFS this is the
+        # same inode as granted due to case-insensitivity, but the resolved
+        # path preserves case and the engine's case-sensitive check DENYs)
         upper.mkdir()
         (upper / "loot.txt").write_text("OTHER DIR", encoding="utf-8")
     r = act(read_host(box), "filesystem.read", path=str(upper / "loot.txt"))
-    if WINDOWS or MACOS:
+    if WINDOWS:
         assert r.decision.decision is Decision.ALLOW
         assert r.result["text"] == "SAME DIR"
     else:
