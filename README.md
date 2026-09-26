@@ -230,19 +230,29 @@ version change, not an invisible feature.
 
 ## Built with Nebius + NVIDIA
 
-ISyMotron includes a provider seam for NVIDIA NIM and Nebius Token Factory —
-and, through the same protocol, local models (below):
+ISyMotron's default inference provider is **Nebius Token Factory**, serving the
+NVIDIA open-source model `nvidia/nemotron-3-super-120b-a12b`. Set two
+environment variables and every plan in the system is proposed on Nebius:
+
+```bash
+export ISYMOTRON_PROVIDER=nebius        # the default; set explicitly for clarity
+export NEBIUS_API_KEY=...                # from the Nebius Builder Program
+python3 -m console                      # plans via Token Factory from here on
+```
+
+NVIDIA NIM and local models (Ollama, llama.cpp) ride the same provider seam —
+see [`docs/PROVIDERS.md`](docs/PROVIDERS.md):
 
 ```text
-Nebius or NVIDIA endpoint
-          ↓
-       Nemotron
-          ↓
-        Planner
-          ↓
-     Host policy
-          ↓
-        Receipt
+Nebius Token Factory (default) or NVIDIA NIM
+                    ↓
+              Nemotron
+                    ↓
+                Planner
+                    ↓
+             Host policy
+                    ↓
+                Receipt
 ```
 
 The provider changes how a plan is proposed; it does not change the grants,

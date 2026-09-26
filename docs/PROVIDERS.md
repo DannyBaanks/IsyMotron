@@ -6,8 +6,8 @@ a base URL, where its key comes from, a default model — not code.
 
 | `ISYMOTRON_PROVIDER` | Where | Key | Default model | JSON mode |
 |---|---|---|---|---|
-| `nvidia` (default) | `integrate.api.nvidia.com/v1` | `NVIDIA_NIM_API_KEY` (required) | `nvidia/nemotron-3-super-120b-a12b` | no (prompt only) |
-| `nebius` | Nebius Token Factory | `NEBIUS_API_KEY` (required) | same | no (prompt only) |
+| `nebius` (default) | Nebius Token Factory (`api.tokenfactory.us-central1.nebius.com/v1`) | `NEBIUS_API_KEY` (required) | `nvidia/nemotron-3-super-120b-a12b` | no (prompt only) |
+| `nvidia` | `integrate.api.nvidia.com/v1` | `NVIDIA_NIM_API_KEY` (required) | same | no (prompt only) |
 | `ollama` | `127.0.0.1:11434/v1`, or `$OLLAMA_HOST` | none (`OLLAMA_API_KEY` if your server wants one) | `llama3.1:8b` | yes |
 | `llamacpp` | `127.0.0.1:8080/v1` (`llama-server`) | none (`LLAMACPP_API_KEY` for `--api-key`) | whatever the server loaded | yes |
 

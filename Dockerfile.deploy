@@ -3,28 +3,34 @@
 
 FROM python:3.12-slim AS runner
 
+# System deps: only for avatar (Tk) if ever needed; not for console headless
+# RUN apt-get update && apt-get install -y --no-install-recommends python3-tk && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy source preserving repo structure (needed for sys.path in console/__main__.py)
+# Copy source (same layout as repo). Only what the console imports:
+# console/, core/ (the isymotron package), hosts/ (real + simulator engines),
+# relay/, agents/ (provider seam), avatar/, tools/.
 COPY console/ console/
 COPY core/ core/
 COPY hosts/ hosts/
-COPY tools/ tools/
-COPY avatar/ avatar/
 COPY relay/ relay/
 COPY agents/ agents/
-COPY clients/ clients/
-COPY learning/ learning/
-COPY tools/isymotron_cli.py isymotron_cli.py
+COPY avatar/ avatar/
+COPY tools/ tools/
 COPY LICENSE .
 COPY README.md .
 
 # No pip install needed: runtime is stdlib-only
+# (tests need requirements-dev.txt but not the server)
 
-# Default port (Railway/Render provide PORT env var)
+# Default port; Railway/Render/Fly.io inject their own PORT at runtime,
+# and the CMD below honors it (the console's --port default stays 8760).
 ENV PORT=8760
 EXPOSE 8760
 
-# Run console with LAN access (--lan) for cloud deployment
-# --demo-host attaches a simulated fixture host for demo purposes
-CMD ["python", "-m", "console", "--lan", "--demo-host", "--no-browser", "--port", "8760"]
+# Run console with LAN access (--lan) for cloud deployment.
+# --demo-host attaches a simulated fixture host for demo purposes:
+# the hosted demo works with zero local state. Remove --demo-host to
+# serve real grants (needs grant files on the host).
+CMD ["sh", "-c", "python -m console --lan --demo-host --no-browser --port ${PORT:-8760}"]

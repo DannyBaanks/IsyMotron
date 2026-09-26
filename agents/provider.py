@@ -9,9 +9,9 @@ So the provider is configuration, not code. Develop against whichever one
 answers today, submit against whichever one the rules require, change one
 environment variable.
 
-    ISYMOTRON_PROVIDER=nvidia|nebius|ollama|llamacpp   (default: nvidia)
-    NVIDIA_NIM_API_KEY=nvapi-...
+    ISYMOTRON_PROVIDER=nebius|nvidia|ollama|llamacpp   (default: nebius)
     NEBIUS_API_KEY=...
+    NVIDIA_NIM_API_KEY=nvapi-...            (only when provider=nvidia)
     ISYMOTRON_MODEL=nvidia/nemotron-3-super-120b-a12b  (default: the preset's)
     ISYMOTRON_BASE_URL=...             (overrides the preset)
 
@@ -208,7 +208,7 @@ class Provider:
                  base_url: str | None = None, api_key: str | None = None,
                  timeout_s: float = 120.0,
                  awareness: HostAwarenessEngine | None = None) -> None:
-        self.name = (name or os.environ.get("ISYMOTRON_PROVIDER") or "nvidia").lower()
+        self.name = (name or os.environ.get("ISYMOTRON_PROVIDER") or "nebius").lower()
         preset = PRESETS.get(self.name)
         if preset is None:
             raise ProviderError(

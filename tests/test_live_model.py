@@ -24,7 +24,7 @@ from isymotron.verdicts import Decision
 from relay.loopback import LoopbackRelay
 from simulator.engines import LegacyHost, ModernHost
 
-PROVIDER = os.environ.get("ISYMOTRON_PROVIDER", "nvidia")
+PROVIDER = os.environ.get("ISYMOTRON_PROVIDER", "nebius")
 KEY_ENV = {"nvidia": "NVIDIA_NIM_API_KEY", "nebius": "NEBIUS_API_KEY"}.get(PROVIDER, "")
 
 pytestmark = pytest.mark.skipif(
