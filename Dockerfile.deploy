@@ -1,0 +1,30 @@
+# IsyMotron console server for cloud deployment (Railway/Render/Fly.io)
+# Runtime is stdlib-only; console uses http.server, avatar uses Tk (not needed headless)
+
+FROM python:3.12-slim AS runner
+
+WORKDIR /app
+
+# Copy source preserving repo structure (needed for sys.path in console/__main__.py)
+COPY console/ console/
+COPY core/ core/
+COPY hosts/ hosts/
+COPY tools/ tools/
+COPY avatar/ avatar/
+COPY relay/ relay/
+COPY agents/ agents/
+COPY clients/ clients/
+COPY learning/ learning/
+COPY tools/isymotron_cli.py isymotron_cli.py
+COPY LICENSE .
+COPY README.md .
+
+# No pip install needed: runtime is stdlib-only
+
+# Default port (Railway/Render provide PORT env var)
+ENV PORT=8760
+EXPOSE 8760
+
+# Run console with LAN access (--lan) for cloud deployment
+# --demo-host attaches a simulated fixture host for demo purposes
+CMD ["python", "-m", "console", "--lan", "--demo-host", "--no-browser", "--port", "8760"]

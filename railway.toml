@@ -1,0 +1,15 @@
+# Railway deployment config
+# https://docs.railway.app/reference/railway-toml
+
+[build]
+dockerfilePath = "Dockerfile.deploy"
+
+[deploy]
+healthcheckPath = "/api/state"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Optional: set to use a specific port (Railway provides PORT env var)
+# [env]
+# PORT = "8760"
