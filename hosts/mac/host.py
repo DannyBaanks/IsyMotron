@@ -28,8 +28,20 @@ macOS mechanism has been written or measured.
 """
 from __future__ import annotations
 
+import errno
+import os
 import platform
+import stat
 import subprocess
+from typing import Any
+
+from isymotron.contracts import ExecutionRequest, HostIdentity
+from isymotron.host import Host, ScopeViolation
+from isymotron.policy import normalize_path
+from isymotron.process import ProcessError, observe
+from isymotron.resources import app_entries, fs_roots
+from isymotron.verdicts import DenyDecision, DenyReason
+from windows.win11 import CAPABILITIES, MAX_READ_BYTES, _as_text, _iso, _sha
 
 from linux.host import LinuxHost
 
@@ -62,3 +74,20 @@ class MacHost(LinuxHost):
         except (OSError, subprocess.SubprocessError):
             return []
         return sorted({line.strip() for line in out.splitlines() if line.strip()})
+
+    # apps.launch: same as Linux but process verification is unsupported on macOS
+    def _launch(self, p: dict[str, Any]) -> tuple[dict, list[dict]]:
+        app = p["app"]
+        args = list(p.get("args") or [])
+        exe = self._resolve_app(app)
+        proc = subprocess.Popen(
+            [exe, *args],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+        )
+        return ({"app": app, "exe": exe, "pid": proc.pid, "args": args,
+                 "proc": _observe_launch(proc.pid)},
+                [{"kind": "process.spawn", "app": app, "pid": proc.pid}])

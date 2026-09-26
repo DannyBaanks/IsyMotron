@@ -251,9 +251,14 @@ def _kill(pid: int) -> None:
 
 def test_launch_seals_a_verifiable_fingerprint(box, tmp_path):
     """The allowlisted app is a COPY of this interpreter, so the test launches
-    something real without depending on what the machine has installed."""
+    something real without depending on what the machine has installed.
+    Skipped on macOS: no process-verification source exists yet
+    (UnsupportedProcessSource by design)."""
     import shutil
     from isymotron.process import ERROR, PASS, STANDARD, ProcessIdentity, verify
+    import sys
+    if sys.platform == "darwin":
+        pytest.skip("macOS has no process-verification source (UnsupportedProcessSource)")
     copy = tmp_path / ("launched.exe" if WINDOWS else "launched")
     shutil.copy2(sys.executable, copy)
     host = make_host(["apps.launch"], {"apps.launch": {"allowlist": [str(copy)]}})
@@ -275,4 +280,4 @@ def test_launch_seals_a_verifiable_fingerprint(box, tmp_path):
                 os.waitpid(pid, 0)   # our child: reap it so the pid is really gone
             except ChildProcessError:
                 pass
-    assert verify(pid, baseline).status == ERROR
+        assert verify(pid, baseline).status == ERROR
