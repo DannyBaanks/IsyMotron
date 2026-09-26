@@ -5,7 +5,9 @@
 dockerfilePath = "Dockerfile.deploy"
 
 [deploy]
-healthcheckPath = "/api/state"
+# "/" serves index.html WITHOUT auth (the API routes 401 without a session
+# token). Healthchecking /api/state would look like a dead app -> 502.
+healthcheckPath = "/"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
