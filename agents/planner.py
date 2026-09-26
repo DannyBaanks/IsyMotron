@@ -185,7 +185,8 @@ class Planner:
             {"role": "system", "content": SYSTEM},
             {"role": "user", "content": f"CATALOGUE\n{cat}\n\nREQUEST\n{intent}"},
         ]
-        completion = self.provider.complete(messages, max_tokens=max_tokens)
+        completion = self.provider.complete(messages, max_tokens=max_tokens,
+                                            json_object=True)
         plan = self.parse(completion.text, descriptions, raw_completion=completion)
         return plan
 

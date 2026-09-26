@@ -90,7 +90,7 @@ def show_plan(plan: Plan) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--provider", help="nvidia | nebius (default: $ISYMOTRON_PROVIDER)")
+    ap.add_argument("--provider", help="nvidia | nebius | ollama | llamacpp (default: $ISYMOTRON_PROVIDER)")
     ap.add_argument("--model")
     ap.add_argument("--models", action="store_true", help="list visible models and exit")
     ap.add_argument("--save", action="store_true", default=True)

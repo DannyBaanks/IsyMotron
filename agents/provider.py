@@ -9,11 +9,17 @@ So the provider is configuration, not code. Develop against whichever one
 answers today, submit against whichever one the rules require, change one
 environment variable.
 
-    ISYMOTRON_PROVIDER=nvidia|nebius   (default: nvidia)
+    ISYMOTRON_PROVIDER=nvidia|nebius|ollama|llamacpp   (default: nvidia)
     NVIDIA_NIM_API_KEY=nvapi-...
     NEBIUS_API_KEY=...
-    ISYMOTRON_MODEL=nvidia/nemotron-3-super-120b-a12b
+    ISYMOTRON_MODEL=nvidia/nemotron-3-super-120b-a12b  (default: the preset's)
     ISYMOTRON_BASE_URL=...             (overrides the preset)
+
+Local models speak the same protocol. Ollama (`ollama serve`, default
+127.0.0.1:11434, or $OLLAMA_HOST) and llama.cpp's `llama-server` (127.0.0.1:8080)
+need no key; Llama, Qwen, Nemotron-mini -- whatever they serve -- plans through
+the same seam. Authority does not care which model proposed a plan: a weaker
+model yields more refusals, never more reach.
 
 No SDK. urllib only, so the whole repo stays dependency-free and a legacy host
 could in principle carry this file too.
@@ -44,7 +50,45 @@ PRESETS: dict[str, dict[str, str]] = {
         "key_env": "NEBIUS_API_KEY",
         "label": "Nebius Token Factory",
     },
+    # Local servers. No key required (one is still sent if set, for servers
+    # started with --api-key), a local default model, and JSON mode, which
+    # small models need to answer the planner with one parseable object.
+    "ollama": {
+        "base_url": "http://127.0.0.1:11434/v1",
+        "key_env": "OLLAMA_API_KEY",
+        "label": "Ollama (local)",
+        "key_required": False,
+        "default_model": "llama3.1:8b",
+        "json_mode": True,
+        "start_hint": "is Ollama running? start it with `ollama serve`",
+    },
+    "llamacpp": {
+        "base_url": "http://127.0.0.1:8080/v1",
+        "key_env": "LLAMACPP_API_KEY",
+        "label": "llama.cpp server (local)",
+        "key_required": False,
+        "default_model": "local",   # llama-server serves the model it loaded
+        "json_mode": True,
+        "start_hint": "is llama-server running? e.g. `llama-server -m model.gguf --port 8080`",
+    },
 }
+
+_LOOPBACK = ("127.0.0.1", "localhost", "::1", "[::1]")
+
+
+def _ollama_base_url() -> str | None:
+    """Ollama's own convention: OLLAMA_HOST is `host:port` or a URL."""
+    host = os.environ.get("OLLAMA_HOST", "").strip()
+    if not host:
+        return None
+    if "://" not in host:
+        host = "http://" + host
+    return host.rstrip("/") + "/v1"
+
+
+def _is_loopback(url: str) -> bool:
+    import urllib.parse
+    return (urllib.parse.urlsplit(url).hostname or "") in {h.strip("[]") for h in _LOOPBACK}
 
 
 # Statuses worth retrying. Measured 2026-09-17: 1 HTTP 503 "Service
@@ -90,6 +134,19 @@ class ProviderError(Exception):
         # A transport failure with no status is retryable: that is the shape
         # throttling took when we measured it.
         return self.status in RETRYABLE or self.transport
+
+
+class LocalServerDown(ProviderError):
+    """A server on THIS machine refused the connection: it is not running.
+
+    Never retried. Backoff exists for networks that come back and providers
+    that recover; waiting does not start a local process, and a user staring
+    at a 90 s spinner before learning `ollama serve` was never run is the bug.
+    """
+
+    @property
+    def retryable(self) -> bool:
+        return False
 
 
 class DeadlineExceeded(ProviderError):
@@ -158,10 +215,22 @@ class Provider:
                 f"unknown provider {self.name!r}; known: {', '.join(sorted(PRESETS))}")
         self.label = preset["label"]
         self.base_url = (base_url or os.environ.get("ISYMOTRON_BASE_URL")
+                         or (_ollama_base_url() if self.name == "ollama" else None)
                          or preset["base_url"]).rstrip("/")
-        self.model = model or os.environ.get("ISYMOTRON_MODEL") or DEFAULT_MODEL
+        self.model = (model or os.environ.get("ISYMOTRON_MODEL")
+                      or preset.get("default_model") or DEFAULT_MODEL)
         self.api_key = api_key or os.environ.get(preset["key_env"], "")
         self.key_env = preset["key_env"]
+        self.key_required = preset.get("key_required", True)
+        self.json_mode = bool(preset.get("json_mode"))
+        self.start_hint = preset.get("start_hint", "")
+        # A key is a credential: it never crosses the network in clear text.
+        # Plain http is fine for a server on this machine, nowhere else.
+        if (self.api_key and self.base_url.startswith("http://")
+                and not _is_loopback(self.base_url)):
+            raise ProviderError(
+                f"refusing to send {self.key_env} over plain http to "
+                f"{self.base_url}; use https, or a server on this machine")
         self.timeout_s = timeout_s
         self.attempts_used = 0
         self.retries = 0
@@ -179,7 +248,9 @@ class Provider:
 
     # -- diagnostics --------------------------------------------------------
     def configured(self) -> bool:
-        return bool(self.api_key)
+        """Ready to be asked. A local server needs no key; a hosted one does.
+        Whether a local server is actually running is learnt by calling it."""
+        return bool(self.api_key) or not self.key_required
 
     def describe(self) -> dict:
         return {
@@ -188,7 +259,8 @@ class Provider:
             "base_url": self.base_url,
             "model": self.model,
             "key_env": self.key_env,
-            "key_present": self.configured(),
+            "key_required": self.key_required,
+            "key_present": bool(self.api_key),
         }
 
     def models(self) -> list[str]:
@@ -198,7 +270,11 @@ class Provider:
     # -- the one call that matters -----------------------------------------
     def complete(self, messages: Sequence[Mapping[str, str]], *,
                  max_tokens: int = 1024, temperature: float = 0.2,
-                 stop: Sequence[str] | None = None) -> Completion:
+                 stop: Sequence[str] | None = None,
+                 json_object: bool = False) -> Completion:
+        """`json_object=True` asks for one JSON object. Honoured only where the
+        preset declares JSON mode; elsewhere the prompt alone asks for it, and
+        the planner still parses (and refuses) the same way."""
         if not self.configured():
             raise ProviderError(
                 f"no API key: set {self.key_env} for provider {self.name!r}")
@@ -210,6 +286,8 @@ class Provider:
         }
         if stop:
             body["stop"] = list(stop)
+        if json_object and self.json_mode:
+            body["response_format"] = {"type": "json_object"}
 
         before = self.awareness.snapshot() if self.awareness else None
         t0 = time.time()
@@ -314,9 +392,11 @@ class Provider:
         last: ProviderError | None = None
         for attempt in range(1, MAX_ATTEMPTS + 1):
             if time.time() - started > self.deadline_s:
+                # Say what kept failing, not only that time ran out.
                 raise DeadlineExceeded(
-                    f"{self.label}: gave up after {self.deadline_s:.0f}s",
-                    attempts=attempt - 1)
+                    f"{self.label}: gave up after {self.deadline_s:.0f}s"
+                    + (f"; last error: {last}" if last else ""),
+                    attempts=attempt - 1, transport=bool(last and last.transport))
             try:
                 return self._send_once(path, data)
             except ProviderError as exc:
@@ -338,7 +418,8 @@ class Provider:
             self.base_url + path,
             data=data,
             headers={
-                "Authorization": f"Bearer {self.api_key}",
+                # No key, no header: an empty "Bearer " is not "no auth".
+                **({"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}),
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             },
@@ -353,8 +434,11 @@ class Provider:
             raise ProviderError(f"{self.label} returned HTTP {exc.code}",
                                 status=exc.code, body=body) from None
         except urllib.error.URLError as exc:
-                raise ProviderError(f"{self.label} unreachable: {exc.reason}",
-                                transport=True) from None
+            hint = f" ({self.start_hint})" if self.start_hint else ""
+            message = f"{self.label} unreachable at {self.base_url}: {exc.reason}{hint}"
+            if isinstance(exc.reason, ConnectionRefusedError) and _is_loopback(self.base_url):
+                raise LocalServerDown(message, transport=True) from None
+            raise ProviderError(message, transport=True) from None
         except (TimeoutError, OSError) as exc:
             raise ProviderError(f"{self.label} transport failure: {exc}",
                                 transport=True) from None
@@ -411,7 +495,8 @@ class ScriptedProvider(Provider):
     def configured(self) -> bool:
         return True
 
-    def complete(self, messages, *, max_tokens=1024, temperature=0.2, stop=None):
+    def complete(self, messages, *, max_tokens=1024, temperature=0.2, stop=None,
+                 json_object=False):
         self.calls.append(list(messages))
         if not self._replies:
             raise ProviderError("scripted provider ran out of replies")
