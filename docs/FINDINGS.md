@@ -527,3 +527,41 @@ and is why the host never relies on it.
 **Rule:** if a model can only succeed by guessing, a failure measures the
 catalogue, not the model and not the policy. Give it every name it may use;
 keep every place it may not know.
+
+## Finding 10 — on Linux, the Windows engine handed over a directory it was never granted
+
+**Measured on 2026-09-25, before M2, on this repository's HEAD (`d764ff8`).**
+`tools/host_cli.py` built `Win11Host` unconditionally, on every OS. On Linux
+that meant a case-folding engine on a case-sensitive filesystem, labelled
+`nt-real`:
+
+```
+grant filesystem.read --root /tmp/casepoc/Photos
+/tmp/casepoc/Photos/mine.txt   ALLOW  ok       engine nt-real/0.1
+/tmp/casepoc/photos/loot.txt   ALLOW  SECRET   engine nt-real/0.1
+```
+
+`photos` is not `Photos` on ext4. Both scope checks folded case -- the lexical
+`under()` (correct for the contract's one path grammar) and the Windows
+engine's resolved-path check (correct for NTFS) -- so nothing stood between
+the request and a sibling directory.
+
+**What changed (M2):**
+
+- `hosts/native.py` is the only place that picks an engine; `Win11Host`
+  raises off Windows instead of misreporting itself.
+- `LinuxHost` (`linux-real/0.1`) keeps the lexical check as it is and makes
+  the *second* check case-sensitive on the resolved path. The lexical ALLOW
+  for `photos` is overridden by the engine with `DENY OUT_OF_SCOPE` -- the
+  split `ScopeViolation` was designed for ("a case-folding collision").
+- Linux adds what NTFS never needed: the opened descriptor is re-checked via
+  `/proc/self/fd` (closing the resolve-then-open window), writes open their
+  last component with `O_NOFOLLOW` relative to a verified directory, FIFOs and
+  devices are refused, and a file with other hard links is never overwritten.
+
+Every defense above has a test that fails when it is removed (eight mutants,
+eight kills: `tests/test_linux_real.py`, `tests/test_host_parity.py`).
+
+**Rule:** a scope check is only as good as its idea of when two names are the
+same file, and that idea belongs to the filesystem, not to the contract.
+

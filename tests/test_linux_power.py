@@ -52,3 +52,25 @@ def test_native_clocks_are_monotonic_for_awake_sample():
     second = provider.sample()
     assert second.monotonic_time >= first.monotonic_time
     assert second.suspend_bias_s >= first.suspend_bias_s
+
+
+def test_suspend_bias_never_runs_backwards_under_read_jitter(monkeypatch):
+    """Deterministic version of the CI failure: BOOTTIME and MONOTONIC are read
+    one after the other, so their difference can shrink by a few ns. The
+    reported bias must stay non-decreasing, and a real suspend must still show."""
+    reads = iter([
+        100.0, 100.00000026,   # mono, boot -> bias 2.6e-7
+        100.01, 100.01000023,  # mono, boot -> raw bias 2.3e-7 (jitter)
+        100.02, 105.02,        # mono, boot -> a real 5 s suspend
+    ])
+    # raising=False: the clocks are injected, so this runs on every OS --
+    # Windows has no time.clock_gettime, macOS no time.CLOCK_BOOTTIME.
+    monkeypatch.setattr(time, "clock_gettime", lambda clock: next(reads), raising=False)
+    monkeypatch.setattr(time, "CLOCK_MONOTONIC", 1, raising=False)
+    monkeypatch.setattr(time, "CLOCK_BOOTTIME", 7, raising=False)
+    monkeypatch.setattr(LinuxPowerProvider, "_network", staticmethod(lambda: NetworkState.UP))
+    provider = LinuxPowerProvider()
+    a, b, c = provider.sample(), provider.sample(), provider.sample()
+    assert b.suspend_bias_s >= a.suspend_bias_s
+    assert c.suspend_bias_s - b.suspend_bias_s > 4.9
+

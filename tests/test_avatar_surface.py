@@ -224,7 +224,7 @@ def test_compilar_verb_gone():
 def test_cli_editar_validates_without_network(tmp_path):
     png = tmp_path / "c.png"
     png.write_bytes(blank_canvas(18, 28))
-    env = {"HOME": str(tmp_path)}
+    env = {"HOME": str(tmp_path), "USERPROFILE": str(tmp_path)}  # Path.home() on Windows
     r = _run_cli("avatar", "editar", "/noexiste.png", "--endpoint", "openai", "--model", "m", env=env)
     assert r.returncode != 0 and re.search("no existe", r.stderr + r.stdout)
     r = _run_cli("avatar", "editar", str(png), "--endpoint", "nope", "--model", "m", env=env)
@@ -271,7 +271,9 @@ def test_cli_editar_e2e_stub(tmp_path):
     base = f"http://127.0.0.1:{srv.server_port}"
     home = tmp_path / "home"
     home.mkdir()
-    env = {"HOME": str(home), "OPENAI_API_KEY": "sk-FAKE-E2E-EDIT"}
+    # USERPROFILE too: on Windows Path.home() ignores HOME, and the install
+    # would otherwise land in the runner's real profile.
+    env = {"HOME": str(home), "USERPROFILE": str(home), "OPENAI_API_KEY": "sk-FAKE-E2E-EDIT"}
     try:
         _StubHandler.mode = "good"
         r = _run_cli("avatar", "editar", str(png), "--endpoint", "openai", "--model", "m",

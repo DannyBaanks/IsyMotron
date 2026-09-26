@@ -1,5 +1,18 @@
-# Release workflow: builds IsyMotron.exe on tag and publishes a GitHub Release.
-# Trigger: push a tag matching v* (e.g., git tag v1.0.0 && git push origin v1.0.0)
+# Release workflow: builds IsyMotron for Windows, Linux and macOS, smoke-tests
+# each binary on its own OS, and publishes a GitHub Release on a v* tag.
+#
+#   git tag v1.1.0 && git push origin v1.1.0        # publish
+#   Actions -> release -> Run workflow, tag=v1.1.0   # publish; CI creates the tag
+#                                                    # on the commit it just built
+#   Actions -> release -> Run workflow               # dry build, no publish
+#
+# A tag with -rc / -beta / -alpha publishes as a PRE-RELEASE, so it gets a
+# public download page without becoming /releases/latest.
+#
+# Windows keeps its v1.0.0 asset name (IsyMotron.exe), so existing download
+# links keep their shape. Linux/macOS ship as tar.gz (keeps the exec bit) with
+# docs/PLATFORM_SUPPORT.md inside. Linux has a real host engine (M2); the
+# macOS binary starts on fixtures only and is NOT_DEMONSTRATED as a host.
 
 name: release
 
@@ -7,51 +20,164 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Publish as this tag (e.g. v1.1.0-rc.1), created on the dispatched
+          commit. Leave empty for a dry build that publishes nothing.
+        required: false
+        default: ''
 
 permissions:
-  contents: write      # create the Release and upload the asset
+  contents: write      # create the Release and upload the assets
   id-token: write      # OIDC used by the provenance attestation
   attestations: write  # publish the attestation
 
 jobs:
-  build-and-release:
-    runs-on: windows-latest
+  build:
+    name: build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          # Older glibc builder -> the binary runs on more distributions.
+          - os: ubuntu-22.04
+            platform: linux
+          - os: macos-latest
+            platform: macos
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install PyInstaller
-        run: pip install pyinstaller
-      - name: Build IsyMotron.exe (one-file, smoke test included)
-        run: python build_exe.py
-      - name: Verify artifact exists
+      - name: The tag names this tree's version
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          if (Test-Path "dist/IsyMotron.exe") {
-            $size = (Get-Item "dist/IsyMotron.exe").Length / 1MB
-            Write-Host "IsyMotron.exe found ($([math]::Round($size, 1)) MB)"
-          } else {
-            Write-Error "dist/IsyMotron.exe not found"
-            exit 1
-          }
-        shell: pwsh
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::bad tag '$TAG'"; exit 1; }
+          want="${TAG#v}"
+          have=$(python -c "import sys; sys.path.insert(0, 'tools'); import isymotron_cli; print(isymotron_cli.VERSION)")
+          [ "$want" = "$have" ] || { echo "::error::tag $TAG but VERSION is $have"; exit 1; }
+      - name: Install PyInstaller
+        run: python -m pip install -r requirements-build.txt
+      - name: Build (one-file, smoke test included)
+        run: python build_exe.py
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          if [ "${{ matrix.platform }}" = windows ]; then
+            cp dist/IsyMotron.exe release/IsyMotron.exe
+          else
+            arch=$(python -c "import platform; m=platform.machine().lower(); print({'amd64':'x86_64','aarch64':'arm64'}.get(m,m))")
+            name="IsyMotron-${{ matrix.platform }}-${arch}"
+            mkdir -p "stage/$name"
+            cp dist/IsyMotron "stage/$name/IsyMotron"
+            cp docs/PLATFORM_SUPPORT.md "stage/$name/PLATFORM_SUPPORT.md"
+            tar -C stage -czf "release/$name.tar.gz" "$name"
+          fi
+          cp dist/smoke-${{ matrix.platform }}.json release/
+          cd release
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum IsyMotron* > "SHA256SUMS-${{ matrix.platform }}.txt"
+          else
+            shasum -a 256 IsyMotron* > "SHA256SUMS-${{ matrix.platform }}.txt"
+          fi
+          cat "SHA256SUMS-${{ matrix.platform }}.txt"
+          ls -la
+
       - name: Attest build provenance (Quine Gate M3)
-        # External anchor for the artifact digest. Public, Sigstore-backed, and
-        # independent of any key stored in the repository. Verify with:
-        #   gh attestation verify dist/IsyMotron.exe --repo DannyBaanks/IsyMotron
+        # External anchor for each artifact digest. Public, Sigstore-backed,
+        # and independent of any key stored in the repository. Tags only: a
+        # dry run should not mint public attestations for unreleased builds.
+        # Verify with:
+        #   gh attestation verify <asset> --repo DannyBaanks/IsyMotron
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: dist/IsyMotron.exe
+          subject-path: release/IsyMotron*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: release/*
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Flatten + merge checksums
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+          cat release/SHA256SUMS-*.txt | sort -k2 > release/SHA256SUMS.txt
+          rm release/SHA256SUMS-*.txt
+          # The merged file must cover every binary asset, and match it.
+          (cd release && sha256sum -c SHA256SUMS.txt)
+          test "$(ls release/IsyMotron* | wc -l)" -eq "$(wc -l < release/SHA256SUMS.txt)"
+          ls -la release
+      - uses: actions/checkout@v4
+        with:
+          path: src
+          sparse-checkout: docs/releases
+      - name: Release notes
+        # A tag with a hand-written notes file (docs/releases/<tag>.md) uses it;
+        # any other tag gets the generic support table. Links are absolute: a
+        # release body resolves relative links against /releases/tag/, where
+        # `../blob/...` goes nowhere.
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          BASE: https://github.com/${{ github.repository }}/blob/${{ inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -f "src/docs/releases/$TAG.md" ]; then
+            cp "src/docs/releases/$TAG.md" notes.md
+          else
+            cat > notes.md <<EOF
+          Capability fabric — deny-by-default, leases, sealed receipts.
+          See the [README]($BASE/README.md) for the quickstart.
+
+          | Asset | Builds + starts (smoke) | Real host |
+          |---|---|---|
+          | \`IsyMotron.exe\` (Windows 10/11) | DEMONSTRATED | DEMONSTRATED on Windows 11 (reference platform) |
+          | \`IsyMotron-linux-*.tar.gz\` | DEMONSTRATED | DEMONSTRATED (\`linux-real\`; parity per \`tests/test_host_parity.py\`) |
+          | \`IsyMotron-macos-*.tar.gz\` | DEMONSTRATED | **NOT_DEMONSTRATED**: simulated fixtures (\`--demo-host\`) only |
+
+          Support matrix: [docs/PLATFORM_SUPPORT.md]($BASE/docs/PLATFORM_SUPPORT.md).
+          Verify: \`sha256sum -c SHA256SUMS.txt\` and
+          \`gh attestation verify <asset> --repo ${{ github.repository }}\`.
+          EOF
+            sed -i 's/^          //' notes.md
+          fi
+          cat notes.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: IsyMotron ${{ github.ref_name }}
-          body: |
-            Windows 10/11 capability fabric — deny-by-default, leases, sealed receipts.
-            See [README](../blob/${{ github.sha }}/README.md) for quickstart.
-          files: dist/IsyMotron.exe
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          # A dispatched tag does not exist yet: it is created HERE, on the
+          # exact commit the build jobs compiled, smoke-tested and attested.
+          target_commitish: ${{ github.sha }}
+          name: IsyMotron ${{ inputs.tag || github.ref_name }}
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-rc') || contains(inputs.tag || github.ref_name, '-beta') || contains(inputs.tag || github.ref_name, '-alpha') }}
+          body_path: notes.md
+          files: |
+            release/IsyMotron*
+            release/SHA256SUMS.txt
+            release/smoke-*.json
+          fail_on_unmatched_files: true
           draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

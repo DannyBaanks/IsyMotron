@@ -1,0 +1,11 @@
+# Test-time only. The runtime is standard-library only (verified by
+# tests/test_png_codec.py::test_runtime_imports_no_third_party_package).
+#
+#   python -m pip install -r requirements-dev.txt
+#   python -m pytest -q
+#
+# pillow is the independent PNG oracle for tests/test_png_codec.py and the
+# encoder of test inputs in tests/test_avatar_surface.py. It is never imported
+# by the product and never bundled into the binary.
+pytest==9.1.1
+pillow==12.3.0
