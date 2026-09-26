@@ -10,9 +10,11 @@ statement about *this repository right now*, not about the design's potential.
 | `NOT_DEMONSTRATED` | Desired and plausible; evidence not yet sufficient |
 | `DESTROYED` | A specific hypothesis failed a test or an ablation |
 | `UNKNOWN` | The instrument cannot currently establish the answer |
+| `OUT_OF_SCOPE` | No longer claimed; the claim was retired, with the reason recorded |
 
 There is no `SAFE`. There is no default-pass. An unmeasured claim is
-`NOT_DEMONSTRATED`, never "probably fine".
+`NOT_DEMONSTRATED`, never "probably fine". A retired claim is `OUT_OF_SCOPE`,
+never quietly deleted.
 
 ---
 
@@ -25,24 +27,26 @@ There is no `SAFE`. There is no default-pass. An unmeasured claim is
 | **C** — Doctor detects an undeclared side effect and blocks promotion | **`DEMONSTRATED` (scoped)** | `tests/test_sandbox.py` runs a Python activity, blocks an outside write/process attempt, and feeds the real trace to Doctor V0. This is not an OS-level hostile-code claim. |
 | **D** — a changed artifact invalidates prior verification | **`DEMONSTRATED` (scoped)** | `tests/test_marketplace.py::test_changed_tree_is_rejected` and `test_manifest_only_tampering_is_rejected` reject changed source or manifest claims; concurrent publication is also covered. |
 | **E** — a publicly accepted activity can still be denied locally | **`DEMONSTRATED` (scoped)** | `test_adversarial_activity_is_denied_locally`: an activity pulled from a valid commit, with good digests, whose code escapes its scope is denied by the local Doctor at install. Scope: the registry is a local Git repo, not a hosted public service, so "publicly accepted" is demonstrated as "known, digest-pinned and distributed", not as "listed on a server". Local grant beats everything is separately `DEMONSTRATED` in the contract suite. |
-| **F** — Windows 10 and Windows 11 serve the same contract via different engines | `NOT_DEMONSTRATED` | Windows 11 is real (`nt-real/0.1`, build 10.0.26200); a real Windows 10 host has not been verified yet. Simulated older engines are fixtures only. |
+| **F** — Windows 10 and Windows 11 serve the same contract via different engines | **`OUT_OF_SCOPE`** (retired 2026-09-26) | Retired, not demonstrated and not destroyed: the project has no Windows 10 licence and no Windows 10 hardware, and no sponsor asked for it. Product host scope is **Windows 11** (real) and Linux. Simulated older engines remain as contract fixtures only. |
 | **G** — a verified activity reuses a fast path without repeating verification | **`DEMONSTRATED` (scoped)** | `GitActivityRegistry` verification cache: bit-identical `(tree_digest, manifest_digest)` replays the sealed Doctor report without re-running the sandbox (`test_verified_activity_reuses_the_sealed_report_without_rerunning_the_sandbox`). Changed bits always re-verify (`test_a_changed_activity_never_hits_the_fast_path`), a forged cache entry fails its seal and re-runs (`test_a_tampered_cache_reverts_to_full_verification`), and a DENY is never replayed (`test_adversarial_activities_are_never_cached`). Scope: the cache is a local file. |
-| **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` (now measurable) | Spot numbers only, no workload. Round trip 0.75–6.16 s (median 1.56 s over 12); a two-host plan 4.6–22.4 s. **One HTTP 503 in 12 calls** — real, but n=12 is not a rate. A second run that looked like throttling was the laptop being closed mid-measurement, not the provider (FINDINGS.md #7b). Also: `nemotron-nano-3-30b-a3b` is listed by `/models` and returns 404 on invocation — listed is not servable. |
+| **H** — measured model provider continuity under load | `NOT_DEMONSTRATED` (instrument exists; a live workload run has not been recorded) | Workload shipped 2026-09-26: `tools/provider_load.py` (N round trips, timed, post-retry error rate and latency quantiles, writes a `provider-load/v0` report; statistics verified against a scripted stub in `tests/test_provider_load.py`). It measures; it does not promise. Earlier spot numbers stay historical: round trip 0.75–6.16 s (median 1.56 s over 12); a two-host plan 4.6–22.4 s. **One HTTP 503 in 12 calls** — real, but n=12 is not a rate. A second run that looked like throttling was the laptop being closed mid-measurement, not the provider (FINDINGS.md #7b). Also: `nemotron-nano-3-30b-a3b` is listed by `/models` and returns 404 on invocation — listed is not servable. |
 
 **Two claims crossed on 2026-09-17: A and B.** Both are scoped, and the scope
 is written into the basis line rather than left implied. Seven remain.
 
 **Two more crossed on 2026-09-26: E and G**, when the Git-backed registry and
-its verification cache gained the tests that pin them. Five remain: C is the
-scoped Doctor row below (already `DEMONSTRATED, scoped`), leaving F and H as
-the live ones among the original nine.
+its verification cache gained the tests that pin them. The same day **F was
+retired as `OUT_OF_SCOPE`** (no Windows 10 licence or hardware) and **H gained
+its instrument** (`tools/provider_load.py`); what remains open is recording a
+live run, not writing one.
 
 Still nine `NOT_DEMONSTRATED` after M1. B and F moved — their basis lines
 cited real hardware instead of a simulator — but neither crossed at that point,
 and nudging a label because progress *feels* like it should is exactly the
 failure this ledger exists to prevent. B crossed later the same day, when a
-real model actually did the asking and was refused. F still needs a second real
-Windows generation and has not moved.
+real model actually did the asking and was refused. F asked for a second real
+Windows generation for months; on 2026-09-26 it was retired as
+`OUT_OF_SCOPE`, and the table above records why.
 
 ---
 
@@ -205,13 +209,16 @@ The binary is self-verifying: `build_exe.py` starts it, confirms it serves and
 confirms it returns 401 without a token, and fails the build otherwise. That
 check exists because the first build compiled cleanly and died on launch.
 
-Product host scope: **Windows 10 and Windows 11**. Older Windows names in
-fixtures are not product targets or roadmap claims.
+Product host scope: **Windows 11** (real) and **Linux**. Windows 10 was retired
+from scope on 2026-09-26 (no licence, no hardware; see claim F). Older Windows
+names in fixtures are not product targets or roadmap claims.
 
 Platform status: Windows `DEMONSTRATED`; Linux native awareness
 `DEMONSTRATED` (Ubuntu 24.04, retrospective power bias and local interface
-state); macOS `NOT_DEMONSTRATED` (no hardware, no stub);
-pre-suspend notification `NOT_DEMONSTRATED` (no message pump, never claimed).
+state); macOS host `DEMONSTRATED, scoped` (2026-09-26: `mac-real/0.1` gated on
+a real `macos-latest` CI runner — full contract surface, no awareness clocks,
+no process-verification source); pre-suspend notification `NOT_DEMONSTRATED`
+(no message pump, never claimed).
 
 Linux evidence (2026-09-22): `.venv-linux/bin/python -m pytest -q` produced
 `221 passed, 7 skipped` on Ubuntu 24.04.5 LTS / Python 3.12.3. The Linux
@@ -265,9 +272,10 @@ a way the normalizer assumes but does not verify, that there is no service
 manager, that a 64KB payload is not free — are precisely the ones a Python
 simulation erases by construction.
 
-So: claim F stays `NOT_DEMONSTRATED` until a Windows 10 receipt comes off real
-hardware. The secondary simulator is labelled as a fixture in the code and in
-the test names, so no future reader can mistake it for the thing.
+So: claim F stayed `NOT_DEMONSTRATED` for exactly this reason until
+2026-09-26, when it was retired as `OUT_OF_SCOPE` (no licence, no hardware).
+The secondary simulator is labelled as a fixture in the code and in the test
+names, so no future reader can mistake it for the thing.
 
 **This was not a hypothetical.** The section above was written before the first
 real host existed. Within hours of writing it, first contact with NTFS produced

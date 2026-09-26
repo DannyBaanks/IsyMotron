@@ -27,7 +27,7 @@
 |---|---|---|
 | **Windows 10/11** | `IsyMotron.exe` | Real host (`nt-real`), the reference platform |
 | **Linux x86_64** | `IsyMotron-linux-x86_64.tar.gz` | Real host (`linux-real`), parity with Windows [row by row](docs/PLATFORM_SUPPORT.md#parity-what-the-same-means-m2) |
-| **macOS (Apple Silicon)** | `IsyMotron-macos-arm64.tar.gz` | Engineering build: console and contract on simulated fixtures; no real host yet |
+| **macOS (Apple Silicon)** | `IsyMotron-macos-arm64.tar.gz` | Real host (`mac-real`) gated in CI on `macos-latest`; scoped: no awareness clocks and no process-verification source yet |
 
 All three come from [Releases](https://github.com/DannyBaanks/IsyMotron/releases)
 with `SHA256SUMS.txt`, a Sigstore attestation per asset and a smoke receipt per
@@ -118,8 +118,8 @@ The labels below are deliberately narrower than marketing claims.
 | Local model providers (Ollama, llama.cpp) through the same planner seam | **DEMONSTRATED, scoped** (protocol and config against a stub server; live model measured per CI run, not promised) | [`tests/test_local_provider.py`](tests/test_local_provider.py), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`.github/workflows/local-model.yml`](.github/workflows/local-model.yml) |
 | Git-backed activity registry: known activity with undeclared effects still denied; verified activity reuses a sealed fast path | **DEMONSTRATED, scoped** (registry is local Git, not a hosted service) | [`tests/test_marketplace.py`](tests/test_marketplace.py), [`docs/MARKETPLACE_V0.md`](docs/MARKETPLACE_V0.md) |
 | Process identity: instance + artifact drift, with sealed baselines | **DEMONSTRATED, scoped (Linux full; Windows launch-time identity)** | [`tests/test_process_identity.py`](tests/test_process_identity.py), [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md) |
-| A real Windows 10 host | **NOT_DEMONSTRATED** | Windows 11 is the demonstrated real host; Windows 10 remains the product target |
-| A real macOS host | **NOT_DEMONSTRATED** | The macOS binary starts on fixtures and says so; `MacHost` is M3 |
+| A real Windows 10 host | **OUT_OF_SCOPE** (retired 2026-09-26) | No Windows 10 licence or hardware available to the project; claim F was retired and is recorded as such in [`docs/EVIDENCE.md`](docs/EVIDENCE.md). Windows 11 is the demonstrated real host |
+| A real macOS host | **DEMONSTRATED, scoped** | `MacHost` (`mac-real/0.1`) re-checks resolved paths through `/dev/fd` and is gated on a real `macos-latest` CI runner ([`tests/test_macos_real.py`](tests/test_macos_real.py)); no power-awareness mechanism and no process-verification source on this platform yet |
 | Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
 
 ## Learn Malbolge with Malbolgato
@@ -276,9 +276,9 @@ The CI workflow runs the suite on Windows, Linux and macOS. Windows is the
 reference, because the real host gate exercises Windows filesystem semantics,
 NTFS junctions and process state; Linux and macOS prove the core is portable.
 Each OS also builds the packaged binary and runs its smoke test. A binary that
-starts is not a host: Windows and Linux have real host engines (Linux since M2,
-with a shared parity suite); macOS has none yet and is `NOT_DEMONSTRATED` as a
-host ([`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md)).
+starts is not a host: Windows, Linux and macOS have real host engines (Linux since M2,
+with a shared parity suite; macOS since 2026-09-26, scoped in
+[`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md)).
 
 The runtime is standard-library only. Tests need `requirements-dev.txt`
 (pytest, and Pillow as the PNG test oracle).
@@ -432,11 +432,13 @@ python3 tools/isymotron_cli.py host do filesystem.read --path "$HOME/pictures" #
 Grants live in `$XDG_CONFIG_HOME/isymotron/grants.json`. What "parity with
 Windows" means, row by row: [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md).
 
-### macOS (engineering build)
+### macOS
 
-`IsyMotron-macos-arm64.tar.gz` builds and starts, but only on simulated
-fixtures: there is no real macOS host backend yet (M3), and the binary says so
-on start.
+`IsyMotron-macos-arm64.tar.gz` builds, starts and attaches the real `mac-real/0.1`
+engine (`hosts/mac/host.py`): the POSIX checks are the Linux engine's; the
+platform seams are `/dev/fd` descriptor verification and an explicit
+unsupported process source. Gated on `macos-latest` in CI by
+[`tests/test_macos_real.py`](tests/test_macos_real.py).
 
 ```bash
 tar -xzf IsyMotron-macos-arm64.tar.gz
@@ -495,10 +497,10 @@ docs/               architecture, findings and operational guides
 |---|---|
 | M1 — three-platform build, release, checksums, attestations; stdlib-only runtime | **done** (v1.1.0-rc.1) |
 | M2 — real Linux host with demonstrated parity | **done** (v1.1.0-rc.1) |
-| M3 — real macOS host (APFS case-folding needs its own answer) | next |
+| M3 — real macOS host (`mac-real/0.1`, CI-gated on `macos-latest`; APFS case answer: case-sensitive re-check, false denies only) | **done** (scoped: no awareness clocks, no process verification source) |
 | M4 — network relay with secure pairing, replacing the loopback relay | planned |
 | M5 — mobile approver app: approves leases and reads receipts, never executes | planned |
-| Real Windows 10 verification | open |
+| ~~Real Windows 10 verification~~ | retired 2026-09-26 (no licence/hardware; claim F is OUT_OF_SCOPE) |
 
 ## License
 

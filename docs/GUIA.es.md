@@ -666,15 +666,15 @@ tarjetas pasan a una columna, y el ledger se apila.
 - **No es un servicio ni un icono de bandeja.** Es una ventana de consola que
   imprime una URL. El host-agente en segundo plano es otra cosa y no está.
 - **No se auto-actualiza, ni telemetría, ni cuentas.**
-- **Windows 10/11 solamente.** Ver §13.7.
+- **Windows 11 y Linux solamente.** Ver §13.7.
 
-### 13.7 Alcance Windows 10/11
+### 13.7 Alcance de hosts Windows
 
-El producto soporta Windows 10 y Windows 11. El engine secundario que aparece
-en algunos tests es un fixture de portabilidad del contrato, no un objetivo de
-producto ni un claim de hardware real. El siguiente probe real es
-un host Windows 10; hasta ejecutarlo, el claim F permanece
-`NOT_DEMONSTRATED`.
+El producto soporta **Windows 11** (host real) y Linux. Windows 10 se retiró
+del alcance el 2026-09-26 (sin licencia ni hardware disponibles; el claim F
+quedó `OUT_OF_SCOPE` en `docs/EVIDENCE.md`, no borrado). El engine secundario
+que aparece en algunos tests es un fixture de portabilidad del contrato, no un
+objetivo de producto ni un claim de hardware real.
 
 ---
 

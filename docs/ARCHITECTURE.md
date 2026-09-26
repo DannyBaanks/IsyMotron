@@ -156,7 +156,8 @@ contract itself.
 
 ## What is not here yet
 
-The agent roles and a real Windows 10 verification host are not here yet. Doctor
+The agent roles are not here yet, and the real Windows 10 verification host
+was retired from scope (2026-09-26: no licence/hardware). Doctor
 V0, a first Python sandbox/provider, a Git-backed activity registry, and a mock
 identity seam now exist; their deliberately narrow scopes are documented next
 to each adapter.

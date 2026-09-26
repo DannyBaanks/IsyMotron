@@ -107,11 +107,14 @@ model does something *visible* rather than refusing something.
 **Do not let the Doctor be the thing that gets compressed at the end.** Build
 it after the first real host and before breadth.
 
-### Scope: Windows 10 and Windows 11
+### Scope: Windows 11 (Windows 10 retired)
 
 Older Windows engines remain useful as contract fixtures, but they are not
-product targets. The remaining real-platform work is a Windows 10 host probe;
-Windows 98 and other legacy milestones are removed from the roadmap.
+product targets. Windows 10 was **retired from scope on 2026-09-26**: the
+project has no Windows 10 licence and no Windows 10 hardware, and nobody
+sponsored the probe. Claim F is recorded as `OUT_OF_SCOPE` in
+`docs/EVIDENCE.md`, not deleted. Windows 98 and other legacy milestones remain
+removals.
 
 ## 4. Revised sequence
 
@@ -126,7 +129,7 @@ Same milestones, reordered by what kills the project if it fails.
 | M2' | web console (not native mobile) | Judges need to see it; phones do not need to run it. |
 | M3 | Intent + Planner on the real inference path | The model enters *after* the grammar exists. Non-negotiable. |
 | M4 | **Doctor v0 + one sandbox + one adversarial activity** | The thesis. Protect this block. |
-| M5 | real Windows 10 host | Proves claim F for the supported Windows 10/11 scope. |
+| ~~M5~~ | ~~real Windows 10 host~~ | Retired 2026-09-26 with the Windows 10 scope; claim F is `OUT_OF_SCOPE`. |
 | M6' | git-backed activity registry | Marketplace story at a tenth of the cost. |
 | M7' | mock identity provider only | The OIDC seam is a *shape*; one adapter proves it. |
 | M8 | reliability numbers | Measured, published as numbers. |
