@@ -39,6 +39,8 @@ SEP = ";" if os.name == "nt" else ":"
 WINDOWS = sys.platform == "win32"
 PLATFORM = {"win32": "windows", "linux": "linux", "darwin": "macos"}.get(
     sys.platform, sys.platform)
+NATIVE_PLATFORM = {"win32": "win32", "linux": "linux", "darwin": "darwin"}.get(
+    sys.platform, sys.platform)
 BINARY = "IsyMotron.exe" if WINDOWS else "IsyMotron"
 
 #: Host engines that are real backends acting on this machine, by platform.
@@ -244,7 +246,7 @@ def smoke_test(exe: str) -> "dict | None":
         ok("stops when the harness stops it (process gone, port released)")
         log = open(log_path, "rb").read().decode("utf-8", "replace")
 
-    real_prefixes = REAL_ENGINES.get(PLATFORM, ())
+    real_prefixes = REAL_ENGINES.get(NATIVE_PLATFORM, ())
     real = [e for e in engines if e.startswith(real_prefixes)] if real_prefixes else []
     if real_prefixes and not real:
         fail(f"{PLATFORM} must attach a real host engine {real_prefixes}; got {engines}")
