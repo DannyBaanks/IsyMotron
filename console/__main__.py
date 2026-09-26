@@ -170,7 +170,13 @@ def main(argv=None) -> int:
         print(f"  host   {h['host_id']:<18} {h['engine']:<18} {state}")
 
     factory = provider_factory(awareness)
-    print(f"  model  {'configured' if factory else DIM + 'none (set NVIDIA_NIM_API_KEY or NEBIUS_API_KEY)' + OFF}")
+    if factory:
+        probe = factory()
+        print(f"  model  {probe.label}: {probe.model}"
+              + (f"  {DIM}(local; reached on first plan){OFF}" if not probe.key_required else ""))
+    else:
+        print(f"  model  {DIM}none (set NVIDIA_NIM_API_KEY or NEBIUS_API_KEY, "
+              f"or ISYMOTRON_PROVIDER=ollama for a local model){OFF}")
     print(f"  grants {grants_path}")
 
     state = ConsoleState(relay, awareness, grants_path, factory)

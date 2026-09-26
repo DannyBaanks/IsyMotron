@@ -567,7 +567,8 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
     def _plan(self, body: dict) -> None:
         if self.state.provider_factory is None:
             return self._deny("no model provider configured: set NVIDIA_NIM_API_KEY "
-                              "or NEBIUS_API_KEY and restart the console", 503)
+                              "or NEBIUS_API_KEY, or ISYMOTRON_PROVIDER=ollama for a "
+                              "local model, and restart the console", 503)
         from agents.planner import PlanRejected, Planner
         from agents.provider import ProviderError
 

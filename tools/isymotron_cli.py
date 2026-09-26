@@ -422,7 +422,7 @@ SECRET_KEYS: tuple[str, ...] = (
 #: Non-secret configuration the same command manages.
 CONFIG_KEYS: tuple[str, ...] = ("ISYMOTRON_PROVIDER",)
 KNOWN_KEYS: tuple[str, ...] = SECRET_KEYS + CONFIG_KEYS
-PROVIDER_VALUES: tuple[str, ...] = ("nvidia", "nebius")
+PROVIDER_VALUES: tuple[str, ...] = ("nvidia", "nebius", "ollama", "llamacpp")
 
 STORE_ENV = "ISYMOTRON_KEY_STORE"
 

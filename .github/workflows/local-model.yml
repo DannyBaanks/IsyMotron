@@ -1,0 +1,63 @@
+# A real local model plans through the same seam: Ollama + a small Llama on a
+# CPU runner. Separate from ci.yml on purpose: it downloads a model (~1.3 GB)
+# from ollama.com, and an outage there must not turn the core suite red.
+#
+# What it asserts is authority (tests/test_live_local_model.py): every ALLOW
+# lands in a granted scope, invented capabilities are refused. Plan quality is
+# measured into local-model-report.json, not promised.
+
+name: local-model
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Ollama model tag
+        required: false
+        default: llama3.2:1b
+  push:
+    branches: [master]
+    paths: ['agents/**', 'tests/test_live_local_model.py', '.github/workflows/local-model.yml']
+  pull_request:
+    paths: ['agents/**', 'tests/test_live_local_model.py', '.github/workflows/local-model.yml']
+
+permissions:
+  contents: read      # no secrets, no write: a hosted model key is never needed here
+
+jobs:
+  ollama:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MODEL: ${{ inputs.model || 'llama3.2:1b' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Install Ollama (official installer)
+        run: curl -fsSL https://ollama.com/install.sh | sh
+      - name: Start the server and pull the model
+        run: |
+          (ollama serve > ollama.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:11434/api/version && break; sleep 1; done
+          ollama pull "$MODEL"
+          ollama list
+      - name: Live gate (authority holds whatever the model plans)
+        env:
+          ISYMOTRON_LIVE_LOCAL: "1"
+          ISYMOTRON_MODEL: ${{ env.MODEL }}
+          ISYMOTRON_LIVE_REPORT: local-model-report.json
+        run: python -m pytest -q -rs tests/test_live_local_model.py
+      - name: Show the measured plans
+        if: always()
+        run: cat local-model-report.json || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-model-report
+          path: |
+            local-model-report.json
+            ollama.log
+          if-no-files-found: warn

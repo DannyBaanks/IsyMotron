@@ -228,7 +228,8 @@ version change, not an invisible feature.
 
 ## Built with Nebius + NVIDIA
 
-ISyMotron includes a provider seam for NVIDIA NIM and Nebius Token Factory:
+ISyMotron includes a provider seam for NVIDIA NIM and Nebius Token Factory —
+and, through the same protocol, local models (below):
 
 ```text
 Nebius or NVIDIA endpoint
@@ -249,6 +250,23 @@ a real round trip, a real plan and a real adversarial refusal, with
 [`evidence/M3/hashes.json`](evidence/M3/hashes.json) sealing the artifacts. The
 same seam also reaches NVIDIA NIM (`evidence/M3/probe_nvidia.json`); its earlier
 `HTTP 503` is kept as a historical negative result.
+
+### Local models: Ollama and llama.cpp
+
+The same seam plans with a model on your own machine — Llama, Qwen, or anything
+[Ollama](https://ollama.com) or llama.cpp's `llama-server` serves. No key, and
+the prompt never leaves the computer (physical paths never left it anyway: the
+catalogue names only `hostfs://` resources).
+
+```bash
+ollama serve & ollama pull llama3.1:8b
+ISYMOTRON_PROVIDER=ollama python3 -m console          # or: isymotron keys set ISYMOTRON_PROVIDER
+```
+
+A smaller model plans worse; it never reaches further. Invented capabilities
+are refused by the planner and anything out of scope by the host — the
+[`local-model`](.github/workflows/local-model.yml) workflow runs a real
+`llama3.2:1b` against exactly that. Details: [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 
 ## Verification
 
