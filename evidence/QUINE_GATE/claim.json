@@ -118,18 +118,18 @@
   },
   "admin_granted": false,
   "request": {
-    "request_id": "req_abfd823fcc604988",
+    "request_id": "req_14a6142b665f4cc0",
     "host_id": "win11-demo",
     "subject": "mobile:demo-phone",
     "capability": "filesystem.read",
     "params": {
       "path": "C:/Users/demo/Secrets/keys.txt"
     },
-    "lease_id": "lease_4f3778afd38048c8",
+    "lease_id": "lease_4963a8cb95834a47",
     "plan_id": null
   },
   "lease": {
-    "lease_id": "lease_4f3778afd38048c8",
+    "lease_id": "lease_4963a8cb95834a47",
     "host_id": "win11-demo",
     "subject": "mobile:demo-phone",
     "capability": "filesystem.read",
@@ -138,15 +138,15 @@
         "C:/Users/demo/Photos"
       ]
     },
-    "issued_at": 1790062203.3788288,
-    "expires_at": 1790062503.3788288,
+    "issued_at": 1790111064.1204486,
+    "expires_at": 1790111364.1204486,
     "revoked": false
   },
-  "decided_at": 1790062203.3788567,
+  "decided_at": 1790111064.1204774,
   "expected": {
     "decision": "DENY",
     "reason": "OUT_OF_SCOPE",
     "detail": "C:/Users/demo/Secrets/keys.txt is outside ['hostfs://photos']"
   },
-  "claim_digest": "sha256:e9434b4118da4908aba0baf96dd100db7a4ecddb234480e3515f11b765622520"
+  "claim_digest": "sha256:42c1669aaf67fcc85cda1b8d3b4dd2eecb83a6b86d382cf572cad824975548a9"
 }

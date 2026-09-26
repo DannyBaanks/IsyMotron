@@ -1,4 +1,4 @@
-# Quine Gate demo run — 2026-09-22T07:30:03Z
+# Quine Gate demo run — 2026-09-22T21:04:24Z
 
 Status: `DEMONSTRATED`, scoped to
 the sealed-receipt/re-derivation gate on the simulated demo host.
@@ -10,10 +10,10 @@ inspected by eye or accepted on the model's word.
 
 | Fact | Value |
 |---|---|
-| Date (UTC) | 2026-09-22T07:30:03Z |
+| Date (UTC) | 2026-09-22T21:04:24Z |
 | Host | Linux 7.0.0-31-generic |
 | Python | 3.12.3 |
-| Repository commit at run time | `bc3e7ef` |
+| Repository commit at run time | `a6dc301` |
 | Signing key | `absent: receipts are unkeyed (integrity only)` |
 
 ## Exact command
@@ -32,10 +32,10 @@ python3 tools/quine_gate_demo.py --out evidence/QUINE_GATE
 | 4. rollback | `CONFLICT` | yes |
 | 5. reproduce_chain | `PASS` | yes |
 
-Receipt in the bundle: `rcpt_5aa6b04295bd48f2` —
+Receipt in the bundle: `rcpt_c0173036cf6245a2` —
 `DENY`
 (OUT_OF_SCOPE),
-re-derivable because `sha256:e9434b4118da4908…` names its claim.
+re-derivable because `sha256:42c1669aaf67fcc8…` names its claim.
 
 ## Anchors (the trust root is the commit that records them)
 
