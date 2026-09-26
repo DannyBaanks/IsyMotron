@@ -333,6 +333,10 @@ def print_usage_error(message: str) -> None:
     print("For more information, try 'isymotron help'.")
 
 
+#: The release this tree is. The release workflow refuses a tag that disagrees.
+VERSION = "1.1.0-rc.1"
+
+
 def repo_version() -> str:
     try:
         done = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
@@ -340,7 +344,7 @@ def repo_version() -> str:
         revision = done.stdout.strip()
     except Exception:
         revision = ""
-    return f"isymotron 1.0.0 {revision}".strip()
+    return f"isymotron {VERSION} {revision}".strip()
 
 
 def is_frozen() -> bool:

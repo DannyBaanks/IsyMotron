@@ -1,0 +1,5 @@
+# Build-time only: freezes the stdlib-only runtime into one binary per OS.
+#
+#   python -m pip install -r requirements-build.txt
+#   python build_exe.py
+pyinstaller==6.22.3

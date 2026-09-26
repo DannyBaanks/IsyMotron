@@ -14,10 +14,21 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-DEFAULT_PATH = os.path.join(
-    os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-    "IsyMotron", "grants.json",
-)
+def _default_path() -> str:
+    """Where the grant file lives. The file FORMAT is one contract for every
+    host; only its location follows the OS convention."""
+    import sys
+    if sys.platform.startswith("linux"):
+        base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(
+            os.path.expanduser("~"), ".config")
+        return os.path.join(base, "isymotron", "grants.json")
+    return os.path.join(
+        os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+        "IsyMotron", "grants.json",
+    )
+
+
+DEFAULT_PATH = _default_path()
 
 
 @dataclass
@@ -88,7 +99,10 @@ class Grants:
 
 def _default_host_id() -> str:
     import platform
+    import sys
     node = platform.node().lower().replace(" ", "-") or "unknown"
+    if sys.platform.startswith("linux"):
+        return f"linux-{node}"
     rel = platform.win32_ver()[1].split(".")
     tag = "win11" if len(rel) > 2 and int(rel[2]) >= 22000 else "win"
     return f"{tag}-{node}"
@@ -97,6 +111,9 @@ def _default_host_id() -> str:
 def _default_display_name() -> str:
     """What a person calls this machine, not what the registry calls it."""
     import platform
+    import sys
+    if sys.platform.startswith("linux"):
+        return f"{platform.node()} — Linux"
     parts = platform.win32_ver()[1].split(".")
     build = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
     release = "11" if build >= 22000 else "10"

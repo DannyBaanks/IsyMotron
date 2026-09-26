@@ -1,4 +1,4 @@
-"""Drive the real Windows host from the command line.
+"""Drive this machine's real host (Windows or Linux) from the command line.
 
     python tools/host_cli.py status
     python tools/host_cli.py grant filesystem.read --root "C:/Users/me/Pictures"
@@ -24,14 +24,27 @@ for p in (ROOT, os.path.join(ROOT, "core"), os.path.join(ROOT, "hosts")):
 from isymotron.verdicts import Decision                 # noqa: E402
 from relay.loopback import LoopbackRelay                # noqa: E402
 from clients.fake_mobile import FakeMobile              # noqa: E402
+import native                                          # noqa: E402
 from windows.grants import DEFAULT_PATH, Grants         # noqa: E402
-from windows.win11 import CAPABILITIES, Win11Host       # noqa: E402
+from windows.win11 import CAPABILITIES                  # noqa: E402  (one contract)
 
 EVIDENCE = os.path.join(ROOT, "evidence", "M1")
 
 
+def _host(args):
+    """The real engine for this OS. None is refused out loud, never replaced
+    by another OS's engine (that is how Linux ran `nt-real` before M2)."""
+    host = native.real_host(Grants.load(args.grants))
+    if host is None:
+        print(f"NOT_DEMONSTRATED: no real host backend for {sys.platform}. "
+              "Nothing here can act on this machine.", file=sys.stderr)
+    return host
+
+
 def cmd_status(args) -> int:
-    host = Win11Host(Grants.load(args.grants))
+    host = _host(args)
+    if host is None:
+        return 2
     d = host.describe()
     print(f"host      {d.identity.host_id}  ({d.identity.display_name})")
     print(f"engine    {d.identity.engine}   contract {d.identity.contract}")
@@ -90,7 +103,9 @@ def cmd_revoke(args) -> int:
 
 
 def cmd_do(args) -> int:
-    host = Win11Host(Grants.load(args.grants))
+    host = _host(args)
+    if host is None:
+        return 2
     relay = LoopbackRelay()
     relay.attach(host)
     phone = FakeMobile(relay, args.subject)

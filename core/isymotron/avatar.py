@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """isymotron avatar primitives -- generic pixel helpers + real PNG codec + M11 verify.
 
-Scope is deliberately narrow: blank canvases, PNG encode/decode, avatar-spec
+Scope is deliberately narrow: blank canvases, a stdlib PNG encode/decode, avatar-spec
 verification, and the neutral pixel primitives the CLI surface needs. There is
 NO cast, NO renderer, NO character recipes here: IsyMotron is not Munder.
 
@@ -17,11 +17,6 @@ own spec -- never a re-port of Munder's cast.
 from __future__ import annotations
 
 import math
-
-try:
-    from PIL import Image
-except ImportError:  # pragma: no cover - Pillow is installed in this repo
-    Image = None
 
 # ─── canvas format ────────────────────────────────────────────────────────
 # 18x28 RGBA is the CLI surface's canvas format (lienzo/inspect/editar).
@@ -96,64 +91,219 @@ def blank_buffer(w: int = W, h: int = H) -> list[int]:
     return [0] * (w * h * 4)
 
 
-# ─── PNG codec (Pillow; fail-closed without it) ───────────────────────────
+# ─── PNG codec (stdlib zlib; fail-closed) ─────────────────────────────────
+#
+# A format-specific codec, not an image library: encode is always 8-bit RGBA,
+# decode accepts every color type / bit depth / interlace the PNG spec allows
+# and normalizes to 8-bit RGBA (16-bit samples keep their high byte). It exists
+# so the runtime stays standard-library only; Pillow is the test oracle
+# (tests/test_png_codec.py), never a runtime import.
 
-def _require_pil():
-    """Pillow, or a fail-closed RuntimeError (never silently fake a PNG)."""
-    if Image is None:
-        raise RuntimeError(
-            "Pillow no instalado: el lienzo y la inspección trabajan sobre PNG "
-            "reales ('pip install pillow'). Nada se genera a ciegas."
-        )
-    return Image
+_SIG = b"\x89PNG\r\n\x1a\n"
+_MAX_DIM = 4096
+#: channels per color type (0 gray, 2 RGB, 3 palette, 4 gray+alpha, 6 RGBA)
+_CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
+_DEPTHS = {0: (1, 2, 4, 8, 16), 2: (8, 16), 3: (1, 2, 4, 8), 4: (8, 16), 6: (8, 16)}
+#: Adam7 passes: (x0, y0, dx, dy)
+_ADAM7 = ((0, 0, 8, 8), (4, 0, 8, 8), (0, 4, 4, 8), (2, 0, 4, 4),
+          (0, 2, 2, 4), (1, 0, 2, 2), (0, 1, 1, 2))
 
 
-def blank_canvas(w: int = W, h: int = H) -> bytes:
-    """Blank transparent canvas, encoded as a real 8-bit RGBA PNG."""
-    import io
-    pil = _require_pil()
-    img = pil.new("RGBA", (w, h), (0, 0, 0, 0))
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+def _chunk(kind: bytes, data: bytes) -> bytes:
+    import struct
+    import zlib
+    return (struct.pack(">I", len(data)) + kind + data
+            + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
 
 
 def encode_png(w: int, h: int, rgba) -> bytes:
     """Encode a flat RGBA sequence (w*h*4) as an 8-bit RGBA PNG."""
-    import io
-    pil = _require_pil()
+    import struct
+    import zlib
     raw = bytes(rgba)
     if len(raw) != w * h * 4:
         raise ValueError(f"buffer inesperado: {len(raw)} bytes para {w}x{h}")
-    img = pil.frombytes("RGBA", (w, h), raw)
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+    if not (0 < w <= _MAX_DIM and 0 < h <= _MAX_DIM):
+        raise ValueError(f"dimensiones fuera de rango: {w}x{h}")
+    stride = w * 4
+    scan = b"".join(b"\x00" + raw[y * stride:(y + 1) * stride] for y in range(h))
+    return (_SIG
+            + _chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+            + _chunk(b"IDAT", zlib.compress(scan, 9))
+            + _chunk(b"IEND", b""))
+
+
+def blank_canvas(w: int = W, h: int = H) -> bytes:
+    """Blank transparent canvas, encoded as a real 8-bit RGBA PNG."""
+    return encode_png(w, h, bytes(w * h * 4))
+
+
+def _unfilter(data: bytes, pos: int, rows: int, rowlen: int, bpp: int):
+    """Undo per-row filters. Returns (rows as bytearrays, new position)."""
+    out = []
+    prev = bytearray(rowlen)
+    for _ in range(rows):
+        ft = data[pos]
+        cur = bytearray(data[pos + 1:pos + 1 + rowlen])
+        pos += 1 + rowlen
+        if ft == 1:
+            for i in range(bpp, rowlen):
+                cur[i] = (cur[i] + cur[i - bpp]) & 0xFF
+        elif ft == 2:
+            for i in range(rowlen):
+                cur[i] = (cur[i] + prev[i]) & 0xFF
+        elif ft == 3:
+            for i in range(rowlen):
+                left = cur[i - bpp] if i >= bpp else 0
+                cur[i] = (cur[i] + ((left + prev[i]) >> 1)) & 0xFF
+        elif ft == 4:
+            for i in range(rowlen):
+                a = cur[i - bpp] if i >= bpp else 0
+                b = prev[i]
+                c = prev[i - bpp] if i >= bpp else 0
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pr = a if pa <= pb and pa <= pc else (b if pb <= pc else c)
+                cur[i] = (cur[i] + pr) & 0xFF
+        elif ft != 0:
+            raise ValueError(f"PNG inválido: filtro {ft}")
+        out.append(cur)
+        prev = cur
+    return out, pos
+
+
+def _samples(row: bytes, n: int, depth: int) -> list[int]:
+    """First n samples of a row at the given bit depth (16-bit samples stay 16-bit here)."""
+    if depth == 8:
+        return list(row[:n])
+    if depth == 16:
+        return [(row[2 * i] << 8) | row[2 * i + 1] for i in range(n)]
+    per = 8 // depth
+    mask = (1 << depth) - 1
+    return [(row[i // per] >> (8 - depth * (i % per + 1))) & mask for i in range(n)]
 
 
 def decodePNG(buf: bytes) -> dict:
-    """Decode PNG bytes to {"w","h","rgba"} (flat RGBA list).
+    """Decode PNG bytes to {"w","h","rgba"} (flat 8-bit RGBA list).
 
     Fail-closed: anything that is not a decodable PNG raises ValueError
     with a reason. Never invents pixels.
     """
-    import io
-    pil = _require_pil()
+    import struct
+    import zlib
     if not isinstance(buf, (bytes, bytearray)):
         raise ValueError("PNG inválido: se esperaban bytes")
-    if len(buf) < 8 or bytes(buf[:8]) != b"\x89PNG\r\n\x1a\n":
+    buf = bytes(buf)
+    if len(buf) < 8 or buf[:8] != _SIG:
         raise ValueError("PNG inválido: firma")
+    pos, ihdr, plte, trns, idat, ended = 8, None, None, None, [], False
+    while pos < len(buf):
+        if pos + 12 > len(buf):
+            raise ValueError("PNG inválido: no decodifica (truncado)")
+        (length,) = struct.unpack(">I", buf[pos:pos + 4])
+        kind = buf[pos + 4:pos + 8]
+        data = buf[pos + 8:pos + 8 + length]
+        if len(data) != length or pos + 12 + length > len(buf):
+            raise ValueError("PNG inválido: no decodifica (truncado)")
+        (crc,) = struct.unpack(">I", buf[pos + 8 + length:pos + 12 + length])
+        if zlib.crc32(kind + data) & 0xFFFFFFFF != crc:
+            raise ValueError(f"PNG inválido: CRC de {kind!r}")
+        pos += 12 + length
+        if ihdr is None and kind != b"IHDR":
+            raise ValueError("PNG inválido: sin IHDR")
+        if kind == b"IHDR":
+            if length != 13:
+                raise ValueError("PNG inválido: IHDR")
+            ihdr = struct.unpack(">IIBBBBB", data)
+        elif kind == b"PLTE":
+            plte = data
+        elif kind == b"tRNS":
+            trns = data
+        elif kind == b"IDAT":
+            idat.append(data)
+        elif kind == b"IEND":
+            ended = True
+            break
+        elif not (kind[0] & 0x20):
+            raise ValueError(f"PNG inválido: chunk crítico desconocido {kind!r}")
+    if ihdr is None:
+        raise ValueError("PNG inválido: sin IHDR")
+    if not ended or not idat:
+        raise ValueError("PNG inválido: no decodifica (sin IDAT/IEND)")
+    w, h, depth, ctype, comp, filt, interlace = ihdr
+    if not w or not h or w > _MAX_DIM or h > _MAX_DIM:
+        raise ValueError(f"PNG inválido: dimensiones absurdas {w}x{h}")
+    if ctype not in _CHANNELS or depth not in _DEPTHS[ctype]:
+        raise ValueError(f"PNG inválido: color {ctype} / profundidad {depth}")
+    if comp or filt or interlace not in (0, 1):
+        raise ValueError("PNG inválido: método de compresión/filtro/entrelazado")
+    if ctype == 3 and (plte is None or len(plte) % 3):
+        raise ValueError("PNG inválido: paleta ausente")
+    ch = _CHANNELS[ctype]
+    bpp = max(1, ch * depth // 8)
+    passes = ([(0, 0, 1, 1)] if interlace == 0 else list(_ADAM7))
+    geo = []
+    need = 0
+    for x0, y0, dx, dy in passes:
+        pw = (w - x0 + dx - 1) // dx if w > x0 else 0
+        ph = (h - y0 + dy - 1) // dy if h > y0 else 0
+        rowlen = (pw * ch * depth + 7) // 8
+        geo.append((x0, y0, dx, dy, pw, ph, rowlen))
+        if pw and ph:
+            need += ph * (1 + rowlen)
+    # Bounded inflate: a decompression bomb stops at the size the header implies.
     try:
-        with pil.open(io.BytesIO(bytes(buf))) as img:
-            img = img.convert("RGBA")
-            w, h = img.size
-            if not w or not h or w > 4096 or h > 4096:
-                raise ValueError(f"PNG inválido: dimensiones absurdas {w}x{h}")
-            return {"w": w, "h": h, "rgba": list(img.tobytes())}
-    except ValueError:
-        raise
-    except Exception as e:
+        d = zlib.decompressobj()
+        raw = d.decompress(b"".join(idat), need + 1)
+    except zlib.error as e:
         raise ValueError(f"PNG inválido: no decodifica ({e})")
+    if len(raw) < need:
+        raise ValueError("PNG inválido: datos de imagen cortos")
+    maxv = (1 << depth) - 1
+    shift16 = depth == 16
+    tkey = None
+    if trns is not None and ctype == 0 and len(trns) >= 2:
+        tkey = (struct.unpack(">H", trns[:2])[0],)
+    elif trns is not None and ctype == 2 and len(trns) >= 6:
+        tkey = struct.unpack(">HHH", trns[:6])
+    out = bytearray(w * h * 4)
+    p = 0
+    for x0, y0, dx, dy, pw, ph, rowlen in geo:
+        if not (pw and ph):
+            continue
+        rows, p = _unfilter(raw, p, ph, rowlen, bpp)
+        for j, row in enumerate(rows):
+            s = _samples(row, pw * ch, depth)
+            y = y0 + j * dy
+            for i in range(pw):
+                v = s[i * ch:(i + 1) * ch]
+                if ctype == 3:
+                    k = v[0]
+                    if 3 * k + 2 >= len(plte):
+                        raise ValueError("PNG inválido: índice fuera de paleta")
+                    r, g, b = plte[3 * k], plte[3 * k + 1], plte[3 * k + 2]
+                    a = trns[k] if trns is not None and k < len(trns) else 255
+                else:
+                    if shift16:
+                        e = [x >> 8 for x in v]
+                    elif depth == 8:
+                        e = v
+                    else:
+                        e = [x * 255 // maxv for x in v]
+                    if ctype == 0:
+                        r = g = b = e[0]
+                        a = 0 if tkey is not None and (v[0],) == tkey else 255
+                    elif ctype == 4:
+                        r = g = b = e[0]
+                        a = e[1]
+                    elif ctype == 2:
+                        r, g, b = e
+                        a = 0 if tkey is not None and tuple(v) == tkey else 255
+                    else:
+                        r, g, b, a = e
+                o = ((y * w) + x0 + i * dx) * 4
+                out[o:o + 4] = bytes((r, g, b, a))
+    return {"w": w, "h": h, "rgba": list(out)}
 
 
 def verify_avatar(buf: bytes, spec: dict) -> dict:

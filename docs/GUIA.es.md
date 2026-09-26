@@ -7,6 +7,11 @@ coincide cuando lo corras, es un cambio del código, no un error de la guía.
 Entorno verificado: Windows 11, `Python 3.10.11`, sin dependencias externas
 salvo `pytest`.
 
+> Actualización: el runtime sigue siendo solo biblioteca estándar, pero la
+> suite ahora pide `requirements-dev.txt` (`pytest` y `pillow`, que es el
+> oráculo del códec PNG). Instálalo con
+> `python -m pip install -r requirements-dev.txt`.
+
 ---
 
 ## 0. Qué es esto, en una frase

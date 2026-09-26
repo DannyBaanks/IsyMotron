@@ -76,6 +76,16 @@ class Win11Host(Host):
     """The engine that serves NemoHostContract/v0 on modern Windows."""
 
     def __init__(self, grants: Grants | None = None) -> None:
+        # This engine's second scope check folds case, which is right for NTFS
+        # and a scope escape anywhere else: on Linux a root `.../Photos` would
+        # admit `.../photos/loot.txt`, a different directory (measured before
+        # M2, via tools/host_cli.py). It also labels itself `nt-real`. So it
+        # refuses to exist off Windows instead of misreporting what it is.
+        import sys
+        if sys.platform != "win32":
+            raise RuntimeError(
+                f"Win11Host is the Windows engine; this is {sys.platform}. "
+                "Use native.real_host(), which picks the engine for this OS.")
         self.grants = grants or Grants.load()
         identity = HostIdentity(
             host_id=self.grants.host_id,

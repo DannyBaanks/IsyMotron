@@ -1,15 +1,20 @@
-# CI for a Windows-first product: the real host engine IS the point, so the
-# gates run on a real Windows machine (a GitHub-hosted runner) -- the M1
-# gate exercises actual NTFS, junctions and process state against tmp dirs.
+# CI for a Windows-first product that also builds on Linux and macOS.
 #
-# Two jobs:
+# Windows remains the reference: the real host gate exercises actual NTFS,
+# junctions and process state. Linux runs its own real host gate
+# (tests/test_linux_real.py) and the shared parity table
+# (tests/test_host_parity.py), which runs on Windows too: the same rows green
+# on both runners is the parity claim. macOS runs the suite so the core is
+# proven portable, and builds a binary; it has no real host backend yet and
+# its smoke receipt records NOT_DEMONSTRATED (docs/PLATFORM_SUPPORT.md).
+#
+# Two jobs, each a three-OS matrix:
 #   gates   -- the acceptance suite. The live-model gate self-skips when no
 #             provider key is present, so CI is green without secrets and
 #             richer with them (NVIDIA_NIM_API_KEY / NEBIUS_API_KEY).
-#   binary  -- build IsyMotron.exe from a clean machine and run its
-#             self-smoke (serves /api/state, 401 without the token).
-#
-# Windows runners bill 2x minutes on private repos; keep the suite lean.
+#   binary  -- build the binary from a clean machine and run its self-smoke
+#             (serves /api/state, 401 without the token, bundled data, help,
+#             stops cleanly, real-host vs fixture recorded in a receipt).
 
 name: ci
 
@@ -18,24 +23,33 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   gates:
-    runs-on: windows-latest
+    name: gates (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pytest
+      # pytest + pillow (the PNG test oracle). The runtime itself is
+      # stdlib-only; test_runtime_imports_no_third_party_package enforces it.
+      - run: python -m pip install -r requirements-dev.txt
       - name: The acceptance suite
-        run: python -m pytest -q
+        run: python -m pytest -q -rs
         env:
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
           NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
           ISYMOTRON_PROVIDER: ${{ vars.ISYMOTRON_PROVIDER || 'nvidia' }}
 
-      - name: The CLI boots, reaches evidence, and refuses unknown commands
+      - name: The CLI boots, reaches evidence, and refuses unknown commands (Windows)
+        if: runner.os == 'Windows'
         # Also re-proves on a real Windows checkout that sealed evidence hashes
         # still match: this is the check a CRLF checkout broke once.
         #
@@ -53,14 +67,43 @@ jobs:
           if ($LASTEXITCODE -ne 2) { throw "expected exit 2 from a missing baseline" }
           exit 0
 
+      - name: The CLI boots, reaches evidence, and refuses unknown commands (POSIX)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -u
+          python tools/isymotron_cli.py help >/dev/null
+          python tools/isymotron_cli.py where
+          python tools/isymotron_cli.py --version
+          python tools/isymotron_cli.py evidence verify evidence/M3/hashes.json
+          set +e
+          python tools/isymotron_cli.py zzz; rc=$?
+          [ "$rc" -eq 2 ] || { echo "expected exit 2 from an unknown command, got $rc"; exit 1; }
+          python tools/isymotron_cli.py process verify 1 --baseline missing.json; rc=$?
+          [ "$rc" -eq 2 ] || { echo "expected exit 2 from a missing baseline, got $rc"; exit 1; }
+          exit 0
+
   binary:
-    runs-on: windows-latest
+    name: binary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     needs: gates
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu-22.04, not -latest: a PyInstaller binary needs a glibc at least
+        # as new as the builder's, so the older builder runs on more systems.
+        os: [windows-latest, ubuntu-22.04, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pyinstaller
-      - name: Build the exe and smoke it
+      - run: python -m pip install -r requirements-build.txt
+      - name: Build the binary and smoke it
         run: python build_exe.py
+      - name: Upload the smoke receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.os }}
+          path: dist/smoke-*.json
+          if-no-files-found: error
