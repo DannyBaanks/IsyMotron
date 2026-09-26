@@ -216,6 +216,32 @@ The result demonstrates retrospective continuity and network-state observation,
 not pre-suspend notification, hibernation, VM pause, or a Linux product host
 surface.
 
+**M2.5 scope:** local model providers (Ollama, llama.cpp) through the same
+planner seam (`tests/test_local_provider.py`, 15 passed). The instrument is a
+stub HTTP server speaking the OpenAI-compatible surface both servers expose,
+so the suite proves protocol and configuration without downloading a model.
+
+| # | Claim | Test |
+|---|---|---|
+| P1 | Ollama and llama.cpp presets configure without a key | `test_ollama_needs_no_key_and_has_local_defaults`, `test_llamacpp_preset` |
+| P2 | `OLLAMA_HOST` is honoured; an explicit base URL beats it | `test_ollama_host_is_honoured`, `test_explicit_base_url_beats_ollama_host` |
+| P3 | Hosted presets are byte-for-byte unchanged and still require a key | `test_hosted_presets_still_require_a_key` |
+| P4 | A key never travels over plain `http://` off this machine | `test_a_key_never_travels_over_plain_http_off_this_machine` |
+| P5 | No key means no `Authorization` header; a set key is sent to a loopback server | `test_no_key_means_no_authorization_header`, `test_a_set_key_is_sent_to_a_loopback_server` |
+| P6 | `models()` lists what the local server serves | `test_models_lists_what_the_local_server_serves` |
+| P7 | JSON mode is sent only where the preset declares it | `test_json_mode_only_where_the_preset_declares_it` |
+| P8 | A stopped local server says how to start it instead of retrying for 90 s | `test_a_stopped_local_server_says_how_to_start_it` |
+| P9 | The planner drives a local server in JSON mode | `test_planner_over_ollama_plans_in_json_mode` |
+| P10 | A small model inventing a capability is refused | `test_a_small_model_inventing_a_capability_is_refused` |
+| P11 | **The catalogue sent to a local model carries no physical path** | `test_the_catalogue_sent_to_a_local_model_has_no_physical_path` |
+
+A real Llama on Ollama is exercised by
+`.github/workflows/local-model.yml` (CPU runner, `llama3.2:1b` by default):
+the live gate asserts authority holds whatever the model plans, and plan
+quality is measured into `local-model-report.json`, not promised. Llama via
+NVIDIA NIM / Nebius remains `NOT_DEMONSTRATED` (set `ISYMOTRON_MODEL` and run
+`isymotron nemotron`).
+
 ---
 
 ## What simulation cannot establish
