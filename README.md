@@ -270,6 +270,9 @@ host, every plan proposed on Nebius Token Factory by default):
 
 **<https://isymotron-production.up.railway.app>**
 
+The service has `NEBIUS_API_KEY` set as a Railway variable, so the hosted
+console plans live on Nebius Token Factory out of the box.
+
 ```bash
 # redeploy after changes (builder is pinned to Dockerfile.deploy via IaC)
 railway up
