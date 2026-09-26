@@ -205,10 +205,13 @@ def test_case_variant_of_a_root(box):
     if WINDOWS:
         # NTFS: case-insensitive at FS level, granted root matches
         (box / "granted" / "loot.txt").write_text("SAME DIR", encoding="utf-8")
+    elif MACOS:
+        # APFS case-insensitive: GRANTED == granted (same inode), but the
+        # engine's case-sensitive re-check on the resolved path DENYs.
+        # Don't mkdir - it already exists as 'granted'.
+        (upper / "loot.txt").write_text("OTHER DIR", encoding="utf-8")
     else:
-        # Linux/macOS: create separate GRANTED dir (on macOS APFS this is the
-        # same inode as granted due to case-insensitivity, but the resolved
-        # path preserves case and the engine's case-sensitive check DENYs)
+        # ext4 case-sensitive: separate directory
         upper.mkdir()
         (upper / "loot.txt").write_text("OTHER DIR", encoding="utf-8")
     r = act(read_host(box), "filesystem.read", path=str(upper / "loot.txt"))
