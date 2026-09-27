@@ -528,6 +528,7 @@ docs/               architecture, findings and operational guides
 | M3 — real macOS host (`mac-real/0.1`, CI-gated on `macos-latest`; APFS case answer: case-sensitive re-check, false denies only) | **done** (scoped: no awareness clocks, no process verification source) |
 | M4 — network relay with secure pairing, replacing the loopback relay | planned |
 | M5 — mobile approver app: approves leases and reads receipts, never executes | planned |
+| M6 — **ISyCode**: minimalist TUI agent on the IsyMotron fabric (provider → planner → enforcer → receipts in-terminal) | planned — [`../ISyCode/ROADMAP.md`](../ISyCode/ROADMAP.md) |
 | ~~Real Windows 10 verification~~ | retired 2026-09-26 (no licence/hardware; claim F is OUT_OF_SCOPE) |
 
 ## License
