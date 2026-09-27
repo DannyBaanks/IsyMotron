@@ -84,15 +84,16 @@ without returning the protected payload.
 
 ### Real project evidence
 
-The video below is a real ShitVid + OBS capture of the judge-facing demo. The
-generated hero above remains illustrative artwork, not proof of a product run.
+The video below is a real capture of the console running a live plan: NVIDIA
+Nemotron on Nebius Token Factory proposes the steps, the host judges and
+executes them, and every action ends in a sealed receipt.
 
 <div align="center">
 <video controls width="720" poster="docs/assets/hero.png">
   <source src="isymotron-demo-final.mp4" type="video/mp4" />
   <a href="isymotron-demo-final.mp4">Watch the ISyMotron demo video</a>
 </video>
-<br /><sub>ShitVid + OBS demo: policy check, sealed capability lease and explicit host denial.</sub>
+<br /><sub>Live plan: Nemotron proposes, the host decides, receipts record.</sub>
 </div>
 
 ## What is demonstrated
