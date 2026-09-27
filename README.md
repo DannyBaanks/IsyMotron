@@ -88,6 +88,8 @@ The video below is a real capture of the console running a live plan: NVIDIA
 Nemotron on Nebius Token Factory proposes the steps, the host judges and
 executes them, and every action ends in a sealed receipt.
 
+**YouTube: <https://youtu.be/CXpOxUFJMrI>**
+
 <div align="center">
 <video controls width="720" poster="docs/assets/hero.png">
   <source src="isymotron-demo-final.mp4" type="video/mp4" />
