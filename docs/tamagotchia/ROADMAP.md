@@ -37,7 +37,7 @@ verificadas**, y cada tachado va en su propio commit con push.
 ## Estado actual
 
 - **Milestone activo:** M0 (solo inspección, sin tocar código).
-- **Bloqueo:** esta sesión aún no tiene acceso a `DannyBaanks/TamagotchIA`.
+- **Acceso:** TamagotchIA se lee por clon anónimo; para hacer push en M1 hay que adjuntarlo con `add_repo access:push`.
 - **Pendiente externo:** iSyCodeMovil PR #8 (`/no_think`) espera que termine el smoke con el build portable.
 
 ---
@@ -67,7 +67,7 @@ verificadas**, y cada tachado va en su propio commit con push.
 
 Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43 del Compose.
 
-- [ ] **M0.1** Acceso de lectura a `DannyBaanks/TamagotchIA`; registrar rama, HEAD y fecha.
+- [x] **M0.1** Acceso de lectura a `DannyBaanks/TamagotchIA`; registrar rama, HEAD y fecha. → repo público, clon de solo lectura; `main` @ `b7fe4b13383d50b1d857ae0574eb110c983157a4` (2026-09-25), el mismo HEAD que usó el ZIP. Push al repo NO disponible en esta sesión.
 - [ ] **M0.2** Correr los tests y el build actuales (`npm test` / `check` / `build` o equivalentes); registrar resultados reales.
 - [ ] **M0.3** Mapear engine, persona, memory, store, providers, UI y Capacitor iOS/Android, con paths reales.
 - [ ] **M0.4** Formato del save: versión, migraciones existentes y fixtures.
@@ -180,4 +180,5 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.1 | TamagotchIA @ `b7fe4b1` | — (solo lectura) | nada (inspección) | `git log -1` en el clon |
 | 2026-09-30 | H1, H2 | IsyMotron @ `29344d0` | `claude/exciting-lamport-84gclk` | `docs/tamagotchia/` (COMPOSE, life-packet, ROADMAP) | Checksums del MANIFEST del paquete verificados; solo docs |
