@@ -206,7 +206,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     Vitest ahora también incluye `*.test.mjs`. Suite 108/108, tsc limpio. Commit `a2bceb5`.
   - [x] **M3.3e** CI de drift: clona el upstream en el pin, regenera en temp y compara.
     - → `.github/workflows/gus-runtime.yml`: en cada push o PR relevante corre `npm test` + `build` + `--verify` (offline) + `--check` (clona iSyCodeMovil público en el pin y compara byte a byte). **Primera corrida en GitHub: verde**, run [36792943739](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36792943739) sobre `3024585`.
-  - [ ] **M3.3f** Nota/ADR: por qué no submódulo, criterio para extraer un paquete después, y proceso para actualizar el pin.
+  - [x] **M3.3f** Nota/ADR: por qué no submódulo, criterio para extraer un paquete después, y proceso para actualizar el pin.
+    - → `docs/GUS_RUNTIME_VENDORING.md` en TamagotchIA: por qué copia fijada; por qué no submódulo (estado git extra, clones incompletos, CI especial, onboarding; sin declararlos malos en general); criterio para extraer un paquete (3+ consumidores, API estable, pin frecuente, glue duplicado, versionado propio); proceso para mover el pin (nunca auto-follow-main); rollback. Commit `ca54ec5`.
 - [ ] **M3.4** Runtime nativo conectado (gate §25). En dispositivo real: NOT_DEMONSTRATED hasta que haya prueba física.
   - [ ] **M3.4a** Smoke de escritorio: el bridge vendorizado + llama.cpp fijado + un modelo pequeño con hash congelado + ContextBox real → texto no vacío, UTF-8 válido, sin fugas de tokens de control, limpieza OK.
   - [ ] **M3.4b** Android: plugin Capacitor `GusLocal` (Kotlin) + glue JNI propio de TamagotchIA (bytes UTF-8) + CMake con el vendor; compila en CI.
@@ -269,6 +270,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.3f | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | docs/GUS_RUNTIME_VENDORING.md | revisión contra COMPOSE_M3_VENDOR §21–§23 |
 | 2026-09-30 | M3.3e | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | .github/workflows/gus-runtime.yml | GitHub Actions run 36792943739: success |
 | 2026-09-30 | M3.3d | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/vendor.test.mjs, vite.config.ts | vitest 108/108, tsc |
 | 2026-09-30 | M3.3c | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | vendor/gus-runtime/**, .gitattributes | --verify y --check (red) OK; cmp idéntico |
