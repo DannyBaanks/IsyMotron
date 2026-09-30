@@ -71,7 +71,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 - [x] **M0.2** Correr los tests y el build actuales (`npm test` / `check` / `build` o equivalentes); registrar resultados reales. → Node 22.22: `npm test` 58/58 en 4 archivos (engine 17, persona 18, notify 16, store 7); `npm run check` limpio; `npm run build` OK. Builds nativos no corridos aquí (hay workflows `ios.yml` y `pages.yml`, pero ninguno de Android): NOT_DEMONSTRATED.
 - [x] **M0.3** Mapear engine, persona, memory, store, providers, UI y Capacitor iOS/Android, con paths reales.
   - → Mapa: `src/engine/` (types, world, commands, simulation, rules, memory, derived, forecast, random; puro, reloj inyectado y PRNG con semilla), `src/persona/` (contract, providers, fallback), `src/store/` (save, settings), `src/notify/` (plan, alerts, deliver, native), `src/app.ts` (755 líneas: UI + orquestación). Capacitor 8 con `android/` e `ios/App`; CapacitorHttp activado; el único plugin nativo en uso es LocalNotifications. No existe plugin nativo propio ni inferencia local: la persona es solo remota (OpenAI-compatible). DEMONSTRATED (lectura de código).
-- [ ] **M0.4** Formato del save: versión, migraciones existentes y fixtures.
+- [x] **M0.4** Formato del save: versión, migraciones existentes y fixtures.
+  - → Save: sobre `{format:"tamagotchia-save", version:1, savedAt, checksum, world}` en localStorage (`tamagotchia.save.v1` + `.bak`, que solo guarda un save bueno); `validWorld` revisa la forma; export/import usan el mismo sobre. El checksum es `hashString`: detecta corrupción, NO es criptográfico. La API key vive en `tamagotchia.secret.v1` y nunca entra al save. **No hay código de migración** (solo existe la versión 1). Historia acotada: eventos en un buffer circular de 300 (`MAX_EVENTS`), memorias hasta 50, comandos procesados 200. Por eso hoy la historia NO es append-only, lo cual importa para M8/Canon.
 - [ ] **M0.5** Contrato de persona actual (`personaInput`, `PersonaReply`, prompt) contra MindReplyV1 del ZIP.
 - [ ] **M0.6** Qué se reutiliza de iSyCode Móvil, verificado en `main`:
   - contexto: 2048 y 4096 soportados por `gus_llama_create`;
@@ -181,6 +182,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.4 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de store/save.ts, engine/world.ts, rules.ts, tests/store.test.ts |
 | 2026-09-30 | M0.3 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de src/, capacitor.config.ts, app.ts |
 | 2026-09-30 | M0.2 | TamagotchIA @ `b7fe4b1` | — | nada | vitest 58/58, tsc, vite build (Linux, Node 22) |
 | 2026-09-30 | M0.1 | TamagotchIA @ `b7fe4b1` | — (solo lectura) | nada (inspección) | `git log -1` en el clon |
