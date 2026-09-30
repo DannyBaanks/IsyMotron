@@ -93,7 +93,12 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     Hay que reutilizar el bridge C y el catálogo generado desde `Catalog/models.json`, **no copiar la UI**. El Context Box de TamagotchIA se arma en TS; `ModelContextBudget` (Swift, pensado para el agente) sirve solo como referencia de diseño.
 - [x] **M0.7** Grammar / constrained decoding en el commit fijado de llama.cpp: ¿existe `llama_sampler_init_grammar`? ¿Compila en iOS y Android? (se investiga, no se implementa).
   - → En el llama.cpp fijado (`842b188`) existe `llama_sampler_init_grammar(vocab, gbnf, root)` (y `_lazy_patterns`). `llama-grammar.cpp` es parte de la librería `llama` (`src/CMakeLists.txt`) y sus símbolos están en el `libllama.a` de Linux (`nm`): DEMONSTRATED en Linux. Que entre en el xcframework de iOS y en el `.so` de Android: INFERRED (mismo target `llama`; no se compiló aquí). El bridge no lo usa todavía: habría que agregar un parámetro de grammar a `make_sampler`, al inicio de la cadena. Si la grammar no parsea, llama.cpp devuelve NULL: fallar cerrado y usar el fallback.
-- [ ] **M0.8** Reutilizar el prefijo (KV) en el bridge: hoy `generate` llama `llama_memory_clear` en cada respuesta. Documentar qué haría falta, sin hacks.
+- [x] **M0.8** Reutilizar el prefijo (KV) en el bridge: hoy `generate` llama `llama_memory_clear` en cada respuesta. Documentar qué haría falta, sin hacks.
+  - → Reutilizar el prefijo es factible sin hacks: `llama_memory_seq_rm(mem, 0, n_común, -1)` quita solo la cola, y así se decodifica únicamente lo nuevo. Hace falta:
+    1. guardar en `GUSLlamaContext` los tokens del prompt anterior;
+    2. calcular el prefijo común;
+    3. llamar `seq_rm` en vez de `llama_memory_clear`.
+    Restricción: en modelos recurrentes o híbridos (p. ej. Nemotron-H/Mamba) `seq_rm` parcial puede devolver false; ahí se hace un clear completo. Aprovecharlo exige que el Context Box vaya de lo estable a lo volátil (M2.3). No hay números de ahorro: sin benchmark, NOT_DEMONSTRATED.
 - [ ] **M0.9** Deltas: ZIP ↔ repo, ZIP ↔ Compose y documentos que quedaron viejos.
 - [ ] **M0.10** Escribir `M0_INSPECTION.md`:
   1. evidencia;
@@ -192,6 +197,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.8 | iSyCodeMovil @ `f6bda93` | — | nada (inspección) | include/llama.h @ 842b188; GUSLlamaBridge.c:224 en iSyCodeMovil main |
 | 2026-09-30 | M0.7 | llama.cpp @ `842b188` | — | nada (inspección) | include/llama.h, src/CMakeLists.txt y nm de libllama.a en llama.cpp @ 842b188 |
 | 2026-09-30 | M0.6 | iSyCodeMovil @ `f6bda93` | — | nada (inspección) | git show origin/main en iSyCodeMovil |
 | 2026-09-30 | M0.5 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de persona/*.ts, engine/memory.ts, tests/persona.test.ts |
