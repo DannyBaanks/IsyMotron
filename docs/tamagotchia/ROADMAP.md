@@ -73,7 +73,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   - → Mapa: `src/engine/` (types, world, commands, simulation, rules, memory, derived, forecast, random; puro, reloj inyectado y PRNG con semilla), `src/persona/` (contract, providers, fallback), `src/store/` (save, settings), `src/notify/` (plan, alerts, deliver, native), `src/app.ts` (755 líneas: UI + orquestación). Capacitor 8 con `android/` e `ios/App`; CapacitorHttp activado; el único plugin nativo en uso es LocalNotifications. No existe plugin nativo propio ni inferencia local: la persona es solo remota (OpenAI-compatible). DEMONSTRATED (lectura de código).
 - [x] **M0.4** Formato del save: versión, migraciones existentes y fixtures.
   - → Save: sobre `{format:"tamagotchia-save", version:1, savedAt, checksum, world}` en localStorage (`tamagotchia.save.v1` + `.bak`, que solo guarda un save bueno); `validWorld` revisa la forma; export/import usan el mismo sobre. El checksum es `hashString`: detecta corrupción, NO es criptográfico. La API key vive en `tamagotchia.secret.v1` y nunca entra al save. **No hay código de migración** (solo existe la versión 1). Historia acotada: eventos en un buffer circular de 300 (`MAX_EVENTS`), memorias hasta 50, comandos procesados 200. Por eso hoy la historia NO es append-only, lo cual importa para M8/Canon.
-- [ ] **M0.5** Contrato de persona actual (`personaInput`, `PersonaReply`, prompt) contra MindReplyV1 del ZIP.
+- [x] **M0.5** Contrato de persona actual (`personaInput`, `PersonaReply`, prompt) contra MindReplyV1 del ZIP.
+  - → `PersonaInput` ya es un Context Box mínimo: nombre, especie, etapa, evento, stats, condiciones, rasgos, comida favorita, hasta 5 memorias, hora del día y `player_said` (limpio, máx. 80 caracteres). `PersonaReply`: `speech` de 3 a 20 palabras + emoción/intención/animación de listas cerradas + un solo `memory_candidate`. `validateReply` es estricto con una sola reparación; el fallback es determinista; `narrate` tiene timeout. `acceptProposedMemory` ya implementa "el modelo propone, el código decide" (4 a 80 caracteres, ligada al evento, máx. 10 activas, TTL de 7 días). Frente a MindReplyV1 del ZIP: el contrato del repo es más estricto y conviene conservarlo como base. Le faltan relación, tendencias, digest de conversación, open threads, ausencia/entorno, model_context y guardrails.
 - [ ] **M0.6** Qué se reutiliza de iSyCode Móvil, verificado en `main`:
   - contexto: 2048 y 4096 soportados por `gus_llama_create`;
   - `ModelContextBudget` (PR #7);
@@ -182,6 +183,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.5 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de persona/*.ts, engine/memory.ts, tests/persona.test.ts |
 | 2026-09-30 | M0.4 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de store/save.ts, engine/world.ts, rules.ts, tests/store.test.ts |
 | 2026-09-30 | M0.3 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de src/, capacitor.config.ts, app.ts |
 | 2026-09-30 | M0.2 | TamagotchIA @ `b7fe4b1` | — | nada | vitest 58/58, tsc, vite build (Linux, Node 22) |
