@@ -163,13 +163,14 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   - → Poda de lo menos importante a lo más: eventos recientes (los más viejos primero) → preferencias → relación → memorias (las menos salientes primero). Contrato, identidad y estado actual nunca se podan; si ni eso cabe, `fits:false` y no se llama al modelo. Los hitos (saliencia 1) van primero.
 - [x] **M2.3** Orden de lo estable a lo volátil, para poder reutilizar el prefijo más adelante.
   - → Orden de llaves de lo estable a lo volátil: `schema, guardrails, identity, preferences, episodic_memories, relationship, recent_events, canonical_state, environment, model_context, generated_at`. Test: dos momentos de la misma vida comparten el prefijo hasta `preferences_and_habits` (base para reutilizar KV, M0.8).
-- [ ] **M2.4** Tests:
+- [x] **M2.4** Tests:
   - nunca excede el presupuesto;
   - las prioridades son estables;
   - lo irrelevante se cae primero;
   - el estado actual siempre queda;
   - los secretos nunca entran;
   - misma entrada, misma salida.
+  - → `tests/compile.test.ts` (8 tests): caja válida completa; nunca excede el presupuesto y respeta el orden de poda; el núcleo se conserva con presupuesto 1; memorias por saliencia; determinismo; prefijo estable; credenciales filtradas (memoria propuesta con `sk-…` y nombre `nvapi-…`); no toca el world. Suite 92/92, tsc limpio.
 
 ## M3 — GUS local
 
@@ -233,6 +234,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M2.4 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/compile.test.ts | vitest 92/92, tsc |
 | 2026-09-30 | M2.3 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | (mismo commit) | test 'orders keys from stable to volatile' |
 | 2026-09-30 | M2.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | (mismo commit) | tests: 'drops in priority order', 'keeps the most important memories longest' |
 | 2026-09-30 | M2.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/compile.ts | vitest 92/92, tsc |
