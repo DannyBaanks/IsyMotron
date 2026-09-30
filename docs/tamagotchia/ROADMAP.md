@@ -161,7 +161,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   - → `src/persona/compile.ts`: `compileContextBox({world, now, budgetTokens, model?})` es pura (reloj inyectado; nada de settings ni red) y devuelve una caja válida + tokens + `fits` + `dropped`. El turno actual (evento + lo que dijo el jugador) queda **fuera** de la caja, como mensaje propio. `stat_trends` se omite en vez de inventarse, porque el motor todavía no guarda agregados. Nota: `timeOfDay` usa la hora local del aparato, así que es determinista por zona horaria. Commit `129644f`.
 - [x] **M2.2** Prioridades: contrato > identidad > estado actual > evento > recuerdos relevantes > relación > historia > detalles.
   - → Poda de lo menos importante a lo más: eventos recientes (los más viejos primero) → preferencias → relación → memorias (las menos salientes primero). Contrato, identidad y estado actual nunca se podan; si ni eso cabe, `fits:false` y no se llama al modelo. Los hitos (saliencia 1) van primero.
-- [ ] **M2.3** Orden de lo estable a lo volátil, para poder reutilizar el prefijo más adelante.
+- [x] **M2.3** Orden de lo estable a lo volátil, para poder reutilizar el prefijo más adelante.
+  - → Orden de llaves de lo estable a lo volátil: `schema, guardrails, identity, preferences, episodic_memories, relationship, recent_events, canonical_state, environment, model_context, generated_at`. Test: dos momentos de la misma vida comparten el prefijo hasta `preferences_and_habits` (base para reutilizar KV, M0.8).
 - [ ] **M2.4** Tests:
   - nunca excede el presupuesto;
   - las prioridades son estables;
@@ -232,6 +233,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M2.3 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | (mismo commit) | test 'orders keys from stable to volatile' |
 | 2026-09-30 | M2.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | (mismo commit) | tests: 'drops in priority order', 'keeps the most important memories longest' |
 | 2026-09-30 | M2.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/compile.ts | vitest 92/92, tsc |
 | 2026-09-30 | M1.6 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/fixture-v1.test.ts, tests/fixtures/save-v1.b7fe4b1.json, src/store/save.ts | vitest 84/84, tsc; crash reproducido en el clon v1 |
