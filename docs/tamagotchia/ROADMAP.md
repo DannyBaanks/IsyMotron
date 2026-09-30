@@ -99,7 +99,31 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     2. calcular el prefijo común;
     3. llamar `seq_rm` en vez de `llama_memory_clear`.
     Restricción: en modelos recurrentes o híbridos (p. ej. Nemotron-H/Mamba) `seq_rm` parcial puede devolver false; ahí se hace un clear completo. Aprovecharlo exige que el Context Box vaya de lo estable a lo volátil (M2.3). No hay números de ahorro: sin benchmark, NOT_DEMONSTRATED.
-- [ ] **M0.9** Deltas: ZIP ↔ repo, ZIP ↔ Compose y documentos que quedaron viejos.
+- [x] **M0.9** Deltas: ZIP ↔ repo, ZIP ↔ Compose y documentos que quedaron viejos.
+  - → **ZIP ↔ repo:**
+    - El contrato de persona sí existe y es más estricto que MindReplyV1.
+    - `PersonaInput` cubre identidad parcial, estado canónico, evento actual, memorias top-5, favorito y hora. Le faltan stat_trends, relationship, conversation_digest, open_threads, model_context, guardrails y los minutos de ausencia (aunque existe el evento `LONG_ABSENCE`).
+    - Los eventos son un buffer circular de 300, no un ledger.
+    - Save v1 sin migraciones.
+    - No hay plugin Capacitor propio.
+    - El snapshot de iSyCode del ZIP (`30097a5`) está viejo: `main` ya lleva #6 y #7.
+
+    **ZIP ↔ Compose:** el Compose agrega:
+    - Local/Canon, "Canon nace Canon" y `ruleset_version`/integridad;
+    - Interaction Gate (context ≠ contribution), presets y Remote Block Total;
+    - la costura local/remoto (el proveedor no es la identidad);
+    - un `ContextBudget` explícito y el orden de estable a volátil;
+    - salida con grammar primero;
+    - memoria desde eventos, sin resúmenes del LLM en v1;
+    - la capa ISyMotron (Broker, Reviver, ISyCode agente, MCP/OAuth, polling adaptativo, World, compute).
+
+    **Quedaron superados en el ZIP:**
+    - 04 (presupuesto de 1–2K tokens);
+    - 05 (`memory_candidates`/`thread_candidates` como arrays y `speech` de 240 caracteres);
+    - 06 (permitía `MODEL_SUMMARY` en v1);
+    - 11 (el handoff ahora es este ROADMAP).
+
+    **En TamagotchIA:** `SPEC.md` y `ROADMAP.md` no mencionan GUS local, Canon ni el gate; habrá que actualizarlos cuando se toque cada milestone, no antes.
 - [ ] **M0.10** Escribir `M0_INSPECTION.md`:
   1. evidencia;
   2. mapa del repo;
@@ -197,6 +221,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.9 | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `f6bda93` | — | nada (inspección) | comparación con life-packet/ y COMPOSE.md; grep en SPEC/ROADMAP/README/GUIA |
 | 2026-09-30 | M0.8 | iSyCodeMovil @ `f6bda93` | — | nada (inspección) | include/llama.h @ 842b188; GUSLlamaBridge.c:224 en iSyCodeMovil main |
 | 2026-09-30 | M0.7 | llama.cpp @ `842b188` | — | nada (inspección) | include/llama.h, src/CMakeLists.txt y nm de libllama.a en llama.cpp @ 842b188 |
 | 2026-09-30 | M0.6 | iSyCodeMovil @ `f6bda93` | — | nada (inspección) | git show origin/main en iSyCodeMovil |
