@@ -192,7 +192,18 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     Modos: `--verify` (offline, compara contra el manifiesto) y `--check` (regenera el pin en temp y compara byte a byte). Probado contra el upstream real: `--check` por red en unos 2 s. Commit `1893ee6`.
   - [x] **M3.3c** Snapshot vendorizado y committeado, marcado como GENERATED, sin ediciones a mano.
     - → `vendor/gus-runtime/` generado con `--from 9c8a659840045cb31da7b501022645a194f4422d`: `Sources/Model/GUSLlamaBridge.c` (sha256 `b79fb3e4…`), `.h` (`c521205b…`), `scripts/build-llama-xcframework.sh` (`134f1d07…`, llama.cpp `842b188`) + `VENDOR.json` + README de GENERATED y de cómo mover el pin. Marcado `linguist-generated` en `.gitattributes`. `cmp` contra el upstream: idéntico. Sin ediciones a mano. Commit `08cca20`.
-  - [ ] **M3.3d** Tests del sync con un repo git fixture: SHA explícito, allowlist, determinismo, detecta drift y ediciones a mano, falla ante un layout inesperado, hashes.
+  - [x] **M3.3d** Tests del sync con un repo git fixture: SHA explícito, allowlist, determinismo, detecta drift y ediciones a mano, falla ante un layout inesperado, hashes.
+    - → `tests/vendor.test.mjs` (9 tests, repos git reales en temp, sin red ni mocks de git):
+    - solo acepta un SHA completo;
+    - copia solo la allowlist, byte a byte, con hashes que coinciden;
+    - es determinista;
+    - lee el commit fijado aunque el upstream avance;
+    - detecta una edición a mano, offline (`verify`) y contra el upstream (`check`);
+    - detecta un manifiesto maquillado y archivos extra;
+    - falla si un archivo se movió o si aparece un `#include` nuevo;
+    - solo toca su directorio;
+    - el snapshot committeado coincide con su manifiesto (corre en cada `npm test`).
+    Vitest ahora también incluye `*.test.mjs`. Suite 108/108, tsc limpio. Commit `a2bceb5`.
   - [ ] **M3.3e** CI de drift: clona el upstream en el pin, regenera en temp y compara.
   - [ ] **M3.3f** Nota/ADR: por qué no submódulo, criterio para extraer un paquete después, y proceso para actualizar el pin.
 - [ ] **M3.4** Runtime nativo conectado (gate §25). En dispositivo real: NOT_DEMONSTRATED hasta que haya prueba física.
@@ -257,6 +268,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.3d | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/vendor.test.mjs, vite.config.ts | vitest 108/108, tsc |
 | 2026-09-30 | M3.3c | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | vendor/gus-runtime/**, .gitattributes | --verify y --check (red) OK; cmp idéntico |
 | 2026-09-30 | M3.3b | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tools/sync-gus-runtime.mjs, .gitignore | sync/verify/check reales contra iSyCodeMovil 9c8a659 |
 | 2026-09-30 | M3.3a | iSyCodeMovil @ `9c8a659` | — | nada (inspección) | grep de includes, CMakeLists.txt, build script, project.yml |
