@@ -124,7 +124,7 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     - 11 (el handoff ahora es este ROADMAP).
 
     **En TamagotchIA:** `SPEC.md` y `ROADMAP.md` no mencionan GUS local, Canon ni el gate; habrá que actualizarlos cuando se toque cada milestone, no antes.
-- [ ] **M0.10** Escribir `M0_INSPECTION.md`:
+- [x] **M0.10** Escribir `M0_INSPECTION.md`:
   1. evidencia;
   2. mapa del repo;
   3. qué se reutiliza;
@@ -135,6 +135,7 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   8. archivos a tocar;
   9. tests a agregar;
   10. riesgos y bloqueos.
+  - → [`M0_INSPECTION.md`](M0_INSPECTION.md) con los 10 puntos. Medición nueva: `SYSTEM_PROMPT` ≈ 1,100 caracteres + `PersonaInput` ≈ 517 caracteres tras 40 h simuladas; hoy cabe en 2,048 tokens (INFERRED, sin tokenizar).
 - [ ] **M0.11** Gate: si M0 contradice el Compose, detenerse y reportar. Si está limpio, seguir con el slice mínimo de M1.
 
 ## M1 — Contrato de datos (TamagotchIA, tests primero)
@@ -221,6 +222,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.10 | IsyMotron | `claude/exciting-lamport-84gclk` | `docs/tamagotchia/M0_INSPECTION.md` \| vitest temporal para medir (borrado; el clon quedó limpio) |
 | 2026-09-30 | M0.9 | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `f6bda93` | — | nada (inspección) | comparación con life-packet/ y COMPOSE.md; grep en SPEC/ROADMAP/README/GUIA |
 | 2026-09-30 | M0.8 | iSyCodeMovil @ `f6bda93` | — | nada (inspección) | include/llama.h @ 842b188; GUSLlamaBridge.c:224 en iSyCodeMovil main |
 | 2026-09-30 | M0.7 | llama.cpp @ `842b188` | — | nada (inspección) | include/llama.h, src/CMakeLists.txt y nm de libllama.a en llama.cpp @ 842b188 |
