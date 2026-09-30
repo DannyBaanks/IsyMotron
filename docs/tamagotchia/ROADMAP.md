@@ -91,7 +91,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     - catálogo con SHA-256 y descarga/import (`GUSModelDownloadManager`, `ModelStore.kt`);
     - flight recorder en iOS y Android.
     Hay que reutilizar el bridge C y el catálogo generado desde `Catalog/models.json`, **no copiar la UI**. El Context Box de TamagotchIA se arma en TS; `ModelContextBudget` (Swift, pensado para el agente) sirve solo como referencia de diseño.
-- [ ] **M0.7** Grammar / constrained decoding en el commit fijado de llama.cpp: ¿existe `llama_sampler_init_grammar`? ¿Compila en iOS y Android? (se investiga, no se implementa).
+- [x] **M0.7** Grammar / constrained decoding en el commit fijado de llama.cpp: ¿existe `llama_sampler_init_grammar`? ¿Compila en iOS y Android? (se investiga, no se implementa).
+  - → En el llama.cpp fijado (`842b188`) existe `llama_sampler_init_grammar(vocab, gbnf, root)` (y `_lazy_patterns`). `llama-grammar.cpp` es parte de la librería `llama` (`src/CMakeLists.txt`) y sus símbolos están en el `libllama.a` de Linux (`nm`): DEMONSTRATED en Linux. Que entre en el xcframework de iOS y en el `.so` de Android: INFERRED (mismo target `llama`; no se compiló aquí). El bridge no lo usa todavía: habría que agregar un parámetro de grammar a `make_sampler`, al inicio de la cadena. Si la grammar no parsea, llama.cpp devuelve NULL: fallar cerrado y usar el fallback.
 - [ ] **M0.8** Reutilizar el prefijo (KV) en el bridge: hoy `generate` llama `llama_memory_clear` en cada respuesta. Documentar qué haría falta, sin hacks.
 - [ ] **M0.9** Deltas: ZIP ↔ repo, ZIP ↔ Compose y documentos que quedaron viejos.
 - [ ] **M0.10** Escribir `M0_INSPECTION.md`:
@@ -191,6 +192,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.7 | llama.cpp @ `842b188` | — | nada (inspección) | include/llama.h, src/CMakeLists.txt y nm de libllama.a en llama.cpp @ 842b188 |
 | 2026-09-30 | M0.6 | iSyCodeMovil @ `f6bda93` | — | nada (inspección) | git show origin/main en iSyCodeMovil |
 | 2026-09-30 | M0.5 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de persona/*.ts, engine/memory.ts, tests/persona.test.ts |
 | 2026-09-30 | M0.4 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de store/save.ts, engine/world.ts, rules.ts, tests/store.test.ts |
