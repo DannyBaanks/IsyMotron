@@ -204,7 +204,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     - solo toca su directorio;
     - el snapshot committeado coincide con su manifiesto (corre en cada `npm test`).
     Vitest ahora también incluye `*.test.mjs`. Suite 108/108, tsc limpio. Commit `a2bceb5`.
-  - [ ] **M3.3e** CI de drift: clona el upstream en el pin, regenera en temp y compara.
+  - [x] **M3.3e** CI de drift: clona el upstream en el pin, regenera en temp y compara.
+    - → `.github/workflows/gus-runtime.yml`: en cada push o PR relevante corre `npm test` + `build` + `--verify` (offline) + `--check` (clona iSyCodeMovil público en el pin y compara byte a byte). **Primera corrida en GitHub: verde**, run [36792943739](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36792943739) sobre `3024585`.
   - [ ] **M3.3f** Nota/ADR: por qué no submódulo, criterio para extraer un paquete después, y proceso para actualizar el pin.
 - [ ] **M3.4** Runtime nativo conectado (gate §25). En dispositivo real: NOT_DEMONSTRATED hasta que haya prueba física.
   - [ ] **M3.4a** Smoke de escritorio: el bridge vendorizado + llama.cpp fijado + un modelo pequeño con hash congelado + ContextBox real → texto no vacío, UTF-8 válido, sin fugas de tokens de control, limpieza OK.
@@ -268,6 +269,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.3e | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | .github/workflows/gus-runtime.yml | GitHub Actions run 36792943739: success |
 | 2026-09-30 | M3.3d | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/vendor.test.mjs, vite.config.ts | vitest 108/108, tsc |
 | 2026-09-30 | M3.3c | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | vendor/gus-runtime/**, .gitattributes | --verify y --check (red) OK; cmp idéntico |
 | 2026-09-30 | M3.3b | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tools/sync-gus-runtime.mjs, .gitignore | sync/verify/check reales contra iSyCodeMovil 9c8a659 |
