@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tamagotchia/context-box-v1.schema.json",
+  "title": "TamagotchIA Context Box V1",
+  "type": "object",
+  "required": [
+    "schema",
+    "generated_at",
+    "identity",
+    "canonical_state",
+    "guardrails"
+  ],
+  "properties": {
+    "schema": { "const": "tamagotchia.context-box.v1" },
+    "generated_at": { "type": "integer" },
+    "identity": { "type": "object" },
+    "canonical_state": { "type": "object" },
+    "stat_trends": { "type": "object" },
+    "recent_events": { "type": "array", "maxItems": 20 },
+    "episodic_memories": { "type": "array", "maxItems": 20 },
+    "relationship": { "type": "object" },
+    "preferences_and_habits": { "type": "object" },
+    "conversation_digest": { "type": "object" },
+    "open_threads": { "type": "array", "maxItems": 8 },
+    "environment": { "type": "object" },
+    "model_context": { "type": "object" },
+    "guardrails": {
+      "type": "object",
+      "required": [
+        "may_modify_game_state",
+        "may_use_tools",
+        "may_access_files",
+        "may_access_network",
+        "reply_schema"
+      ],
+      "properties": {
+        "may_modify_game_state": { "const": false },
+        "may_use_tools": { "const": false },
+        "may_access_files": { "const": false },
+        "may_access_network": { "type": "boolean" },
+        "reply_schema": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

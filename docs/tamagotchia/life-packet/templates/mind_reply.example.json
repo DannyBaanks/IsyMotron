@@ -1,0 +1,9 @@
+{
+  "schema": "tamagotchia.mind-reply.v1",
+  "speech": "Pensé que ya no ibas a volver. Ahora sí jugamos, ¿no?",
+  "emotion": "grumpy",
+  "intent": "request_play",
+  "animation": "side_eye",
+  "memory_candidates": [],
+  "thread_candidates": []
+}

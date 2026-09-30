@@ -1,0 +1,92 @@
+{
+  "schema": "tamagotchia.context-box.v1",
+  "generated_at": 1790791800000,
+  "identity": {
+    "creature_id": "creature_123",
+    "name": "Malbolgato",
+    "species": "malbolge-cat",
+    "stage": "child",
+    "born_at": 1790000000000,
+    "identity_summary": "Gato de circuitos, juguetón, sarcástico y afectuoso."
+  },
+  "canonical_state": {
+    "hunger": 41,
+    "energy": 72,
+    "mood": 84,
+    "health": 95,
+    "cleanliness": 67,
+    "bond": 78,
+    "asleep": false,
+    "sick": false,
+    "conditions": ["content"]
+  },
+  "stat_trends": {
+    "mood_delta_24h": 9,
+    "care_streak_days": 4,
+    "feeds_24h": 3,
+    "plays_24h": 2,
+    "sick_events_7d": 0
+  },
+  "recent_events": [
+    {
+      "kind": "fed",
+      "at": 1790791200000,
+      "summary": "Comió pescado y reaccionó feliz."
+    }
+  ],
+  "episodic_memories": [
+    {
+      "id": "mem_01",
+      "kind": "milestone",
+      "at": 1790100000000,
+      "summary": "Danny lo cuidó cuando se enfermó por primera vez.",
+      "salience": 0.95,
+      "source": "GAME_EVENT"
+    }
+  ],
+  "relationship": {
+    "bond_level": 78,
+    "care_style": "constante y juguetón",
+    "summary": "Suele volver, jugar y cuidar cuando hace falta."
+  },
+  "preferences_and_habits": {
+    "favorite_food": "fish",
+    "disliked_food": null,
+    "favorite_activity": "star_game",
+    "observations": [
+      {
+        "claim": "suele estar más activo por la tarde",
+        "evidence": "DEMONSTRATED_BY_GAME"
+      }
+    ]
+  },
+  "conversation_digest": {
+    "summary": "Danny dijo que hoy estuvo ocupado y prometió jugar después.",
+    "recent_topics": ["trabajo", "jugar después"]
+  },
+  "open_threads": [
+    {
+      "id": "thread_1",
+      "summary": "Danny prometió jugar Atrapa la estrella después.",
+      "expires_at": 1790878200000
+    }
+  ],
+  "environment": {
+    "time_of_day": "afternoon",
+    "absence_minutes": 35,
+    "offline": true,
+    "scene": "room"
+  },
+  "model_context": {
+    "mode": "local",
+    "model_id": "qwen3-0.6b-example",
+    "context_budget_tokens": 2048
+  },
+  "guardrails": {
+    "may_modify_game_state": false,
+    "may_use_tools": false,
+    "may_access_files": false,
+    "may_access_network": false,
+    "reply_schema": "tamagotchia.mind-reply.v1"
+  }
+}

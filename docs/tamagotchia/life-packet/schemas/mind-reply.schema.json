@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tamagotchia/mind-reply-v1.schema.json",
+  "title": "TamagotchIA Mind Reply V1",
+  "type": "object",
+  "required": ["schema", "speech", "emotion", "intent", "animation"],
+  "properties": {
+    "schema": { "const": "tamagotchia.mind-reply.v1" },
+    "speech": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "emotion": { "type": "string" },
+    "intent": { "type": "string" },
+    "animation": { "type": "string" },
+    "memory_candidates": {
+      "type": "array",
+      "maxItems": 2,
+      "items": { "type": "string", "maxLength": 120 }
+    },
+    "thread_candidates": {
+      "type": "array",
+      "maxItems": 2,
+      "items": { "type": "string", "maxLength": 120 }
+    }
+  },
+  "additionalProperties": false
+}
