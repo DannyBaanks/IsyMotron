@@ -30,7 +30,7 @@ verificadas**, y cada tachado va en su propio commit con push.
 | Qué | Repo | Rama |
 |---|---|---|
 | Este roadmap, COMPOSE, paquete | `DannyBaanks/IsyMotron` | `claude/exciting-lamport-84gclk` |
-| Código del juego (M1–M8) | `DannyBaanks/TamagotchIA` | se crea en M1 (`claude/…`) |
+| Código del juego (M1–M8) | `DannyBaanks/TamagotchIA` | `claude/gus-life-m1` (M1; sin PR hasta que el usuario lo pida) |
 | Runtime GUS a reutilizar | `DannyBaanks/iSyCodeMovil` | `main` |
 | Reviver (M9) | Munder | **solo lectura y solo si el usuario lo autoriza** |
 
@@ -38,7 +38,7 @@ verificadas**, y cada tachado va en su propio commit con push.
 
 - **Milestone activo:** M1 (M0 completo: ver `M0_INSPECTION.md`).
 - **Decisión pendiente del usuario (para M3):** cómo compartir el bridge C de iSyCode (vendoring fijado a un commit, submódulo o paquete).
-- **Acceso:** TamagotchIA se lee por clon anónimo; para hacer push en M1 hay que adjuntarlo con `add_repo access:push`.
+- **Acceso:** TamagotchIA está adjunto con push (clon en `/home/user/tamagotchia`). Antes de correr tests: `npm ci`.
 - **Pendiente externo:** iSyCodeMovil PR #8 (`/no_think`) espera que termine el smoke con el build portable.
 
 ---
@@ -142,7 +142,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 
 ## M1 — Contrato de datos (TamagotchIA, tests primero)
 
-- [ ] **M1.1** `PetIdentity`: id estable, especie, rasgos iniciales, nacimiento. Sin ningún campo de modelo o proveedor.
+- [x] **M1.1** `PetIdentity`: id estable, especie, rasgos iniciales, nacimiento. Sin ningún campo de modelo o proveedor.
+  - → `src/life/identity.ts`: `petIdentity(world)` es una vista derivada y copiada (id, nombre, especie, semilla, nacimiento, eclosión, etapa, rasgos). No agrega campos al save y no tiene nada de modelo o proveedor. Tests en `tests/life.test.ts`: la forma no tiene campos de modelo, la identidad es estable tras un comando y escribir en la vista no llega al world. Suite 61/61, tsc limpio. Commit `9b1070a`.
 - [ ] **M1.2** `LifeLog`: evento con provenance (fuente, timestamp, versión del ruleset); append-only.
 - [ ] **M1.3** `ContextBudget`: `total − salida reservada − contrato del sistema − turno actual = contexto disponible para la mascota`.
 - [ ] **M1.4** Schema `ContextBox` v1, versionado y alineado con `life-packet/schemas/`.
@@ -224,6 +225,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M1.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/life/identity.ts, tests/life.test.ts | vitest 61/61, tsc |
 | 2026-09-30 | M0.11 | IsyMotron | `claude/exciting-lamport-84gclk` | revisión del Gate contra COMPOSE §38/§40 |
 | 2026-09-30 | M0.10 | IsyMotron | `claude/exciting-lamport-84gclk` | `docs/tamagotchia/M0_INSPECTION.md` \| vitest temporal para medir (borrado; el clon quedó limpio) |
 | 2026-09-30 | M0.9 | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `f6bda93` | — | nada (inspección) | comparación con life-packet/ y COMPOSE.md; grep en SPEC/ROADMAP/README/GUIA |
