@@ -36,7 +36,8 @@ verificadas**, y cada tachado va en su propio commit con push.
 
 ## Estado actual
 
-- **Milestone activo:** M0 (solo inspección, sin tocar código).
+- **Milestone activo:** M1 (M0 completo: ver `M0_INSPECTION.md`).
+- **Decisión pendiente del usuario (para M3):** cómo compartir el bridge C de iSyCode (vendoring fijado a un commit, submódulo o paquete).
 - **Acceso:** TamagotchIA se lee por clon anónimo; para hacer push en M1 hay que adjuntarlo con `add_repo access:push`.
 - **Pendiente externo:** iSyCodeMovil PR #8 (`/no_think`) espera que termine el smoke con el build portable.
 
@@ -136,7 +137,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   9. tests a agregar;
   10. riesgos y bloqueos.
   - → [`M0_INSPECTION.md`](M0_INSPECTION.md) con los 10 puntos. Medición nueva: `SYSTEM_PROMPT` ≈ 1,100 caracteres + `PersonaInput` ≈ 517 caracteres tras 40 h simuladas; hoy cabe en 2,048 tokens (INFERRED, sin tokenizar).
-- [ ] **M0.11** Gate: si M0 contradice el Compose, detenerse y reportar. Si está limpio, seguir con el slice mínimo de M1.
+- [x] **M0.11** Gate: si M0 contradice el Compose, detenerse y reportar. Si está limpio, seguir con el slice mínimo de M1.
+  - → Gate limpio: nada del repo contradice el Compose; la frontera de autoridad ya existe. Seguir con M1. Bloqueos: (a) M1 necesita push a TamagotchIA; (b) M3 necesita que el usuario decida cómo compartir el bridge C (vendoring fijado recomendado; ver riesgo 3).
 
 ## M1 — Contrato de datos (TamagotchIA, tests primero)
 
@@ -222,6 +224,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.11 | IsyMotron | `claude/exciting-lamport-84gclk` | revisión del Gate contra COMPOSE §38/§40 |
 | 2026-09-30 | M0.10 | IsyMotron | `claude/exciting-lamport-84gclk` | `docs/tamagotchia/M0_INSPECTION.md` \| vitest temporal para medir (borrado; el clon quedó limpio) |
 | 2026-09-30 | M0.9 | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `f6bda93` | — | nada (inspección) | comparación con life-packet/ y COMPOSE.md; grep en SPEC/ROADMAP/README/GUIA |
 | 2026-09-30 | M0.8 | iSyCodeMovil @ `f6bda93` | — | nada (inspección) | include/llama.h @ 842b188; GUSLlamaBridge.c:224 en iSyCodeMovil main |
