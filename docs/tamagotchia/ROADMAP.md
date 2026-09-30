@@ -150,7 +150,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   - → `src/persona/budget.ts`: `contextBudget()` (nunca negativo, con `fits:false` cuando lo fijo ya no cabe; entradas absurdas cuentan como 0) + `estimateTokens()`, que es una ESTIMACIÓN pesimista de 2.5 caracteres por token contando code points, hasta tener tokenizer nativo (M3). Test clave: el prompt de hoy cabe en 2,048 con 160 de salida y deja más de 800 tokens libres (con la estimación). Suite 69/69, tsc limpio. Commit `4c1e85b`.
 - [x] **M1.4** Schema `ContextBox` v1, versionado y alineado con `life-packet/schemas/`.
   - → `src/persona/contextBox.ts`: tipo `ContextBoxV1` (snake_case, alineado con el schema del paquete), `GUARDRAILS` congelado que no concede nada a ningún cerebro (tampoco red), y `validateContextBox` que falla cerrado: rechaza campos extra, schema desconocido, listas grandes (20/20/8), permisos concedidos y cualquier cosa con forma de credencial. Diferencia con el paquete: su ejemplo tenía `may_access_network: true`; aquí siempre es false, porque la red la usa el proveedor, no GUS. El `reply_schema` apunta al `PersonaReply` actual. Suite 73/73, tsc limpio. Commit `e40c89a`.
-- [ ] **M1.5** Marcador `mode: local | canon` + `ruleset_version` en el save, con migración no destructiva.
+- [x] **M1.5** Marcador `mode: local | canon` + `ruleset_version` en el save, con migración no destructiva.
+  - → World v2: `mode: "local" | "canon"` + `rulesetVersion`; `createWorld(..., mode = "local")`. La migración v1→v2 al cargar o importar: (a) siempre queda `local`, aunque el archivo v1 diga `canon` (los campos forzados van al final); (b) el checksum se verifica sobre el world tal como se escribió; (c) el primer save v1 leído se guarda intacto en `tamagotchia.save.v1.premigration` (una sola vez, nunca se sobrescribe) para poder volver a un build viejo. Los comandos no cambian ni el modo ni el ruleset. Tests en `tests/migration.test.ts`. Suite 80/80, tsc y build OK. Commit `318ed2d`.
 - [ ] **M1.6** Fixtures del save anterior, test de migración, roundtrip y manejo de entradas corruptas.
 
 ## M2 — Context compiler
@@ -228,6 +229,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M1.5 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/engine/types.ts, world.ts, src/store/save.ts, tests/migration.test.ts | vitest 80/80, tsc, vite build |
 | 2026-09-30 | M1.4 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/contextBox.ts, tests/contextBox.test.ts, tests/fixtures/context-box.example.json | vitest 73/73, tsc |
 | 2026-09-30 | M1.3 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/budget.ts, tests/budget.test.ts | vitest 69/69, tsc |
 | 2026-09-30 | M1.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/life/lifelog.ts, src/engine/rules.ts (constante), tests/life.test.ts | vitest 64/64, tsc |
