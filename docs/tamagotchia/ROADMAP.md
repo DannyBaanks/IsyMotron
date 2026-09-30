@@ -69,7 +69,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 
 - [x] **M0.1** Acceso de lectura a `DannyBaanks/TamagotchIA`; registrar rama, HEAD y fecha. → repo público, clon de solo lectura; `main` @ `b7fe4b13383d50b1d857ae0574eb110c983157a4` (2026-09-25), el mismo HEAD que usó el ZIP. Push al repo NO disponible en esta sesión.
 - [x] **M0.2** Correr los tests y el build actuales (`npm test` / `check` / `build` o equivalentes); registrar resultados reales. → Node 22.22: `npm test` 58/58 en 4 archivos (engine 17, persona 18, notify 16, store 7); `npm run check` limpio; `npm run build` OK. Builds nativos no corridos aquí (hay workflows `ios.yml` y `pages.yml`, pero ninguno de Android): NOT_DEMONSTRATED.
-- [ ] **M0.3** Mapear engine, persona, memory, store, providers, UI y Capacitor iOS/Android, con paths reales.
+- [x] **M0.3** Mapear engine, persona, memory, store, providers, UI y Capacitor iOS/Android, con paths reales.
+  - → Mapa: `src/engine/` (types, world, commands, simulation, rules, memory, derived, forecast, random; puro, reloj inyectado y PRNG con semilla), `src/persona/` (contract, providers, fallback), `src/store/` (save, settings), `src/notify/` (plan, alerts, deliver, native), `src/app.ts` (755 líneas: UI + orquestación). Capacitor 8 con `android/` e `ios/App`; CapacitorHttp activado; el único plugin nativo en uso es LocalNotifications. No existe plugin nativo propio ni inferencia local: la persona es solo remota (OpenAI-compatible). DEMONSTRATED (lectura de código).
 - [ ] **M0.4** Formato del save: versión, migraciones existentes y fixtures.
 - [ ] **M0.5** Contrato de persona actual (`personaInput`, `PersonaReply`, prompt) contra MindReplyV1 del ZIP.
 - [ ] **M0.6** Qué se reutiliza de iSyCode Móvil, verificado en `main`:
@@ -180,6 +181,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M0.3 | TamagotchIA @ `b7fe4b1` | — | nada (inspección) | lectura de src/, capacitor.config.ts, app.ts |
 | 2026-09-30 | M0.2 | TamagotchIA @ `b7fe4b1` | — | nada | vitest 58/58, tsc, vite build (Linux, Node 22) |
 | 2026-09-30 | M0.1 | TamagotchIA @ `b7fe4b1` | — (solo lectura) | nada (inspección) | `git log -1` en el clon |
 | 2026-09-30 | H1, H2 | IsyMotron @ `29344d0` | `claude/exciting-lamport-84gclk` | `docs/tamagotchia/` (COMPOSE, life-packet, ROADMAP) | Checksums del MANIFEST del paquete verificados; solo docs |
