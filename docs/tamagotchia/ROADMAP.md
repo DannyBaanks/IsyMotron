@@ -157,7 +157,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 
 ## M2 — Context compiler
 
-- [ ] **M2.1** Compilar el Context Box desde el estado, como función pura con reloj inyectado.
+- [x] **M2.1** Compilar el Context Box desde el estado, como función pura con reloj inyectado.
+  - → `src/persona/compile.ts`: `compileContextBox({world, now, budgetTokens, model?})` es pura (reloj inyectado; nada de settings ni red) y devuelve una caja válida + tokens + `fits` + `dropped`. El turno actual (evento + lo que dijo el jugador) queda **fuera** de la caja, como mensaje propio. `stat_trends` se omite en vez de inventarse, porque el motor todavía no guarda agregados. Nota: `timeOfDay` usa la hora local del aparato, así que es determinista por zona horaria. Commit `129644f`.
 - [ ] **M2.2** Prioridades: contrato > identidad > estado actual > evento > recuerdos relevantes > relación > historia > detalles.
 - [ ] **M2.3** Orden de lo estable a lo volátil, para poder reutilizar el prefijo más adelante.
 - [ ] **M2.4** Tests:
@@ -230,6 +231,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M2.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/compile.ts | vitest 92/92, tsc |
 | 2026-09-30 | M1.6 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/fixture-v1.test.ts, tests/fixtures/save-v1.b7fe4b1.json, src/store/save.ts | vitest 84/84, tsc; crash reproducido en el clon v1 |
 | 2026-09-30 | M1.5 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/engine/types.ts, world.ts, src/store/save.ts, tests/migration.test.ts | vitest 80/80, tsc, vite build |
 | 2026-09-30 | M1.4 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/contextBox.ts, tests/contextBox.test.ts, tests/fixtures/context-box.example.json | vitest 73/73, tsc |
