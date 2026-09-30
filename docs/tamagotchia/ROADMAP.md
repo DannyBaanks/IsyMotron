@@ -37,7 +37,7 @@ verificadas**, y cada tachado va en su propio commit con push.
 ## Estado actual
 
 - **Milestone activo:** M3. M0, M1, M2, M3.1 y M3.2 están hechos; el código vive en TamagotchIA `claude/gus-life-m1` (99 tests, sin PR hasta que el usuario lo pida).
-- **Detenido en M3.3/M3.4:** falta que el usuario decida cómo compartir el bridge C de iSyCode (ver M0_INSPECTION riesgo 3). M3.5 (conectar a la UI + mensaje en la PWA) conviene hacerlo junto con el lado nativo.
+- **Decidido (2026-09-30):** para M3.3/M3.4 se usa copia fijada del bridge ([`COMPOSE_M3_VENDOR.md`](COMPOSE_M3_VENDOR.md)). El egress remoto sigue fail-closed hasta M5.
 - **Decisión pendiente del usuario (para M3):** cómo compartir el bridge C de iSyCode (vendoring fijado a un commit, submódulo o paquete).
 - **Acceso:** TamagotchIA está adjunto con push (clon en `/home/user/tamagotchia`). Antes de correr tests: `npm ci`.
 - **iSyCodeMovil #8 (`thinking_off`) mergeado.** Smoke con build portable: los 22 modelos corren y ninguno se queda a medio `<think>` (`unfinished_think: false` en todos). Qwen3 4B/8B contestan Vicente Fox; Qwen3 0.6B y Nemotron Nano 4B contestan pero inventan. Para TamagotchIA: `thinking_off` ya está en el catálogo de `main`.
@@ -179,8 +179,19 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   - → `src/persona/mind.ts`: `CreatureMind {name, kind: fallback|remote|local, respond(request, signal) → texto}` + `remoteMind(provider)`; `speak()` en providers.ts valida o cae al fallback; `narrate` ahora pasa por `speak` sin cambiar comportamiento (los 18 tests de persona siguen pasando). **Decisión de seguridad:** el cerebro remoto sigue recibiendo solo el turno, como antes; la Context Box va únicamente al cerebro local hasta que M5 defina la proyección remota, así esta costura no amplía lo que sale del aparato. Tests en `tests/mind.test.ts`: remoto sin caja, local con caja, salida mala o tramposa o crash → fallback sin tocar el world, y cambiar de cerebro no cambia la identidad. Suite 96/96. Commit `67de840`.
 - [x] **M3.2** Frontera del plugin Capacitor. Recibe solo strings/JSON del Context Box, nunca `World` mutable.
   - → Lado TS listo. `src/persona/localMind.ts`: el plugin `GusLocal` expone una sola llamada, `generate({system, context, turn, maxTokens})`, con 3 strings y un tope de 160 tokens. La caja se valida antes; si es inválida o trae algo con forma de credencial, nunca llega al runtime. Si el runtime falla, se cuelga o no devuelve texto → fallback. `src/persona/nativeGus.ts` devuelve null fuera de la app nativa, así que la PWA no cambia. **Pendiente:** conectarlo a la UI (con M3.5) y el lado nativo (M3.3/M3.4). Tests en `tests/localMind.test.ts`. Suite 99/99, tsc y build OK. Commit `4a59e0a`.
-- [ ] **M3.3** iOS: reutilizar el bridge C y llama.cpp de iSyCode Móvil sin duplicar el catálogo.
-- [ ] **M3.4** Android: reutilizar JNI, CMake y el motor Kotlin.
+- [ ] **M3.3** Copia fijada del runtime GUS ([`COMPOSE_M3_VENDOR.md`](COMPOSE_M3_VENDOR.md), gate §24). Decisión del usuario: vendoring fijado, sin submódulo y sin paquete todavía.
+  - [ ] **M3.3a** Inspeccionar iSyCode `main` actual: SHA, archivos C/headers mínimos, dependencias, flags, frontera con llama.cpp, qué es portable y qué es iOS o Android; qué NO se copia.
+  - [ ] **M3.3b** Script de sync (`--from <SHA>` explícito, allowlist, falla ante un layout inesperado, nunca HEAD) + manifiesto de provenance (repo, SHA, fecha, rutas, sha256).
+  - [ ] **M3.3c** Snapshot vendorizado y committeado, marcado como GENERATED, sin ediciones a mano.
+  - [ ] **M3.3d** Tests del sync con un repo git fixture: SHA explícito, allowlist, determinismo, detecta drift y ediciones a mano, falla ante un layout inesperado, hashes.
+  - [ ] **M3.3e** CI de drift: clona el upstream en el pin, regenera en temp y compara.
+  - [ ] **M3.3f** Nota/ADR: por qué no submódulo, criterio para extraer un paquete después, y proceso para actualizar el pin.
+- [ ] **M3.4** Runtime nativo conectado (gate §25). En dispositivo real: NOT_DEMONSTRATED hasta que haya prueba física.
+  - [ ] **M3.4a** Smoke de escritorio: el bridge vendorizado + llama.cpp fijado + un modelo pequeño con hash congelado + ContextBox real → texto no vacío, UTF-8 válido, sin fugas de tokens de control, limpieza OK.
+  - [ ] **M3.4b** Android: plugin Capacitor `GusLocal` (Kotlin) + glue JNI propio de TamagotchIA (bytes UTF-8) + CMake con el vendor; compila en CI.
+  - [ ] **M3.4c** iOS: plugin Capacitor `GusLocal` (Swift) + xcframework de llama.cpp fijado; compila en CI.
+  - [ ] **M3.4d** Tests del adapter: plugin ausente, error nativo, timeout, respuesta malformada o vacía, UTF-8, caja rechazada → fallback sin tocar el save.
+  - [ ] **M3.4e** Provenance de cierre (§28): SHAs, rutas, hashes, tests, builds, evidencia de dispositivo y los huecos NOT_DEMONSTRATED.
 - [ ] **M3.5** PWA: mensaje "GUS local requiere la app nativa" y el juego sigue funcionando.
 - [ ] **M3.6** Prueba en teléfono físico con modo avión. Hasta entonces: NOT_DEMONSTRATED.
 
