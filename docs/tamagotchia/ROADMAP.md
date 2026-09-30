@@ -210,7 +210,12 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   - [x] **M3.3f** Nota/ADR: por qué no submódulo, criterio para extraer un paquete después, y proceso para actualizar el pin.
     - → `docs/GUS_RUNTIME_VENDORING.md` en TamagotchIA: por qué copia fijada; por qué no submódulo (estado git extra, clones incompletos, CI especial, onboarding; sin declararlos malos en general); criterio para extraer un paquete (3+ consumidores, API estable, pin frecuente, glue duplicado, versionado propio); proceso para mover el pin (nunca auto-follow-main); rollback. Commit `ca54ec5`.
 - [ ] **M3.4** Runtime nativo conectado (gate §25). En dispositivo real: NOT_DEMONSTRATED hasta que haya prueba física.
-  - [ ] **M3.4a** Smoke de escritorio: el bridge vendorizado + llama.cpp fijado + un modelo pequeño con hash congelado + ContextBox real → texto no vacío, UTF-8 válido, sin fugas de tokens de control, limpieza OK.
+  - [x] **M3.4a** Smoke de escritorio: el bridge vendorizado + llama.cpp fijado + un modelo pequeño con hash congelado + ContextBox real → texto no vacío, UTF-8 válido, sin fugas de tokens de control, limpieza OK.
+    - → Smoke de escritorio en CI **verde con inferencia real**, run [36793218434](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36793218434) sobre `8263b28`: bridge vendorizado (`-Werror`) + llama.cpp `842b188` + Qwen2.5-0.5B Q4_K_M (sha256 `74a4da8c…` verificado, congelado en `native/gus-smoke/model.json`) + el chat compuesto por la app (criatura del fixture v1, Context Box compilada en el presupuesto de 2048, turno con emoji).
+    - **Resultado:** status OK, 1380 tokens de prompt reales, 37 generados con fin de turno, 139 tok/s de prefill, 44 tok/s de generación, RSS 606 MB, recarga tras destroy OK, UTF-8 válido, sin fuga de tokens de control.
+    - **Salida:** `{"speech": "¡Hola! ¿Qué comiste hoy? 🐟", "emotion": "happy", "intent": "request_play", "animation": "side_eye"}` → **pasa el contrato de persona**, pero repite lo que dijo el jugador: calidad baja; para M4 y la elección de modelo.
+    - **Local:** el pipeline se probó con un GGUF de juguete (Hugging Face está bloqueado aquí). Con el vocabulario llama, el prompt midió 1662 tokens: **el estimador de 2.5 caracteres por token puede quedarse corto** según el tokenizer (pendiente para M3.5 o M4).
+    - En dispositivo: NOT_DEMONSTRATED.
   - [ ] **M3.4b** Android: plugin Capacitor `GusLocal` (Kotlin) + glue JNI propio de TamagotchIA (bytes UTF-8) + CMake con el vendor; compila en CI.
   - [ ] **M3.4c** iOS: plugin Capacitor `GusLocal` (Swift) + xcframework de llama.cpp fijado; compila en CI.
   - [ ] **M3.4d** Tests del adapter: plugin ausente, error nativo, timeout, respuesta malformada o vacía, UTF-8, caja rechazada → fallback sin tocar el save.
@@ -271,6 +276,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.4a | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | native/gus-smoke/*, tools/gus-smoke/*, gus-runtime.yml | GitHub Actions run 36793218434: success |
 | 2026-09-30 | M3.3 | TamagotchIA @ `b7fe4b1` → `ca54ec5` | `claude/gus-life-m1` | M3.3a–f | gate COMPOSE_M3_VENDOR §24 |
 | 2026-09-30 | M3.3f | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | docs/GUS_RUNTIME_VENDORING.md | revisión contra COMPOSE_M3_VENDOR §21–§23 |
 | 2026-09-30 | M3.3e | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | .github/workflows/gus-runtime.yml | GitHub Actions run 36792943739: success |
