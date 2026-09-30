@@ -144,7 +144,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 
 - [x] **M1.1** `PetIdentity`: id estable, especie, rasgos iniciales, nacimiento. Sin ningún campo de modelo o proveedor.
   - → `src/life/identity.ts`: `petIdentity(world)` es una vista derivada y copiada (id, nombre, especie, semilla, nacimiento, eclosión, etapa, rasgos). No agrega campos al save y no tiene nada de modelo o proveedor. Tests en `tests/life.test.ts`: la forma no tiene campos de modelo, la identidad es estable tras un comando y escribir en la vista no llega al world. Suite 61/61, tsc limpio. Commit `9b1070a`.
-- [ ] **M1.2** `LifeLog`: evento con provenance (fuente, timestamp, versión del ruleset); append-only.
+- [x] **M1.2** `LifeLog`: evento con provenance (fuente, timestamp, versión del ruleset); append-only.
+  - → `src/life/lifelog.ts`: `lifeLog(world)` convierte cada evento del motor en una entrada con `provenance {source: "engine", ruleset}`. `RULESET_VERSION = "tamagotchia-rules-1"` vive en `rules.ts`. Honestidad: el save conserva solo los últimos 300 eventos, así que el log es la ventana retenida y reporta `droppedBefore` en vez de fingir que es la vida completa. El append-only real, con hash que sobreviva a la poda, queda para M8. Tests: orden y provenance, aviso de poda tras 320 eventos, y que la copia no escribe al world. Suite 64/64, tsc limpio. Commit `c40fa59`.
 - [ ] **M1.3** `ContextBudget`: `total − salida reservada − contrato del sistema − turno actual = contexto disponible para la mascota`.
 - [ ] **M1.4** Schema `ContextBox` v1, versionado y alineado con `life-packet/schemas/`.
 - [ ] **M1.5** Marcador `mode: local | canon` + `ruleset_version` en el save, con migración no destructiva.
@@ -225,6 +226,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M1.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/life/lifelog.ts, src/engine/rules.ts (constante), tests/life.test.ts | vitest 64/64, tsc |
 | 2026-09-30 | M1.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/life/identity.ts, tests/life.test.ts | vitest 61/61, tsc |
 | 2026-09-30 | M0.11 | IsyMotron | `claude/exciting-lamport-84gclk` | revisión del Gate contra COMPOSE §38/§40 |
 | 2026-09-30 | M0.10 | IsyMotron | `claude/exciting-lamport-84gclk` | `docs/tamagotchia/M0_INSPECTION.md` \| vitest temporal para medir (borrado; el clon quedó limpio) |
