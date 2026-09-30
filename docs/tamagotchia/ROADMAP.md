@@ -174,7 +174,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 
 ## M3 — GUS local
 
-- [ ] **M3.1** Interfaz `CreatureMind` / `GUSProvider` con implementaciones fallback, remoto existente y local (placeholder).
+- [x] **M3.1** Interfaz `CreatureMind` / `GUSProvider` con implementaciones fallback, remoto existente y local (placeholder).
+  - → `src/persona/mind.ts`: `CreatureMind {name, kind: fallback|remote|local, respond(request, signal) → texto}` + `remoteMind(provider)`; `speak()` en providers.ts valida o cae al fallback; `narrate` ahora pasa por `speak` sin cambiar comportamiento (los 18 tests de persona siguen pasando). **Decisión de seguridad:** el cerebro remoto sigue recibiendo solo el turno, como antes; la Context Box va únicamente al cerebro local hasta que M5 defina la proyección remota, así esta costura no amplía lo que sale del aparato. Tests en `tests/mind.test.ts`: remoto sin caja, local con caja, salida mala o tramposa o crash → fallback sin tocar el world, y cambiar de cerebro no cambia la identidad. Suite 96/96. Commit `67de840`.
 - [ ] **M3.2** Frontera del plugin Capacitor. Recibe solo strings/JSON del Context Box, nunca `World` mutable.
 - [ ] **M3.3** iOS: reutilizar el bridge C y llama.cpp de iSyCode Móvil sin duplicar el catálogo.
 - [ ] **M3.4** Android: reutilizar JNI, CMake y el motor Kotlin.
@@ -234,6 +235,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/mind.ts, providers.ts, tests/mind.test.ts | vitest 96/96, tsc |
 | 2026-09-30 | M2.4 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/compile.test.ts | vitest 92/92, tsc |
 | 2026-09-30 | M2.3 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | (mismo commit) | test 'orders keys from stable to volatile' |
 | 2026-09-30 | M2.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | (mismo commit) | tests: 'drops in priority order', 'keeps the most important memories longest' |
