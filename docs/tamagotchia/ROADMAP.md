@@ -180,7 +180,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 - [x] **M3.2** Frontera del plugin Capacitor. Recibe solo strings/JSON del Context Box, nunca `World` mutable.
   - → Lado TS listo. `src/persona/localMind.ts`: el plugin `GusLocal` expone una sola llamada, `generate({system, context, turn, maxTokens})`, con 3 strings y un tope de 160 tokens. La caja se valida antes; si es inválida o trae algo con forma de credencial, nunca llega al runtime. Si el runtime falla, se cuelga o no devuelve texto → fallback. `src/persona/nativeGus.ts` devuelve null fuera de la app nativa, así que la PWA no cambia. **Pendiente:** conectarlo a la UI (con M3.5) y el lado nativo (M3.3/M3.4). Tests en `tests/localMind.test.ts`. Suite 99/99, tsc y build OK. Commit `4a59e0a`.
 - [ ] **M3.3** Copia fijada del runtime GUS ([`COMPOSE_M3_VENDOR.md`](COMPOSE_M3_VENDOR.md), gate §24). Decisión del usuario: vendoring fijado, sin submódulo y sin paquete todavía.
-  - [ ] **M3.3a** Inspeccionar iSyCode `main` actual: SHA, archivos C/headers mínimos, dependencias, flags, frontera con llama.cpp, qué es portable y qué es iOS o Android; qué NO se copia.
+  - [x] **M3.3a** Inspeccionar iSyCode `main` actual: SHA, archivos C/headers mínimos, dependencias, flags, frontera con llama.cpp, qué es portable y qué es iOS o Android; qué NO se copia.
+    - → Upstream: iSyCodeMovil `main` @ `9c8a659` (público, así que CI puede clonar sin token; ya incluye #6 anti-bucle, #7 y #8 `thinking_off`). **Subset mínimo = 3 archivos:** `Sources/Model/GUSLlamaBridge.c` (463 líneas) y `.h` (75): solo dependen de `<llama/llama.h>` + libc/pthread/stdatomic; chat template, neutralización de tokens de control, sampling y greedy son portables. Más `scripts/build-llama-xcframework.sh` (29 líneas), portable, que fija llama.cpp `842b188`, el pin que el bridge espera. **No se copian:** `GUSSignalTrap.c` (diagnóstico de crash; §20 lo deja para otro milestone), `gus_jni.c` (los símbolos JNI están atados a `dev.iyscode.movil`, así que TamagotchIA escribe su propio glue), `LlamaCppInferenceEngine.swift`/UI/catálogo/descargas. Flags de Android: `GGML_OPENMP=OFF`, `GGML_NATIVE=OFF`, shim `<llama/llama.h>`, `-Wl,-z,max-page-size=16384`. Acoplamiento: ninguno, así que no hay stop condition.
   - [ ] **M3.3b** Script de sync (`--from <SHA>` explícito, allowlist, falla ante un layout inesperado, nunca HEAD) + manifiesto de provenance (repo, SHA, fecha, rutas, sha256).
   - [ ] **M3.3c** Snapshot vendorizado y committeado, marcado como GENERATED, sin ediciones a mano.
   - [ ] **M3.3d** Tests del sync con un repo git fixture: SHA explícito, allowlist, determinismo, detecta drift y ediciones a mano, falla ante un layout inesperado, hashes.
@@ -248,6 +249,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.3a | iSyCodeMovil @ `9c8a659` | — | nada (inspección) | grep de includes, CMakeLists.txt, build script, project.yml |
 | 2026-09-30 | M3.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/localMind.ts, nativeGus.ts, tests/localMind.test.ts | vitest 99/99, tsc, build |
 | 2026-09-30 | M3.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/mind.ts, providers.ts, tests/mind.test.ts | vitest 96/96, tsc |
 | 2026-09-30 | M2.4 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/compile.test.ts | vitest 92/92, tsc |
