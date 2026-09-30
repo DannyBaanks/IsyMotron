@@ -218,7 +218,14 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     - En dispositivo: NOT_DEMONSTRATED.
   - [ ] **M3.4b** Android: plugin Capacitor `GusLocal` (Kotlin) + glue JNI propio de TamagotchIA (bytes UTF-8) + CMake con el vendor; compila en CI.
   - [ ] **M3.4c** iOS: plugin Capacitor `GusLocal` (Swift) + xcframework de llama.cpp fijado; compila en CI.
-  - [ ] **M3.4d** Tests del adapter: plugin ausente, error nativo, timeout, respuesta malformada o vacía, UTF-8, caja rechazada → fallback sin tocar el save.
+  - [x] **M3.4d** Tests del adapter: plugin ausente, error nativo, timeout, respuesta malformada o vacía, UTF-8, caja rechazada → fallback sin tocar el save.
+    - → Tests del adapter en `tests/localMind.test.ts` (6 en total):
+    - runtime ausente o plugin no implementado (PWA), modelo faltante o no cargado y error al generar → fallback con la razón;
+    - salida vacía o malformada (U+FFFD, JSON cortado, tokens de control) → fallback;
+    - UTF-8 con emoji pasa intacto;
+    - timeout → fallback, y el save guardado queda byte a byte idéntico;
+    - caja rechazada → nunca llega al runtime (de M3.2).
+    Lado nativo: el glue JNI se probó en escritorio con `-Xcheck:jni` (UTF-8, modelo faltante y handle nulo → excepción, recarga). Suite 111/111. Commit `c57f7b9`.
   - [ ] **M3.4e** Provenance de cierre (§28): SHAs, rutas, hashes, tests, builds, evidencia de dispositivo y los huecos NOT_DEMONSTRATED.
 - [ ] **M3.5** PWA: mensaje "GUS local requiere la app nativa" y el juego sigue funcionando.
 - [ ] **M3.6** Prueba en teléfono físico con modo avión. Hasta entonces: NOT_DEMONSTRATED.
@@ -276,6 +283,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.4d | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/localMind.test.ts | vitest 111/111, tsc |
 | 2026-09-30 | M3.4a | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | native/gus-smoke/*, tools/gus-smoke/*, gus-runtime.yml | GitHub Actions run 36793218434: success |
 | 2026-09-30 | M3.3 | TamagotchIA @ `b7fe4b1` → `ca54ec5` | `claude/gus-life-m1` | M3.3a–f | gate COMPOSE_M3_VENDOR §24 |
 | 2026-09-30 | M3.3f | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | docs/GUS_RUNTIME_VENDORING.md | revisión contra COMPOSE_M3_VENDOR §21–§23 |
