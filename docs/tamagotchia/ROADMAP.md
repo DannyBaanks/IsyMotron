@@ -148,7 +148,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
   - → `src/life/lifelog.ts`: `lifeLog(world)` convierte cada evento del motor en una entrada con `provenance {source: "engine", ruleset}`. `RULESET_VERSION = "tamagotchia-rules-1"` vive en `rules.ts`. Honestidad: el save conserva solo los últimos 300 eventos, así que el log es la ventana retenida y reporta `droppedBefore` en vez de fingir que es la vida completa. El append-only real, con hash que sobreviva a la poda, queda para M8. Tests: orden y provenance, aviso de poda tras 320 eventos, y que la copia no escribe al world. Suite 64/64, tsc limpio. Commit `c40fa59`.
 - [x] **M1.3** `ContextBudget`: `total − salida reservada − contrato del sistema − turno actual = contexto disponible para la mascota`.
   - → `src/persona/budget.ts`: `contextBudget()` (nunca negativo, con `fits:false` cuando lo fijo ya no cabe; entradas absurdas cuentan como 0) + `estimateTokens()`, que es una ESTIMACIÓN pesimista de 2.5 caracteres por token contando code points, hasta tener tokenizer nativo (M3). Test clave: el prompt de hoy cabe en 2,048 con 160 de salida y deja más de 800 tokens libres (con la estimación). Suite 69/69, tsc limpio. Commit `4c1e85b`.
-- [ ] **M1.4** Schema `ContextBox` v1, versionado y alineado con `life-packet/schemas/`.
+- [x] **M1.4** Schema `ContextBox` v1, versionado y alineado con `life-packet/schemas/`.
+  - → `src/persona/contextBox.ts`: tipo `ContextBoxV1` (snake_case, alineado con el schema del paquete), `GUARDRAILS` congelado que no concede nada a ningún cerebro (tampoco red), y `validateContextBox` que falla cerrado: rechaza campos extra, schema desconocido, listas grandes (20/20/8), permisos concedidos y cualquier cosa con forma de credencial. Diferencia con el paquete: su ejemplo tenía `may_access_network: true`; aquí siempre es false, porque la red la usa el proveedor, no GUS. El `reply_schema` apunta al `PersonaReply` actual. Suite 73/73, tsc limpio. Commit `e40c89a`.
 - [ ] **M1.5** Marcador `mode: local | canon` + `ruleset_version` en el save, con migración no destructiva.
 - [ ] **M1.6** Fixtures del save anterior, test de migración, roundtrip y manejo de entradas corruptas.
 
@@ -227,6 +228,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M1.4 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/contextBox.ts, tests/contextBox.test.ts, tests/fixtures/context-box.example.json | vitest 73/73, tsc |
 | 2026-09-30 | M1.3 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/budget.ts, tests/budget.test.ts | vitest 69/69, tsc |
 | 2026-09-30 | M1.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/life/lifelog.ts, src/engine/rules.ts (constante), tests/life.test.ts | vitest 64/64, tsc |
 | 2026-09-30 | M1.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/life/identity.ts, tests/life.test.ts | vitest 61/61, tsc |
