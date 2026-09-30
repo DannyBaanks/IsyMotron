@@ -36,7 +36,8 @@ verificadas**, y cada tachado va en su propio commit con push.
 
 ## Estado actual
 
-- **Milestone activo:** M2 (M0 y M1 completos). El código de M1 está en TamagotchIA `claude/gus-life-m1` (84 tests), sin PR hasta que el usuario lo pida.
+- **Milestone activo:** M3. M0, M1, M2, M3.1 y M3.2 están hechos; el código vive en TamagotchIA `claude/gus-life-m1` (99 tests, sin PR hasta que el usuario lo pida).
+- **Detenido en M3.3/M3.4:** falta que el usuario decida cómo compartir el bridge C de iSyCode (ver M0_INSPECTION riesgo 3). M3.5 (conectar a la UI + mensaje en la PWA) conviene hacerlo junto con el lado nativo.
 - **Decisión pendiente del usuario (para M3):** cómo compartir el bridge C de iSyCode (vendoring fijado a un commit, submódulo o paquete).
 - **Acceso:** TamagotchIA está adjunto con push (clon en `/home/user/tamagotchia`). Antes de correr tests: `npm ci`.
 - **iSyCodeMovil #8 (`thinking_off`) mergeado.** Smoke con build portable: los 22 modelos corren y ninguno se queda a medio `<think>` (`unfinished_think: false` en todos). Qwen3 4B/8B contestan Vicente Fox; Qwen3 0.6B y Nemotron Nano 4B contestan pero inventan. Para TamagotchIA: `thinking_off` ya está en el catálogo de `main`.
