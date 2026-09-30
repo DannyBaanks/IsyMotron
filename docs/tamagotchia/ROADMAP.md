@@ -182,7 +182,14 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 - [ ] **M3.3** Copia fijada del runtime GUS ([`COMPOSE_M3_VENDOR.md`](COMPOSE_M3_VENDOR.md), gate §24). Decisión del usuario: vendoring fijado, sin submódulo y sin paquete todavía.
   - [x] **M3.3a** Inspeccionar iSyCode `main` actual: SHA, archivos C/headers mínimos, dependencias, flags, frontera con llama.cpp, qué es portable y qué es iOS o Android; qué NO se copia.
     - → Upstream: iSyCodeMovil `main` @ `9c8a659` (público, así que CI puede clonar sin token; ya incluye #6 anti-bucle, #7 y #8 `thinking_off`). **Subset mínimo = 3 archivos:** `Sources/Model/GUSLlamaBridge.c` (463 líneas) y `.h` (75): solo dependen de `<llama/llama.h>` + libc/pthread/stdatomic; chat template, neutralización de tokens de control, sampling y greedy son portables. Más `scripts/build-llama-xcframework.sh` (29 líneas), portable, que fija llama.cpp `842b188`, el pin que el bridge espera. **No se copian:** `GUSSignalTrap.c` (diagnóstico de crash; §20 lo deja para otro milestone), `gus_jni.c` (los símbolos JNI están atados a `dev.iyscode.movil`, así que TamagotchIA escribe su propio glue), `LlamaCppInferenceEngine.swift`/UI/catálogo/descargas. Flags de Android: `GGML_OPENMP=OFF`, `GGML_NATIVE=OFF`, shim `<llama/llama.h>`, `-Wl,-z,max-page-size=16384`. Acoplamiento: ninguno, así que no hay stop condition.
-  - [ ] **M3.3b** Script de sync (`--from <SHA>` explícito, allowlist, falla ante un layout inesperado, nunca HEAD) + manifiesto de provenance (repo, SHA, fecha, rutas, sha256).
+  - [x] **M3.3b** Script de sync (`--from <SHA>` explícito, allowlist, falla ante un layout inesperado, nunca HEAD) + manifiesto de provenance (repo, SHA, fecha, rutas, sha256).
+    - → `tools/sync-gus-runtime.mjs` (Node, el toolchain del repo):
+    - `--from <SHA de 40 hex>` obligatorio; rechaza `HEAD`, ramas y SHAs cortos;
+    - lee de objetos git **en ese commit** (no del working tree), clonando el repo público o con `--source`;
+    - copia solo la allowlist de 3 archivos, byte a byte;
+    - falla si falta un archivo o si el bridge agrega un `#include` local nuevo;
+    - escribe solo dentro de `vendor/gus-runtime`, con `VENDOR.json` (repo, commit, synced_at, pin de llama.cpp, sha256 por archivo).
+    Modos: `--verify` (offline, compara contra el manifiesto) y `--check` (regenera el pin en temp y compara byte a byte). Probado contra el upstream real: `--check` por red en unos 2 s. Commit `1893ee6`.
   - [ ] **M3.3c** Snapshot vendorizado y committeado, marcado como GENERATED, sin ediciones a mano.
   - [ ] **M3.3d** Tests del sync con un repo git fixture: SHA explícito, allowlist, determinismo, detecta drift y ediciones a mano, falla ante un layout inesperado, hashes.
   - [ ] **M3.3e** CI de drift: clona el upstream en el pin, regenera en temp y compara.
@@ -249,6 +256,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.3b | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tools/sync-gus-runtime.mjs, .gitignore | sync/verify/check reales contra iSyCodeMovil 9c8a659 |
 | 2026-09-30 | M3.3a | iSyCodeMovil @ `9c8a659` | — | nada (inspección) | grep de includes, CMakeLists.txt, build script, project.yml |
 | 2026-09-30 | M3.2 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/localMind.ts, nativeGus.ts, tests/localMind.test.ts | vitest 99/99, tsc, build |
 | 2026-09-30 | M3.1 | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | src/persona/mind.ts, providers.ts, tests/mind.test.ts | vitest 96/96, tsc |
