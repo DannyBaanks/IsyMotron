@@ -161,10 +161,9 @@ def _darwin_lan_addresses() -> list[str]:
     import socket
     import subprocess
 
-    # Avoid socket.if_nameindex() here: on a macOS hosted runner with partially
-    # configured networking it can block for about two minutes. The common
-    # macOS hardware/bridge interface names are cheap to probe individually,
-    # and every subprocess has its own hard deadline.
+    # macOS hosted runners can block for minutes while enumerating interfaces
+    # if networking is only partially configured. Probe common physical and
+    # bridge names directly, with a hard timeout for each system call.
     interfaces = [
         "en0", "en1", "en2", "en3", "en4", "en5", "en6", "en7", "en8",
         "bridge0", "bridge100",
@@ -195,10 +194,6 @@ def lan_addresses() -> list[str]:
     """This machine's IPv4 addresses on the local network (no packet is sent)."""
     import socket
 
-    # On macOS hosted runners, routing an unconnected UDP socket can block for
-    # about two minutes while the system waits on network configuration. Query
-    # interface addresses directly there so `link servir --red` stays usable
-    # even when DNS/routing is unavailable.
     if sys.platform == "darwin":
         return _darwin_lan_addresses()
 

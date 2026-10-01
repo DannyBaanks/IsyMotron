@@ -108,9 +108,9 @@ def open_envelope(
     skew = abs(moment - int(env["ts"]) / 1000)
     if skew > MAX_SKEW_S:
         raise EnvelopeError("envelope outside time window")
-    for seen_nonce, seen_expiry in list(seen_nonces.items()):
-        if seen_expiry <= moment:
-            seen_nonces.pop(seen_nonce, None)
+    for old_nonce, old_expiry in list(seen_nonces.items()):
+        if old_expiry <= moment:
+            seen_nonces.pop(old_nonce, None)
     nonce = str(env["nonce"])
     expiry = seen_nonces.get(nonce)
     if expiry is not None and expiry > moment:

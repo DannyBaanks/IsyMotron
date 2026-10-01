@@ -11,8 +11,8 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 LINK_CLI = REPO / "tools" / "link_cli.py"
 sys.path.insert(0, str(REPO / "tools"))
-import link_cli
 from link_cli import lan_addresses
+import link_cli
 
 
 @pytest.fixture()
@@ -141,6 +141,7 @@ def test_servir_red_exposes_the_status_endpoint_on_the_network(state_home):
 
 def test_servir_red_records_the_actual_http_port(tmp_path, monkeypatch, capsys):
     import json
+    from types import SimpleNamespace
 
     class StoppedServer:
         tcp_address = "0.0.0.0:4321"
@@ -166,10 +167,12 @@ def test_servir_red_records_the_actual_http_port(tmp_path, monkeypatch, capsys):
 
     assert link_cli.cmd_servir(SimpleNamespace(red=True, port=0, udp_port=0), directory) == 0
     record = json.loads((directory / "receipts.jsonl").read_text(encoding="utf-8").splitlines()[-1])
-    assert record["kind"] == "link_serve_lan"
-    assert isinstance(record["ts"], str)
-    assert record["port"] == 8765
-    assert record["addresses"] == ["192.0.2.10"]
+    assert record == {
+        "kind": "link_serve_lan",
+        "ts": record["ts"],
+        "port": 8765,
+        "addresses": ["192.0.2.10"],
+    }
     output = capsys.readouterr().out
     assert "192.0.2.10:8765" in output
     assert "isymotron link aceptar <código>" in output

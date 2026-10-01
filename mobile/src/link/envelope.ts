@@ -97,8 +97,8 @@ export async function openEnvelope(
   }
   if (!ok) throw new EnvelopeError("bad signature");
   if (Math.abs(now - Number(env.ts)) > MAX_SKEW_MS) throw new EnvelopeError("envelope outside time window");
-  for (const [seenNonce, expiry] of seenNonces) {
-    if (expiry <= now) seenNonces.delete(seenNonce);
+  for (const [oldNonce, oldExpiry] of seenNonces) {
+    if (oldExpiry <= now) seenNonces.delete(oldNonce);
   }
   const expiry = seenNonces.get(env.nonce);
   if (expiry !== undefined && expiry > now) throw new EnvelopeError("nonce replay");
@@ -118,4 +118,3 @@ export async function openEnvelope(
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new EnvelopeError("payload must be an object");
   return { peer, payload: payload as Record<string, unknown> };
 }
-
