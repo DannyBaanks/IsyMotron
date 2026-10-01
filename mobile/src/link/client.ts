@@ -43,11 +43,12 @@ function localHost(host: string): boolean {
 export function parseAddress(text: string): string {
   const value = text.trim().replace(/^http:\/\//, "").replace(/\/+$/, "");
   const m = /^([A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\]):(\d{1,5})$/.exec(value);
-  const port = m ? Number(m[2]) : 0;
-  if (!m || port < 1 || port > 65535 || !localHost(m[1])) {
+  const host = m?.[1] ?? "";
+  const port = Number(m?.[2] ?? 0);
+  if (!m || port < 1 || port > 65535 || !localHost(host)) {
     throw new LinkClientError("bad_address", "Escribe una dirección local o de Tailscale como IP:puerto, por ejemplo 192.168.1.20:47931.");
   }
-  return `${m[1]}:${port}`;
+  return `${host}:${port}`;
 }
 
 async function postJson(fetchFn: Fetch, url: string, body: unknown, timeoutMs: number): Promise<{ status: number; body: Record<string, unknown> }> {
