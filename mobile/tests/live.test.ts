@@ -65,3 +65,27 @@ describe("phone ↔ PC over the real Link server", () => {
     await expect(ping(phone, proposal.peer, f)).rejects.toMatchObject({ code: "rejected" });
   });
 });
+
+describe("only the paired PC's sealed reply is believed", () => {
+  it("a forged plain reply (no renv, or renv sealed by someone else) is rejected", async () => {
+    const phone = await loadOrCreateIdentity(memoryKeyStore(), "isytron-victima");
+    const proposal = await requestPairing(phone, `127.0.0.1:${port}`, f);
+    expect((await pcSays(`accept ${proposal.code}`)).accepted).toBe(true);
+
+    const forgedPlain: Fetch = async () => ({ status: 200, json: async () => ({ ok: true, pong: true }) });
+    await expect(ping(phone, proposal.peer, forgedPlain)).rejects.toMatchObject({ code: "unsealed_reply" });
+
+    // An attacker with its own keys seals a "pong" to the phone: wrong signer.
+    const attacker = await loadOrCreateIdentity(memoryKeyStore(), "isytron-atacante");
+    const { seal } = await import("../src/link/envelope");
+    const forgedSealed: Fetch = async (_url, init) => {
+      const req = JSON.parse(init!.body!).env;
+      const renv = await seal(attacker, { office_id: phone.officeId, box_pub: phone.boxPub }, { re: req.nonce, ok: true, pong: true });
+      return { status: 200, json: async () => ({ ok: true, pong: true, renv: { ...renv, from: proposal.peer.office_id } }) };
+    };
+    await expect(ping(phone, proposal.peer, forgedSealed)).rejects.toMatchObject({ code: "bad_reply" });
+
+    // The real PC's reply passes.
+    expect(await ping(phone, proposal.peer, f)).toMatchObject({ ok: true, pong: true });
+  });
+});

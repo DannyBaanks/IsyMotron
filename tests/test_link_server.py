@@ -246,3 +246,23 @@ def test_link_modules_are_stdlib_only():
                     if node.level != 0:
                         continue
                     assert (node.module or "").split(".")[0] in allowed, (path.name, node.module)
+
+
+def test_replies_are_sealed_back_and_bound_to_the_request(tmp_path):
+    """IsyMotron Móvil trusts a reply only if the paired office signed it (M3.2)."""
+    (dir_a, ident_a), (dir_b, ident_b) = _offices(tmp_path)
+    server_b = LinkServer(dir_b, tcp_port=0, udp_port=0).start()
+    try:
+        env = envelope.seal(ident_a, identity.public_card(ident_b), {"op": "ping"})
+        status, body = _post(f"http://{server_b.tcp_address}/link/v1/call", {"env": env})
+        assert status == 200 and body["pong"] is True
+        peer, payload = envelope.open_envelope(ident_a, identity.load_peers(dir_a), body["renv"], {})
+        assert peer["office_id"] == ident_b["office_id"]
+        assert payload == {"re": env["nonce"], "ok": True, "pong": True, "from": ident_b["office_id"]}
+        # a third office cannot open it: it is sealed to the caller only
+        dir_c = tmp_path / "c"
+        ident_c = identity.load_identity(dir_c)
+        with pytest.raises(envelope.EnvelopeError):
+            envelope.open_envelope(ident_c, {ident_b["office_id"]: identity.public_card(ident_b)}, body["renv"], {})
+    finally:
+        server_b.stop()

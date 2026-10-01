@@ -8,6 +8,9 @@ Routes:
   GET  /link/v1/status            public card + paired/inbox counts
   POST /link/v1/pair              {card..., nonce, port} -> {peer, code}
   POST /link/v1/call              {env} sealed op: ping|delegate|message|cancel|task
+                                  -> {ok, ...result, renv}: the same result sealed back to
+                                     the caller and bound to its request nonce ("re"), so a
+                                     client can trust a reply only if this office signed it
 UDP :47932 answers the ISYMO-LINK?v1 probe with our card (discovery).
 
 Delegation lands in state_dir/inbox.jsonl (queued); the human (or M3
@@ -129,6 +132,10 @@ def _require_arg(body: dict, name: str) -> str:
 
 
 def handle_call(state: LinkState, env: dict) -> dict:
+    return handle_call_with_peer(state, env)[0]
+
+
+def handle_call_with_peer(state: LinkState, env: dict) -> tuple[dict, dict]:
     peers = identity.load_peers(state.directory)
     try:
         peer, payload = envelope.open_envelope(
@@ -136,6 +143,15 @@ def handle_call(state: LinkState, env: dict) -> dict:
         )
     except envelope.EnvelopeError as exc:
         raise LinkError("rejected", str(exc), 403) from exc
+    return (_dispatch(state, peer, payload), peer)
+
+
+def sealed_reply(state: LinkState, peer: dict, env: dict, result: dict) -> dict:
+    """The result sealed back to the caller, bound to the request nonce."""
+    return envelope.seal(state.identity, peer, {"re": str(env.get("nonce", "")), **result})
+
+
+def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
     op = payload.get("op")
     if op == "ping":
         return {"ok": True, "pong": True, "from": state.identity["office_id"]}
@@ -246,7 +262,9 @@ class _Handler(BaseHTTPRequestHandler):
             elif self.path == "/link/v1/call":
                 if "env" not in body:
                     raise LinkError("bad_call", "call needs env", 400)
-                self._send(200, {"ok": True, **handle_call(self.state, body["env"])})
+                result, peer = handle_call_with_peer(self.state, body["env"])
+                renv = sealed_reply(self.state, peer, body["env"], result)
+                self._send(200, {"ok": True, **result, "renv": renv})
             else:
                 self._send(404, {"ok": False, "code": "not_found"})
         except LinkError as exc:

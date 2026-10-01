@@ -4,7 +4,7 @@
  * remembered after the human confirms the same code is on the PC's screen.
  */
 import { hex, unb64u } from "./bytes";
-import { seal, type Peer } from "./envelope";
+import { openEnvelope, seal, type Envelope, type Peer } from "./envelope";
 import { PROTOCOL, freshNonce, publicCard, shortCode, type LinkIdentity, type PublicCard } from "./identity";
 
 export type Fetch = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }) => Promise<{ status: number; json(): Promise<unknown> }>;
@@ -70,10 +70,14 @@ export async function requestPairing(own: LinkIdentity, address: string, fetchFn
   };
 }
 
+/** Reply nonces already accepted (anti-replay for sealed replies, per app run). */
+const seenReplies = new Map<string, number>();
+
 /**
- * One sealed operation to a paired PC. The request is signed and encrypted; the PC's reply
- * is plain JSON (the PC does not seal replies today), so it is shown, never trusted to
- * authorize anything on the phone.
+ * One sealed operation to a paired PC. The request is signed and encrypted, and the only
+ * reply the phone believes is the PC's sealed one (`renv`): signed by the paired PC, sealed
+ * to this phone and bound to this request's nonce. The plain JSON beside it is ignored, so
+ * someone else on the network cannot fake an answer.
  */
 export async function call(own: LinkIdentity, peer: Peer, payload: Record<string, unknown>, fetchFn: Fetch, timeoutMs = 15_000): Promise<Record<string, unknown>> {
   let last: LinkClientError = new LinkClientError("unreachable", `Sin dirección para ${peer.name}.`);
@@ -81,13 +85,28 @@ export async function call(own: LinkIdentity, peer: Peer, payload: Record<string
     const env = await seal(own, peer, payload);
     try {
       const { status, body } = await postJson(fetchFn, `http://${address}/link/v1/call`, { env }, timeoutMs);
-      if (status === 200 && body.ok === true) return body;
+      if (status === 200 && body.ok === true) return await trustedReply(own, peer, env, body);
       last = new LinkClientError(String(body.code ?? `http_${status}`), String(body.error ?? body.code ?? `HTTP ${status}`));
     } catch (error) {
       last = error instanceof LinkClientError ? error : new LinkClientError("unreachable", String(error));
     }
   }
   throw last;
+}
+
+async function trustedReply(own: LinkIdentity, peer: Peer, request: Envelope, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  if (!body.renv || typeof body.renv !== "object") {
+    throw new LinkClientError("unsealed_reply", "Tu PC respondió sin firmar. Actualiza IsyMotron en la PC (necesita respuestas selladas).");
+  }
+  let reply: Record<string, unknown>;
+  try {
+    reply = (await openEnvelope(own, { [peer.office_id]: peer }, body.renv as Envelope, seenReplies)).payload;
+  } catch (error) {
+    throw new LinkClientError("bad_reply", `La respuesta no viene de ${peer.name}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (reply.re !== request.nonce) throw new LinkClientError("bad_reply", "La respuesta no corresponde a esta petición.");
+  const { re: _re, ...result } = reply;
+  return result;
 }
 
 export const ping = (own: LinkIdentity, peer: Peer, f: Fetch) => call(own, peer, { op: "ping" }, f);
