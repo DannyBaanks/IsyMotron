@@ -85,9 +85,9 @@ def test_lan_addresses_on_macos_use_bounded_interface_probes(monkeypatch):
     assert calls and all(call[1]["timeout"] <= 0.25 for call in calls)
 
 
-def _serve(state_home, *extra):
+def _serve(state_home, *extra, port=0):
     proc = subprocess.Popen(
-        [sys.executable, str(LINK_CLI), "servir", "--port", "0", "--udp-port", "0", *extra],
+        [sys.executable, str(LINK_CLI), "servir", "--port", str(port), "--udp-port", "0", *extra],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -126,13 +126,13 @@ def test_servir_defaults_to_this_machine_only(state_home):
         proc.wait()
 
 
-def test_servir_red_listens_on_the_network_and_explains_pairing(state_home):
-    proc, lines = _serve(state_home, "--red")
+def test_servir_red_exposes_the_status_endpoint_on_the_network(state_home):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    proc, lines = _serve(state_home, "--red", port=port)
     try:
-        assert lines[0].startswith("sirviendo enlace en 0.0.0.0:")
-        assert any("En el teléfono escribe:" in line for line in lines)
-        assert any("isymotron link aceptar" in line for line in lines)
-        port = int(next(line.rsplit(":", 1)[1] for line in lines if "En el teléfono escribe:" in line))
+        assert lines[0] == f"sirviendo enlace en 0.0.0.0:{port} (Ctrl+C para detener)"
         assert _status(f"127.0.0.1:{port}")["paired"] == 0
     finally:
         proc.kill()
@@ -173,4 +173,6 @@ def test_servir_red_records_the_actual_http_port(tmp_path, monkeypatch, capsys):
         "port": 8765,
         "addresses": ["192.0.2.10"],
     }
-    assert "192.0.2.10:8765" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "192.0.2.10:8765" in output
+    assert "isymotron link aceptar <código>" in output
