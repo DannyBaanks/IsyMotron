@@ -87,7 +87,10 @@ def test_lan_addresses_on_macos_use_bounded_interface_probes(monkeypatch):
 def _serve(state_home, *extra):
     proc = subprocess.Popen(
         [sys.executable, str(LINK_CLI), "servir", "--port", "0", "--udp-port", "0", *extra],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env={**os.environ, "XDG_STATE_HOME": str(state_home)},
     )
     lines = []
     deadline = __import__("time").time() + 30
