@@ -72,13 +72,14 @@ def _provider_at(url: str) -> Provider:
 
 
 def test_clean_run_reports_zeros_and_quantiles(stub):
-    _Scripted.script = [(0.01, 200)] * 6
+    # Leave timer granularity and cross-platform scheduler jitter some room.
+    _Scripted.script = [(0.05, 200)] * 6
     p = _provider_at(stub)
     workload = provider_load.run_workload(p, calls=6, interval_s=0, sleep=lambda s: None)
     s = provider_load.summarize(workload["samples"])
     assert s["calls"] == 6 and s["ok"] == 6 and s["errors"] == 0
     assert s["error_rate"] == 0.0
-    assert s["latency_s"]["min"] >= 0.01
+    assert s["latency_s"]["min"] >= 0.04
     assert s["latency_s"]["median"] <= s["latency_s"]["p95"] <= s["latency_s"]["max"]
 
 
