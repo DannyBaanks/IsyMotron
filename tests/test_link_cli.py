@@ -57,3 +57,60 @@ def test_olvidar_unknown_is_clean_error(state_home):
 def test_unknown_subcommand_is_exit_two(state_home):
     proc = run_cli("nosub")
     assert proc.returncode == 2
+
+
+def _serve(state_home, *extra):
+    proc = subprocess.Popen(
+        [sys.executable, str(LINK_CLI), "servir", "--port", "0", "--udp-port", "0", *extra],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    lines = []
+    deadline = __import__("time").time() + 30
+    while __import__("time").time() < deadline:
+        line = proc.stdout.readline()
+        if not line:
+            break
+        lines.append(line.rstrip("\n"))
+        if not extra or "aceptar" in line:
+            break
+    return proc, lines
+
+
+def _status(address: str) -> dict:
+    import json
+    import urllib.request
+
+    host, port = address.rsplit(":", 1)
+    host = "127.0.0.1" if host == "0.0.0.0" else host
+    with urllib.request.urlopen(f"http://{host}:{port}/link/v1/status", timeout=10) as resp:
+        return json.loads(resp.read())
+
+
+def test_servir_defaults_to_this_machine_only(state_home):
+    proc, lines = _serve(state_home)
+    try:
+        assert lines and lines[0].startswith("sirviendo enlace en 127.0.0.1:")
+        assert _status(lines[0].split(" en ")[1].split(" ")[0])["office"]["protocol"] == "isymotron-link@1"
+        assert not (state_home / "isymotron" / "link" / "receipts.jsonl").exists()
+    finally:
+        proc.kill()
+        proc.wait()
+
+
+def test_servir_red_listens_on_the_network_says_how_and_leaves_a_receipt(state_home):
+    import json
+
+    proc, lines = _serve(state_home, "--red")
+    try:
+        assert lines[0].startswith("sirviendo enlace en 0.0.0.0:")
+        port = lines[0].split(":")[1].split(" ")[0]
+        assert any("En el teléfono escribe:" in line and line.endswith(f":{port}") for line in lines)
+        assert any("isymotron link aceptar" in line for line in lines)
+        assert _status(f"127.0.0.1:{port}")["paired"] == 0
+        receipts = (state_home / "isymotron" / "link" / "receipts.jsonl").read_text(encoding="utf-8").splitlines()
+        record = json.loads(receipts[-1])
+        assert record["kind"] == "link_serve_lan"
+        assert record["port"] == int(port)
+    finally:
+        proc.kill()
+        proc.wait()

@@ -156,16 +156,49 @@ def cmd_olvidar(args: argparse.Namespace, directory: Path) -> int:
     return 0
 
 
-def cmd_servir(args: argparse.Namespace, directory: Path) -> int:
+def lan_addresses() -> list[str]:
+    """This machine's IPv4 addresses on the local network (no packet is sent)."""
+    import socket
+
+    found: set[str] = set()
     try:
-        server = LinkServer(directory, tcp_port=args.port, udp_port=args.udp_port)
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            probe.connect(("10.255.255.255", 1))  # UDP connect only picks a route
+            found.add(probe.getsockname()[0])
+        finally:
+            probe.close()
+    except OSError:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            found.add(str(info[4][0]))
+    except OSError:
+        pass
+    return sorted(a for a in found if not a.startswith("127.") and a != "0.0.0.0")
+
+
+def cmd_servir(args: argparse.Namespace, directory: Path) -> int:
+    # Loopback unless the human asks for the network: the phone (IsyMotron Móvil) needs
+    # --red. Calls stay sealed and pairing still needs the 6-digit code on both screens.
+    host = "0.0.0.0" if args.red else "127.0.0.1"
+    try:
+        server = LinkServer(directory, tcp_port=args.port, udp_port=args.udp_port, host=host)
     except OSError as exc:
         # A bind failure must not look like a successful start (trap caught
         # 2026-09-25: second `servir` bound nowhere and pairings went to the
         # zombie on the same port).
         print(f"no pude abrir :{args.port} — ¿ya hay un 'link servir' corriendo? ({exc})")
         return 1
-    print(f"sirviendo enlace en {server.tcp_address} (Ctrl+C para detener)")
+    print(f"sirviendo enlace en {server.tcp_address} (Ctrl+C para detener)", flush=True)
+    if args.red:
+        port = server.http.server_address[1]
+        addresses = lan_addresses()
+        receipts.append_receipt(directory, "link_serve_lan", {"port": port, "addresses": addresses})
+        print("abierto a tu red local: cualquiera en esta red puede PEDIR emparejarse, nadie entra sin el código.", flush=True)
+        for address in addresses or ["<la IP de esta PC>"]:
+            print(f"En el teléfono escribe:  {address}:{port}", flush=True)
+        print("Cuando el teléfono muestre el código, corre aquí:  isymotron link aceptar <código>", flush=True)
     server.start()
     try:
         while True:
@@ -220,6 +253,7 @@ def build_parser() -> argparse.ArgumentParser:
     servir = sub.add_parser("servir", aliases=["serve"], help="servidor en primer plano")
     servir.add_argument("--port", type=int, default=DEFAULT_TCP_PORT)
     servir.add_argument("--udp-port", type=int, default=DEFAULT_UDP_PORT)
+    servir.add_argument("--red", action="store_true", help="escuchar en la red local (para IsyMotron Móvil); por defecto solo esta PC")
     servir.set_defaults(func=cmd_servir)
     return parser
 
