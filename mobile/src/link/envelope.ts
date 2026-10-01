@@ -97,6 +97,9 @@ export async function openEnvelope(
   }
   if (!ok) throw new EnvelopeError("bad signature");
   if (Math.abs(now - Number(env.ts)) > MAX_SKEW_MS) throw new EnvelopeError("envelope outside time window");
+  for (const [seenNonce, expiry] of seenNonces) {
+    if (expiry <= now) seenNonces.delete(seenNonce);
+  }
   const expiry = seenNonces.get(env.nonce);
   if (expiry !== undefined && expiry > now) throw new EnvelopeError("nonce replay");
   seenNonces.set(env.nonce, now + NONCE_TTL_MS);
