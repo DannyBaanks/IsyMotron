@@ -39,6 +39,16 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: End to end in Chromium against the PC's real Link server
+        run: |
+          npx playwright install --with-deps chromium
+          E2E_OUT=e2e-out npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-e2e-screenshots
+          path: mobile/e2e-out/
+          retention-days: 14
 
   android:
     name: Android APK

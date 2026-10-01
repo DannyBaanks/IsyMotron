@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The PC's IsyMotron Link server speaks plain HTTP on the local network: every call is
+  signed and encrypted end to end (Ed25519 + X25519/AES-GCM) and only replies sealed by the
+  paired PC are believed. Android cannot scope cleartext to private IP ranges, so it is
+  allowed here; the app itself only ever sends cleartext to a PC address the human typed.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
