@@ -209,7 +209,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     - → `.github/workflows/gus-runtime.yml`: en cada push o PR relevante corre `npm test` + `build` + `--verify` (offline) + `--check` (clona iSyCodeMovil público en el pin y compara byte a byte). **Primera corrida en GitHub: verde**, run [36792943739](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36792943739) sobre `3024585`.
   - [x] **M3.3f** Nota/ADR: por qué no submódulo, criterio para extraer un paquete después, y proceso para actualizar el pin.
     - → `docs/GUS_RUNTIME_VENDORING.md` en TamagotchIA: por qué copia fijada; por qué no submódulo (estado git extra, clones incompletos, CI especial, onboarding; sin declararlos malos en general); criterio para extraer un paquete (3+ consumidores, API estable, pin frecuente, glue duplicado, versionado propio); proceso para mover el pin (nunca auto-follow-main); rollback. Commit `ca54ec5`.
-- [ ] **M3.4** Runtime nativo conectado (gate §25). En dispositivo real: NOT_DEMONSTRATED hasta que haya prueba física.
+- [x] **M3.4** Runtime nativo conectado (gate §25). En dispositivo real: NOT_DEMONSTRATED hasta que haya prueba física.
+  - → **Gate §25: DEMONSTRATED en CI/desktop · real device = NOT_DEMONSTRATED.** Compilar para iOS/Android **no** significa que "GUS local funciona en el teléfono": eso lo decide M3.6.
   - [x] **M3.4a** Smoke de escritorio: el bridge vendorizado + llama.cpp fijado + un modelo pequeño con hash congelado + ContextBox real → texto no vacío, UTF-8 válido, sin fugas de tokens de control, limpieza OK.
     - → Smoke de escritorio en CI **verde con inferencia real**, run [36793218434](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36793218434) sobre `8263b28`: bridge vendorizado (`-Werror`) + llama.cpp `842b188` + Qwen2.5-0.5B Q4_K_M (sha256 `74a4da8c…` verificado, congelado en `native/gus-smoke/model.json`) + el chat compuesto por la app (criatura del fixture v1, Context Box compilada en el presupuesto de 2048, turno con emoji).
     - **Resultado:** status OK, 1380 tokens de prompt reales, 37 generados con fin de turno, 139 tok/s de prefill, 44 tok/s de generación, RSS 606 MB, recarga tras destroy OK, UTF-8 válido, sin fuga de tokens de control.
@@ -291,6 +292,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M3.4 | TamagotchIA @ `81b2367` | `claude/gus-life-m1` | gate | M3.4a–e marcadas |
 | 2026-10-01 | M3.4e | TamagotchIA @ `b7fe4b1` → `81b2367`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | provenance de cierre | runs 36793725023 y 36794433294 verdes; vitest 111/111 |
 | 2026-10-01 | M3.4c | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | ios/App/GusLocal/*, SceneDelegate.swift, project.pbxproj, ios.yml, gus-runtime.yml | GitHub Actions [run 36794433294](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36794433294): iOS job success (strict link check) |
 | 2026-09-30 | M3.4b | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | android/app/src/main/cpp/*, GusLocalPlugin.java, MainActivity.java, build.gradle | GitHub Actions: Android APK job success ×2 |
