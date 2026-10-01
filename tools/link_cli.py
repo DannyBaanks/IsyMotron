@@ -156,9 +156,47 @@ def cmd_olvidar(args: argparse.Namespace, directory: Path) -> int:
     return 0
 
 
+def _darwin_lan_addresses() -> list[str]:
+    """Bounded IPv4 discovery on macOS; never wait on hostname/DNS routing."""
+    import socket
+    import subprocess
+
+    found: set[str] = set()
+    try:
+        interfaces = [name for _, name in socket.if_nameindex()]
+    except OSError:
+        interfaces = ["en0", "en1"]
+    for name in interfaces:
+        try:
+            done = subprocess.run(
+                ["/usr/sbin/ipconfig", "getifaddr", name],
+                capture_output=True,
+                text=True,
+                timeout=0.5,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        address = done.stdout.strip()
+        try:
+            socket.inet_aton(address)
+        except OSError:
+            continue
+        if not address.startswith("127.") and address != "0.0.0.0":
+            found.add(address)
+    return sorted(found)
+
+
 def lan_addresses() -> list[str]:
     """This machine's IPv4 addresses on the local network (no packet is sent)."""
     import socket
+
+    # On macOS hosted runners, routing an unconnected UDP socket can block for
+    # about two minutes while the system waits on network configuration. Query
+    # interface addresses directly there so `link servir --red` stays usable
+    # even when DNS/routing is unavailable.
+    if sys.platform == "darwin":
+        return _darwin_lan_addresses()
 
     found: set[str] = set()
     try:
