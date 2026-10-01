@@ -4,4 +4,4 @@ This directory contains a byte-pinned snapshot of `GUSLlamaBridge.c`, its header
 
 Run `node mobile/tools/sync-gus-runtime.mjs --verify` from the repository root to verify local bytes without network. `--check` additionally compares every allowlisted snapshot file with its pinned upstream raw source. `--sync` downloads only those allowlisted files and replaces them only after every fetched byte sequence matches its fixed SHA-256.
 
-`mobile/vendor/gus-runtime/scripts/build-llama-xcframework.sh` builds the pinned upstream XCFramework on macOS. Build products and downloaded llama.cpp sources remain outside tracked application assets; no model weights are bundled.
+`mobile/vendor/gus-runtime/scripts/prepare-llama-source.sh` checks out the full llama.cpp source into the ignored `.build/llama.cpp` directory. The Android Gradle build uses that exact checkout with the arm64 NDK; `mobile/vendor/gus-runtime/scripts/build-llama-xcframework.sh` builds the pinned upstream XCFramework on macOS. Build products and downloaded llama.cpp sources remain outside tracked application assets; no model weights are bundled.
