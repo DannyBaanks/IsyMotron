@@ -82,14 +82,23 @@ class LinkState:
             for entry in entries:
                 handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-    def inbox_update(self, mutate):
-        """Read, mutate and rewrite the inbox as one in-process transaction."""
+    def inbox_update(self, task_id: str, office_id: str, mutate) -> dict | None:
+        """Read, mutate and rewrite one owned task under one process-local lock."""
         with self.inbox_lock:
             entries = self._read_inbox_unlocked()
-            result = mutate(entries)
-            if result is not None:
-                self._rewrite_inbox_unlocked(entries)
-            return result
+            hit = next(
+                (
+                    entry
+                    for entry in entries
+                    if entry.get("task_id") == task_id and entry.get("from") == office_id
+                ),
+                None,
+            )
+            if hit is None:
+                return None
+            mutate(hit)
+            self._rewrite_inbox_unlocked(entries)
+            return hit
 
     def inbox_append(self, entry: dict) -> dict:
         with self.inbox_lock:
@@ -202,29 +211,21 @@ def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
         task_id = _require_arg(payload, "task_id")
         text = _require_arg(payload, "text")
 
-        def add_message(entries):
-            hit = next((e for e in entries if e.get("task_id") == task_id and e.get("from") == peer["office_id"]), None)
-            if hit is None:
-                return None
-            hit.setdefault("context", []).append({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "text": text})
-            return hit
+        def add_message(hit: dict) -> None:
+            hit.setdefault("context", []).append(
+                {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "text": text}
+            )
 
-        hit = state.inbox_update(add_message)
-        if hit is None:
+        if state.inbox_update(task_id, peer["office_id"], add_message) is None:
             raise LinkError("no_such_task", "task is not yours", 404)
         return {"ok": True}
     if op == "cancel":
         task_id = _require_arg(payload, "task_id")
 
-        def cancel_task(entries):
-            hit = next((e for e in entries if e.get("task_id") == task_id and e.get("from") == peer["office_id"]), None)
-            if hit is None:
-                return None
+        def mark_cancelled(hit: dict) -> None:
             hit["status"] = "cancelled"
-            return hit
 
-        hit = state.inbox_update(cancel_task)
-        if hit is None:
+        if state.inbox_update(task_id, peer["office_id"], mark_cancelled) is None:
             raise LinkError("no_such_task", "task is not yours", 404)
         return {"ok": True}
     if op == "task":
