@@ -6,9 +6,9 @@ name: IsyMotron Móvil (APK + IPA)
 on:
   workflow_dispatch:
   pull_request:
-    paths: [mobile/**, .github/workflows/mobile.yml]
+    paths: [mobile/**, core/isymotron/link/**, .github/workflows/mobile.yml]
   push:
-    paths: [mobile/**, .github/workflows/mobile.yml]
+    paths: [mobile/**, core/isymotron/link/**, .github/workflows/mobile.yml]
 concurrency:
   group: mobile-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -29,6 +29,13 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Link vectors still match the PC's code (regenerate and compare)
+        run: |
+          python3 tools/link_vectors.py > /tmp/link-vectors.json
+          diff -u tests/fixtures/link-vectors.json /tmp/link-vectors.json || { echo "::error::the PC's Link output changed; regenerate mobile/tests/fixtures/link-vectors.json on purpose"; exit 1; }
       - run: npm ci
       - run: npm test
       - run: npm run build
