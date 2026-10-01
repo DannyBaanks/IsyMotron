@@ -15,12 +15,38 @@ export class LinkClientError extends Error {
   }
 }
 
-/** "192.168.1.20:47931" → validated host:port. No paths, no schemes, nothing else. */
+function isPrivateIpv4(host: string): boolean {
+  const parts = host.split(".");
+  if (parts.length !== 4) return false;
+  const octets = parts.map((part) => Number(part));
+  if (octets.some((part, i) => !/^\d{1,3}$/.test(parts[i]!) || !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  const [a, b] = octets;
+  return a === 10
+    || a === 127
+    || (a === 169 && b === 254)
+    || (a === 172 && b! >= 16 && b! <= 31)
+    || (a === 192 && b === 168);
+}
+
+function isLocalNetworkHost(host: string): boolean {
+  const lower = host.toLowerCase();
+  if (lower.endsWith(".local")) return true;
+  if (isPrivateIpv4(lower)) return true;
+  if (!lower.startsWith("[") || !lower.endsWith("]")) return false;
+  const ipv6 = lower.slice(1, -1);
+  return ipv6 === "::1"
+    || ipv6.startsWith("fc")
+    || ipv6.startsWith("fd")
+    || /^fe[89ab]/.test(ipv6);
+}
+
+/** "192.168.1.20:47931" → validated local-network host:port. */
 export function parseAddress(text: string): string {
   const value = text.trim().replace(/^http:\/\//, "").replace(/\/+$/, "");
   const m = /^([A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\]):(\d{1,5})$/.exec(value);
   const port = m ? Number(m[2]) : 0;
   if (!m || port < 1 || port > 65535) throw new LinkClientError("bad_address", "Escribe la dirección como IP:puerto, por ejemplo 192.168.1.20:47931.");
+  if (!isLocalNetworkHost(m[1])) throw new LinkClientError("non_local_address", "Por seguridad, Link sólo acepta direcciones de tu red local (IP privada, enlace local o nombre .local).");
   return `${m[1]}:${port}`;
 }
 
