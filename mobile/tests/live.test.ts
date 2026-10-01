@@ -5,7 +5,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import { delegate, ping, requestPairing, task, cancel, type Fetch } from "../src/link/client";
+import { delegate, ping, requestPairing, task, cancel, listPermissions, decidePermission, type Fetch } from "../src/link/client";
 import { loadOrCreateIdentity, memoryKeyStore } from "../src/link/keystore";
 
 const helper = fileURLToPath(new URL("../tools/link_pc_for_tests.py", import.meta.url));
@@ -87,5 +87,44 @@ describe("only the paired PC's sealed reply is believed", () => {
 
     // The real PC's reply passes.
     expect(await ping(phone, proposal.peer, f)).toMatchObject({ ok: true, pong: true });
+  });
+});
+
+describe("M5 permissions stay decided by the paired PC", () => {
+  it("lists local-agent requests, approves through Link, and returns the PC-issued lease locally", async () => {
+    const phone = await loadOrCreateIdentity(memoryKeyStore(), "isytron-permisos");
+    const proposal = await requestPairing(phone, `127.0.0.1:${port}`, f);
+    expect((await pcSays(`accept ${proposal.code}`)).accepted).toBe(true);
+
+    const queued = await pcSays("request-permission");
+    const queuedRequest = queued.request as Record<string, unknown>;
+    const requestId = String(queuedRequest.request_id);
+    const pending = await listPermissions(phone, proposal.peer, f);
+    expect(pending.requests).toEqual([
+      expect.objectContaining({
+        request_id: requestId,
+        subject: "agent:local",
+        capability: "filesystem.read",
+        scope: { roots: ["/srv/photos"] },
+        status: "pending",
+      }),
+    ]);
+
+    await expect(decidePermission(phone, proposal.peer, requestId, "approve", f))
+      .resolves.toMatchObject({ status: "approved" });
+    const status = await pcSays(`permission-status ${requestId}`);
+    const decidedRequest = status.request as Record<string, unknown>;
+    const lease = decidedRequest.lease as Record<string, unknown>;
+    expect(decidedRequest.status).toBe("approved");
+    expect(lease.scope).toEqual({ roots: ["/srv/photos"] });
+    expect(lease.lease_id).toMatch(/^lease_/);
+    expect((await pcSays("receipts")).receipts).toEqual(
+      expect.arrayContaining([expect.objectContaining({
+        kind: "link_permission_decided",
+        request_id: requestId,
+        decision: "approved",
+        by: phone.officeId,
+      })]),
+    );
   });
 });

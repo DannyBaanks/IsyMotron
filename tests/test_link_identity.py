@@ -168,8 +168,8 @@ def test_link_modules_are_stdlib_only():
         Path(__file__).resolve().parent.parent / "core" / "isymotron" / "link",
     ]
     allowed_first = {
-        "__future__", "base64", "hashlib", "hmac", "http", "json", "os",
-        "pathlib", "platform", "socket", "threading", "time", "urllib",
+        "__future__", "base64", "hashlib", "hmac", "http", "ipaddress", "json", "math", "os",
+        "pathlib", "platform", "socket", "threading", "time", "typing", "urllib", "uuid",
     }
     for root in roots:
         for path in sorted(root.glob("*.py")):

@@ -82,7 +82,8 @@
 
 ## M5 — Permisos desde el teléfono
 
-- [ ] **M5.1** Nuevas operaciones del Link para ver los permisos (leases) pendientes de la PC y responder sí/no. La PC decide y deja recibo; el teléfono solo es el dedo del humano.
+- [x] **M5.1** Nuevas operaciones del Link para ver los permisos (leases) pendientes de la PC y responder sí/no. La PC decide y deja recibo; el teléfono solo es el dedo del humano.
+  - → Agente local crea solicitudes por loopback; el teléfono emparejado solo las lista y responde mediante operaciones Link firmadas/cifradas. El `Host` de la PC aplica grant, alcance y TTL máximos; una aprobación humana no puede conceder permisos ausentes. La lease utilizable se entrega solo al agente local, nunca al teléfono. Recibos quedan en PC y teléfono. Evidencia: Python 544 passed / 15 skipped; 3 fallos del menú PTY no relacionados con M5 (el CLI expone ayuda en lugar del menú); Vitest 27/27, build y e2e Chromium pasan. **Aprobación con teléfono físico: NOT_DEMONSTRATED.**
 
 ## M6 — GUS en el teléfono
 
@@ -101,6 +102,7 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M5.1 | IsyMotron @ `e9228e5` | `claude/exciting-lamport-84gclk` | core/isymotron/link/{permissions,server}.py, tools/link_cli.py, tests/test_link_{permissions,server,identity}.py, docs/LINK.md, mobile/src/{home,link/client,store,styles}.ts/css, mobile/tests/live.test.ts, mobile/tools/link_pc_for_tests.py, mobile/e2e/pairing.e2e.mjs | pytest 544 passed / 15 skipped; 3 PTY menu failures unrelated; Vitest 27/27; build + Chromium e2e pass; physical phone approval NOT_DEMONSTRATED |
 | 2026-10-01 | M4.4 | IsyMotron @ `474bd3d`, Companion @ `ffa2b13` | `claude/exciting-lamport-84gclk` | mobile/src/{pet,home,main}.ts, mobile/src/styles.css, mobile/public/malbolgato/*, mobile/tests/pet.test.ts, mobile/e2e/pairing.e2e.mjs | vitest 22/22; e2e + APK + IPA en [run 36838884718](https://github.com/DannyBaanks/IsyMotron/actions/runs/36838884718) |
 | 2026-10-01 | M4.2 | IsyMotron @ `0e582df` | `claude/exciting-lamport-84gclk` | mobile/src/home.ts, mobile/src/store.ts, mobile/tests/store.test.ts | vitest 17/17; e2e en [run 36822953911](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822953911) |
 | 2026-10-01 | M4.1 | IsyMotron @ `0e582df` | `claude/exciting-lamport-84gclk` | mobile/src/home.ts, main.ts, store.ts, styles.css, Info.plist, AndroidManifest.xml, network_security_config.xml, e2e/pairing.e2e.mjs, mobile.yml | vitest 17/17; e2e en [run 36822953911](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822953911) |

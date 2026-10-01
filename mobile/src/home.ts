@@ -4,7 +4,7 @@
  * decides everything; the phone asks, shows sealed answers and keeps its own receipts.
  * Malbolgato only reflects what happened: he has no authority (docs/AVATAR_CONTRACT.md).
  */
-import { cancel, delegate, LinkClientError, parseAddress, ping, requestPairing, task, type Fetch, type PairingProposal } from "./link/client";
+import { cancel, decidePermission, delegate, LinkClientError, listPermissions, parseAddress, ping, requestPairing, task, type Fetch, type PairingProposal, type PermissionRequest } from "./link/client";
 import type { Peer } from "./link/envelope";
 import { prettyFingerprint, type LinkIdentity } from "./link/identity";
 import { createPet, ROW, type PetState } from "./pet";
@@ -38,6 +38,9 @@ export function describeReceipt(r: PhoneReceipt): string {
     case "link_delegated": return `Tarea enviada · ${r.title ?? r.task_id ?? ""} → ${r.name}`;
     case "link_cancelled": return `Tarea cancelada · ${r.task_id ?? ""} en ${r.name}`;
     case "link_forgotten": return `PC olvidada · ${r.name}`;
+    case "link_permission_approved": return `Permiso aprobado · ${r.capability ?? ""} en ${r.name}`;
+    case "link_permission_denied": return `Permiso rechazado · ${r.capability ?? ""} en ${r.name}`;
+    case "link_permission_expired": return `Permiso vencido · ${r.capability ?? ""} en ${r.name}`;
   }
 }
 
@@ -49,6 +52,7 @@ const FRAME_TTL_MS = 8000;
 const ICON = {
   home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
   tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>',
+  permissions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 20 6v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6z"/><path d="m8.5 12 2.3 2.3 4.8-5"/></svg>',
   receipts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>',
   phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg>',
   pc: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>',
@@ -86,7 +90,7 @@ export interface AppDeps {
   fetch: Fetch;
 }
 
-type Tab = "home" | "tasks" | "receipts" | "phone";
+type Tab = "home" | "tasks" | "permissions" | "receipts" | "phone";
 interface Signed { host: string; line: string; detail: string; at: number }
 
 export function startApp(deps: AppDeps): void {
@@ -145,7 +149,7 @@ export function startApp(deps: AppDeps): void {
     if (tab) {
       const bar = el("nav", "tabbar");
       bar.setAttribute("aria-label", "Secciones");
-      const tabs: Array<[Tab, string, string]> = [["home", "Inicio", ICON.home], ["tasks", "Tareas", ICON.tasks], ["receipts", "Recibos", ICON.receipts], ["phone", "Teléfono", ICON.phone]];
+      const tabs: Array<[Tab, string, string]> = [["home", "Inicio", ICON.home], ["tasks", "Tareas", ICON.tasks], ["permissions", "Permisos", ICON.permissions], ["receipts", "Recibos", ICON.receipts], ["phone", "Teléfono", ICON.phone]];
       for (const [id, label, icon] of tabs) {
         const b = el("button", id === tab ? "on" : "");
         b.type = "button";
@@ -162,6 +166,7 @@ export function startApp(deps: AppDeps): void {
   function go(tab: Tab): void {
     if (tab === "home") home();
     if (tab === "tasks") tasksScreen();
+    if (tab === "permissions") permissionsScreen();
     if (tab === "receipts") receiptsScreen();
     if (tab === "phone") phoneScreen();
   }
@@ -468,6 +473,96 @@ export function startApp(deps: AppDeps): void {
   // ---------------------------------------------------------------- Tareas, Recibos, Teléfono
   function tasksScreen(): void {
     layout([el("div", "eyebrow", "Todas tus PCs"), el("h1", undefined, "Tareas"), taskList(() => true, loadPeers(kv))], "tasks");
+  }
+
+  function permissionCard(peer: Peer, request: PermissionRequest, notice: HTMLElement, refresh: () => Promise<void>): HTMLElement {
+    const card = el("section", "card permission-card");
+    card.append(
+      el("div", "eyebrow", peer.name),
+      el("h2", undefined, request.capability),
+      el("p", "hint small", `Solicitado por ${request.subject} · hasta ${request.ttl_s} s`),
+      el("p", "hint small", `Alcance solicitado: ${JSON.stringify(request.scope)}`),
+      el("p", "hint", request.reason || "Esta solicitud no incluyó un motivo."),
+    );
+    const actions = el("div", "sec");
+    for (const choice of ["approve", "deny"] as const) {
+      actions.append(button(
+        choice === "approve" ? "Sí, aprobar" : "No, rechazar",
+        choice === "approve" ? "btn primary" : "btn danger",
+        async () => {
+          notice.textContent = "La PC está decidiendo…";
+          try {
+            const result = await decidePermission(
+              await deps.identity(), peer, request.request_id, choice, deps.fetch,
+            );
+            const approved = result.status === "approved";
+            addReceipt(kv, {
+              kind: approved ? "link_permission_approved" : result.status === "expired" ? "link_permission_expired" : "link_permission_denied",
+              office_id: peer.office_id,
+              name: peer.name,
+              request_id: request.request_id,
+              capability: request.capability,
+            });
+            setMood(approved ? "success" : "waiting", 1800);
+            showSigned(peer.name, approved ? "permiso aprobado" : "permiso rechazado", `${request.capability} · ${request.request_id}`);
+            const outcome = approved
+              ? `Permiso aprobado por ${peer.name}. La PC emitió el lease dentro de sus límites.`
+              : result.status === "expired"
+                ? `La solicitud de ${peer.name} venció antes de decidirse.`
+                : `Permiso rechazado por ${peer.name}.`;
+            await refresh();
+            notice.textContent = outcome;
+          } catch (error) {
+            setMood("error", 2400);
+            notice.textContent = explain(error);
+          }
+        },
+      ));
+    }
+    card.append(actions);
+    return card;
+  }
+
+  function permissionsScreen(): void {
+    const notice = el("p", "hint", "Revisando permisos…");
+    notice.setAttribute("aria-live", "polite");
+    const rows = el("div", "list");
+    const peers = Object.values(loadPeers(kv));
+    layout([
+      el("div", "eyebrow", "La PC conserva la autoridad"),
+      el("h1", undefined, "Permisos pendientes"),
+      el("p", "hint small", "Tú respondes sí o no. La PC comprueba sus permisos locales y emite el lease."),
+      notice,
+      rows,
+      button("Actualizar", "btn", async () => refresh()),
+    ], "permissions");
+
+    async function refresh(): Promise<void> {
+      rows.replaceChildren();
+      if (!peers.length) {
+        notice.textContent = "Enlaza una PC para revisar sus permisos pendientes.";
+        return;
+      }
+      notice.textContent = "Revisando permisos…";
+      const own = await deps.identity();
+      let pendingCount = 0;
+      const failures: string[] = [];
+      for (const peer of peers) {
+        try {
+          const response = await listPermissions(own, peer, deps.fetch);
+          for (const request of response.requests) {
+            rows.append(permissionCard(peer, request, notice, refresh));
+            pendingCount += 1;
+          }
+        } catch (error) {
+          failures.push(`${peer.name}: ${explain(error)}`);
+        }
+      }
+      if (failures.length) notice.textContent = failures.join(" · ");
+      else if (!pendingCount) notice.textContent = "No hay permisos pendientes.";
+      else notice.textContent = `${pendingCount} solicitud${pendingCount === 1 ? "" : "es"} esperando tu decisión.`;
+    }
+    void refresh().catch((error) => { notice.textContent = explain(error); });
   }
 
   function receiptsScreen(): void {

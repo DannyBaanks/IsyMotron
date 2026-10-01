@@ -220,7 +220,14 @@ def cmd_servir(args: argparse.Namespace, directory: Path) -> int:
     # --red. Calls stay sealed and pairing still needs the 6-digit code on both screens.
     host = "0.0.0.0" if args.red else "127.0.0.1"
     try:
-        server = LinkServer(directory, tcp_port=args.port, udp_port=args.udp_port, host=host)
+        permission_host = _real_permission_host()
+        server = LinkServer(
+            directory,
+            tcp_port=args.port,
+            udp_port=args.udp_port,
+            host=host,
+            permission_host=permission_host,
+        )
     except OSError as exc:
         # A bind failure must not look like a successful start (trap caught
         # 2026-09-25: second `servir` bound nowhere and pairings went to the
@@ -247,6 +254,24 @@ def cmd_servir(args: argparse.Namespace, directory: Path) -> int:
     finally:
         server.stop()
     return 0
+
+
+def _real_permission_host():
+    """Bind approvals to this machine's real grant file and native engine."""
+    hosts_root = str(REPO / "hosts")
+    if hosts_root not in sys.path:
+        sys.path.insert(0, hosts_root)
+    try:
+        from native import real_host
+        from windows.grants import Grants
+
+        host = real_host(Grants.load())
+    except Exception as exc:
+        print(f"permisos M5 desactivados: no pude cargar el host local ({exc})", file=sys.stderr)
+        return None
+    if host is None:
+        print("permisos M5 desactivados: no hay un host nativo demostrado en este sistema", file=sys.stderr)
+    return host
 
 
 def build_parser() -> argparse.ArgumentParser:

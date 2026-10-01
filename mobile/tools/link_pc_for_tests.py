@@ -11,17 +11,24 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "core"))
+sys.path.insert(0, os.path.join(ROOT, "hosts"))
 
 from isymotron.link import pairing  # noqa: E402
 from isymotron.link.server import LinkServer  # noqa: E402
+from simulator.engines import ModernHost  # noqa: E402
 
 
 def main() -> None:
     state = Path(tempfile.mkdtemp(prefix="isy-link-pc-"))
-    server = LinkServer(state, tcp_port=0, udp_port=0).start()
+    host = ModernHost(
+        {}, granted=["filesystem.read"],
+        grant_scopes={"filesystem.read": {"roots": ["/srv/photos"]}},
+    )
+    server = LinkServer(state, tcp_port=0, udp_port=0, permission_host=host).start()
     print(json.dumps({"port": server.http.server_address[1]}), flush=True)
     for line in sys.stdin:
         cmd, _, arg = line.strip().partition(" ")
@@ -34,6 +41,22 @@ def main() -> None:
             path = state / "receipts.jsonl"
             lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
             print(json.dumps({"receipts": [json.loads(x) for x in lines]}), flush=True)
+        elif cmd == "request-permission":
+            url = f"http://{server.tcp_address}/link/v1/local/permissions"
+            data = json.dumps({
+                "subject": "agent:local",
+                "capability": "filesystem.read",
+                "scope": {"roots": ["/srv/photos"]},
+                "ttl_s": 120,
+                "reason": "Read the requested photo",
+            }).encode("utf-8")
+            request = Request(url, data=data, headers={"Content-Type": "application/json"})
+            with urlopen(request, timeout=10) as response:
+                print(response.read().decode("utf-8"), flush=True)
+        elif cmd == "permission-status":
+            url = f"http://{server.tcp_address}/link/v1/local/permissions/{arg}"
+            with urlopen(url, timeout=10) as response:
+                print(response.read().decode("utf-8"), flush=True)
         elif cmd == "quit":
             break
     server.stop()

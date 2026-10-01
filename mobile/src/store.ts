@@ -15,12 +15,14 @@ export const RECEIPTS_KEY = "isymotron.receipts.v1";
 export const MAX_RECEIPTS = 200;
 
 export interface PhoneReceipt {
-  kind: "link_paired" | "link_delegated" | "link_cancelled" | "link_forgotten";
+  kind: "link_paired" | "link_delegated" | "link_cancelled" | "link_forgotten" | "link_permission_approved" | "link_permission_denied" | "link_permission_expired";
   at: string;
   office_id: string;
   name: string;
   task_id?: string;
   title?: string;
+  request_id?: string;
+  capability?: string;
 }
 
 function read<T>(kv: KeyValue, key: string, fallback: T): T {

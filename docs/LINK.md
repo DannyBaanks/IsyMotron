@@ -31,6 +31,29 @@ La consola web tiene panel en `/link` (mismo token de sesión que el resto de la
 
 **Solo acepta un código que estés viendo en la otra pantalla.** Emparejar da permiso a esa máquina de dejarte tareas en tu inbox. Si el código no coincide, no aceptes.
 
+## Aprobar permisos desde el teléfono (M5)
+
+Un agente que corre **en la PC** crea la solicitud por loopback; el teléfono emparejado solo la muestra y manda `approve` o `deny` dentro de una llamada Link firmada y cifrada. La aprobación humana no amplía los permisos de la PC: el `Host` local vuelve a comprobar el grant, recorta el `scope` y limita la duración al máximo configurado. Si la capacidad no está concedida localmente, el estado queda `denied` aunque se toque **Aprobar**. El teléfono nunca recibe la lease utilizable; el agente local la recoge de la PC.
+
+API local para integrar un agente:
+
+```http
+POST /link/v1/local/permissions
+Content-Type: application/json
+
+{"subject":"agent:planner","capability":"filesystem.read","scope":{"roots":["/srv/photos"]},"ttl_s":120,"reason":"Preparar el álbum solicitado"}
+```
+
+La respuesta `201` contiene `request.request_id` y `status: "pending"`. La PC solo acepta esta ruta desde loopback. El agente puede consultar el resultado (también solo por loopback):
+
+```http
+GET /link/v1/local/permissions/<request_id>
+```
+
+Al aprobar, `request.status` pasa a `approved` y la PC incluye `request.lease` mientras la lease siga válida; el agente puede validar `lease_id` contra su `Host` local. Rechazo humano, falta de grant y vencimiento regresan `denied` o `expired`, sin lease. Las solicitudes esperan hasta 15 minutos; el historial/recibo de la PC se conserva en `permission_requests.jsonl` y `receipts.jsonl`. Los intentos repetidos de decidir una solicitud ya cerrada reciben `409`.
+
+En el teléfono, **Permisos** actualiza las solicitudes de todas las PCs emparejadas. Cada decisión genera recibo local y otro en la PC con la identidad de la oficina que decidió. Solo la PC conserva y valida las leases; el teléfono conserva el recibo humano.
+
 ## Cómo funciona (en corto)
 
 ```text

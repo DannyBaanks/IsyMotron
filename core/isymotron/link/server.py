@@ -21,6 +21,7 @@ both sides of every delegation.
 from __future__ import annotations
 
 import json
+import ipaddress
 import os
 import socket
 import threading
@@ -28,7 +29,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import envelope, identity, pairing
+from . import envelope, identity, pairing, permissions
 
 PROBE = "ISYMO-LINK?v1"
 DEFAULT_TCP_PORT = 47931
@@ -49,12 +50,16 @@ def _task_id() -> str:
 class LinkState:
     """Per-process link runtime: identity, nonces, inbox. No sockets."""
 
-    def __init__(self, directory: Path | None = None):
+    def __init__(self, directory: Path | None = None, permission_host=None):
         self.directory = directory or identity.state_dir()
         self.identity = identity.load_identity(self.directory)
         self.seen_nonces: dict[str, float] = {}
         self.nonce_lock = threading.Lock()
         self.inbox_lock = threading.RLock()
+        self.permissions = (
+            permissions.PermissionQueue(self.directory, permission_host)
+            if permission_host is not None else None
+        )
 
     def inbox_path(self) -> Path:
         return self.directory / "inbox.jsonl"
@@ -237,7 +242,31 @@ def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
         if hit is None:
             raise LinkError("no_such_task", "task is not yours", 404)
         return {"ok": True, "task": hit}
+    if op == "permissions":
+        queue = _permission_queue(state)
+        return {"ok": True, "requests": queue.pending()}
+    if op == "permission_decide":
+        queue = _permission_queue(state)
+        request_id = _require_arg(payload, "request_id")
+        decision = _require_arg(payload, "decision")
+        try:
+            return {"ok": True, **queue.decide(request_id, decision, peer["office_id"])}
+        except permissions.PermissionQueueError as exc:
+            raise LinkError(exc.code, str(exc), exc.status) from exc
     raise LinkError("bad_op", f"unknown op {op!r}", 400)
+
+
+def _permission_queue(state: LinkState) -> permissions.PermissionQueue:
+    if state.permissions is None:
+        raise LinkError("permissions_unavailable", "this PC has no active host permission service", 503)
+    return state.permissions
+
+
+def _loopback(address: str) -> bool:
+    try:
+        return ipaddress.ip_address(address.split("%", 1)[0]).is_loopback
+    except ValueError:
+        return False
 
 
 def _rewrite_inbox(state: LinkState, entries: list[dict]) -> None:
@@ -260,6 +289,22 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:
+        prefix = "/link/v1/local/permissions/"
+        if self.path.startswith(prefix):
+            if not _loopback(self.client_address[0]):
+                self._send(403, {"ok": False, "code": "local_only"})
+                return
+            try:
+                request_id = self.path[len(prefix):]
+                request = _permission_queue(self.state).local_status(request_id)
+            except LinkError as exc:
+                self._send(exc.status, {"ok": False, "code": exc.code, "error": str(exc)})
+                return
+            if request is None:
+                self._send(404, {"ok": False, "code": "no_such_request"})
+            else:
+                self._send(200, {"ok": True, "request": request})
+            return
         if self.path == "/link/v1/status":
             peers = identity.load_peers(self.state.directory)
             queued = sum(1 for e in self.state.inbox() if e.get("status") == "queued")
@@ -288,7 +333,13 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(400, {"ok": False, "code": "bad_json"})
             return
         try:
-            if self.path == "/link/v1/pair":
+            if self.path == "/link/v1/local/permissions":
+                if not _loopback(self.client_address[0]):
+                    self._send(403, {"ok": False, "code": "local_only"})
+                    return
+                request = _permission_queue(self.state).submit(body)
+                self._send(201, {"ok": True, "request": request})
+            elif self.path == "/link/v1/pair":
                 remote = (self.client_address[0] if self.client_address else "")
                 self._send(200, {"ok": True, **handle_pair(self.state, body, remote)})
             elif self.path == "/link/v1/call":
@@ -301,6 +352,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(404, {"ok": False, "code": "not_found"})
         except LinkError as exc:
             self._send(exc.status, {"ok": False, "code": exc.code, "error": str(exc)})
+        except permissions.PermissionQueueError as exc:
+            self._send(exc.status, {"ok": False, "code": exc.code, "error": str(exc)})
 
 
 class LinkServer:
@@ -312,8 +365,9 @@ class LinkServer:
         tcp_port: int = DEFAULT_TCP_PORT,
         udp_port: int = DEFAULT_UDP_PORT,
         host: str = "127.0.0.1",
+        permission_host=None,
     ):
-        self.state = LinkState(directory)
+        self.state = LinkState(directory, permission_host=permission_host)
         handler = type("BoundHandler", (_Handler,), {"state": self.state})
         self.http = ThreadingHTTPServer((host, tcp_port), handler)
         self.udp_port = udp_port

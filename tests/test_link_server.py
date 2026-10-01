@@ -227,8 +227,8 @@ def test_discover_finds_local_server(tmp_path):
 def test_link_modules_are_stdlib_only():
     roots = [Path(__file__).resolve().parent.parent / "core" / "isymotron" / "link"]
     allowed = {
-        "__future__", "base64", "hashlib", "hmac", "http", "json", "os",
-        "pathlib", "platform", "socket", "threading", "time", "urllib",
+        "__future__", "base64", "hashlib", "hmac", "http", "ipaddress", "json", "math", "os",
+        "pathlib", "platform", "socket", "threading", "time", "typing", "urllib", "uuid",
     }
     import ast as _ast
 

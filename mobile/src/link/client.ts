@@ -80,6 +80,16 @@ export interface PairingProposal {
   expiresAt: number;
 }
 
+export interface PermissionRequest {
+  request_id: string;
+  subject: string;
+  capability: string;
+  scope: Record<string, unknown>;
+  ttl_s: number;
+  reason: string;
+  status: "pending";
+}
+
 export async function requestPairing(own: LinkIdentity, address: string, fetchFn: Fetch, timeoutMs = 15_000): Promise<PairingProposal> {
   const safeAddress = parseAddress(address);
   const nonce = freshNonce();
@@ -148,3 +158,48 @@ export const ping = (own: LinkIdentity, peer: Peer, f: Fetch) => call(own, peer,
 export const delegate = (own: LinkIdentity, peer: Peer, title: string, body: string, f: Fetch) => call(own, peer, { op: "delegate", title, body }, f);
 export const task = (own: LinkIdentity, peer: Peer, taskId: string, f: Fetch) => call(own, peer, { op: "task", task_id: taskId }, f);
 export const cancel = (own: LinkIdentity, peer: Peer, taskId: string, f: Fetch) => call(own, peer, { op: "cancel", task_id: taskId }, f);
+export async function listPermissions(own: LinkIdentity, peer: Peer, f: Fetch): Promise<{ requests: PermissionRequest[] }> {
+  const result = await call(own, peer, { op: "permissions" }, f);
+  if (!Array.isArray(result.requests)) {
+    throw new LinkClientError("bad_reply", "La PC devolvió una lista de permisos que no entiendo.");
+  }
+  const requests = result.requests.map((value): PermissionRequest => {
+    if (!value || typeof value !== "object") {
+      throw new LinkClientError("bad_reply", "La PC devolvió una solicitud de permiso inválida.");
+    }
+    const row = value as Record<string, unknown>;
+    if (typeof row.request_id !== "string" || typeof row.subject !== "string" ||
+        typeof row.capability !== "string" || !row.scope || typeof row.scope !== "object" ||
+        typeof row.ttl_s !== "number" || typeof row.reason !== "string" || row.status !== "pending") {
+      throw new LinkClientError("bad_reply", "La PC devolvió una solicitud de permiso incompleta.");
+    }
+    return {
+      request_id: row.request_id,
+      subject: row.subject,
+      capability: row.capability,
+      scope: row.scope as Record<string, unknown>,
+      ttl_s: row.ttl_s,
+      reason: row.reason,
+      status: "pending",
+    };
+  });
+  return { requests };
+}
+
+export async function decidePermission(
+  own: LinkIdentity,
+  peer: Peer,
+  requestId: string,
+  decision: "approve" | "deny",
+  f: Fetch,
+): Promise<{ request_id: string; status: "approved" | "denied" | "expired"; decision_reason?: string }> {
+  const result = await call(own, peer, { op: "permission_decide", request_id: requestId, decision }, f);
+  if (result.request_id !== requestId || !["approved", "denied", "expired"].includes(String(result.status))) {
+    throw new LinkClientError("bad_reply", "La PC devolvió un resultado de permiso inválido.");
+  }
+  return {
+    request_id: requestId,
+    status: result.status as "approved" | "denied" | "expired",
+    ...(typeof result.decision_reason === "string" ? { decision_reason: result.decision_reason } : {}),
+  };
+}
