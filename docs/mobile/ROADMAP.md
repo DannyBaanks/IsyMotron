@@ -71,7 +71,8 @@
 
 ## M4 — Pantallas de la v1
 
-- [ ] **M4.1** Enlazar: escribir IP:puerto de la PC → ver el código → confirmar que coincide → la PC queda guardada.
+- [x] **M4.1** Enlazar: escribir IP:puerto de la PC → ver el código → confirmar que coincide → la PC queda guardada.
+  - → Pantalla **Enlazar**: escribes la IP:puerto que da `isymotron link servir --red`. El teléfono muestra el nombre y la huella de la PC, el código grande (`187 327`) y el comando exacto `isymotron link aceptar <código>`. "Ya lo escribí" solo guarda la PC si vuelve una respuesta **sellada por esa PC**; antes de que la PC acepte dice "Tu PC no aceptó la petición". iOS: `NSAllowsLocalNetworking` + texto de red local, e internet sigue solo con HTTPS. Android: `network_security_config` con cleartext, porque no se puede limitar a rangos privados y las llamadas van selladas. **e2e en CI** (`mobile/e2e/pairing.e2e.mjs`, [run 36822953911](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822953911)): la app construida en Chromium, con botones reales, contra el servidor Link real de la PC. Commit `2194af0`. **Teléfono + PC reales en la misma Wi-Fi: NOT_DEMONSTRATED** (M4.3).
 - [ ] **M4.2** Mis PCs: estado (`ping`), mandar una tarea, seguirla (`task`), cancelar; recibos locales en el teléfono.
 - [ ] **M4.3** Prueba física: teléfono + PC en la misma Wi-Fi. Hasta entonces: NOT_DEMONSTRATED.
 
@@ -96,6 +97,7 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M4.1 | IsyMotron @ `0e582df` | `claude/exciting-lamport-84gclk` | mobile/src/home.ts, main.ts, store.ts, styles.css, Info.plist, AndroidManifest.xml, network_security_config.xml, e2e/pairing.e2e.mjs, mobile.yml | vitest 17/17; e2e en [run 36822953911](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822953911) |
 | 2026-10-01 | M3.2 | IsyMotron @ `f1f1b25` | `claude/exciting-lamport-84gclk` | core/isymotron/link/server.py, tests/test_link_server.py, mobile/src/link/client.ts, mobile/tests/live.test.ts | pytest 531 passed; vitest 14/14; [run 36822646078](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822646078) success |
 | 2026-10-01 | M3.1 | IsyMotron @ `12d6fe1` | `claude/exciting-lamport-84gclk` | tools/link_cli.py, tests/test_link_cli.py | pytest local 530 passed |
 | 2026-10-01 | M2.3 | IsyMotron @ `2a5d0ab` | `claude/exciting-lamport-84gclk` | mobile/src/link/client.ts, mobile/tools/link_pc_for_tests.py, mobile/tests/live.test.ts | vitest 13/13 (live incluida); [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) success |
