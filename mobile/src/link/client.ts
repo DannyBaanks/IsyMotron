@@ -44,10 +44,11 @@ function isLocalNetworkHost(host: string): boolean {
 export function parseAddress(text: string): string {
   const value = text.trim().replace(/^http:\/\//, "").replace(/\/+$/, "");
   const m = /^([A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\]):(\d{1,5})$/.exec(value);
+  const host = m?.[1];
   const port = m ? Number(m[2]) : 0;
-  if (!m || port < 1 || port > 65535) throw new LinkClientError("bad_address", "Escribe la dirección como IP:puerto, por ejemplo 192.168.1.20:47931.");
-  if (!isLocalNetworkHost(m[1])) throw new LinkClientError("non_local_address", "Por seguridad, Link sólo acepta direcciones de tu red local (IP privada, enlace local o nombre .local).");
-  return `${m[1]}:${port}`;
+  if (!host || port < 1 || port > 65535) throw new LinkClientError("bad_address", "Escribe la dirección como IP:puerto, por ejemplo 192.168.1.20:47931.");
+  if (!isLocalNetworkHost(host)) throw new LinkClientError("non_local_address", "Por seguridad, Link sólo acepta direcciones de tu red local (IP privada, enlace local o nombre .local).");
+  return `${host}:${port}`;
 }
 
 async function postJson(fetchFn: Fetch, url: string, body: unknown, timeoutMs: number): Promise<{ status: number; body: Record<string, unknown> }> {
