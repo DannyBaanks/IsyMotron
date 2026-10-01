@@ -53,11 +53,12 @@ class LinkState:
         self.directory = directory or identity.state_dir()
         self.identity = identity.load_identity(self.directory)
         self.seen_nonces: dict[str, float] = {}
+        self._inbox_lock = threading.RLock()
 
     def inbox_path(self) -> Path:
         return self.directory / "inbox.jsonl"
 
-    def inbox(self) -> list[dict]:
+    def _read_inbox_unlocked(self) -> list[dict]:
         try:
             lines = self.inbox_path().read_text(encoding="utf-8").splitlines()
         except OSError:
@@ -70,12 +71,41 @@ class LinkState:
                 continue
         return out
 
+    def inbox(self) -> list[dict]:
+        with self._inbox_lock:
+            return self._read_inbox_unlocked()
+
     def inbox_append(self, entry: dict) -> dict:
-        self.directory.mkdir(parents=True, exist_ok=True)
         record = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **entry}
-        with open(self.inbox_path(), "a", encoding="utf-8", newline="\n") as handle:
-            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+        with self._inbox_lock:
+            self.directory.mkdir(parents=True, exist_ok=True)
+            with open(self.inbox_path(), "a", encoding="utf-8", newline="\n") as handle:
+                handle.write(json.dumps(record, ensure_ascii=False) + "\n")
         return record
+
+    def _rewrite_inbox_unlocked(self, entries: list[dict]) -> None:
+        self.directory.mkdir(parents=True, exist_ok=True)
+        with open(self.inbox_path(), "w", encoding="utf-8", newline="\n") as handle:
+            for entry in entries:
+                handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    def inbox_update(self, task_id: str, office_id: str, mutate) -> dict | None:
+        """Read, mutate and rewrite one owned task under one process-local lock."""
+        with self._inbox_lock:
+            entries = self._read_inbox_unlocked()
+            hit = next(
+                (
+                    entry
+                    for entry in entries
+                    if entry.get("task_id") == task_id and entry.get("from") == office_id
+                ),
+                None,
+            )
+            if hit is None:
+                return None
+            mutate(hit)
+            self._rewrite_inbox_unlocked(entries)
+            return hit
 
 
 def handle_pair(state: LinkState, body: dict, remote_addr: str = "") -> dict:
@@ -178,21 +208,26 @@ def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
     if op == "message":
         task_id = _require_arg(payload, "task_id")
         text = _require_arg(payload, "text")
-        entries = state.inbox()
-        hit = next((e for e in entries if e.get("task_id") == task_id and e.get("from") == peer["office_id"]), None)
-        if hit is None:
+
+        def add_message(hit: dict) -> None:
+            hit.setdefault("context", []).append(
+                {
+                    "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "text": text,
+                }
+            )
+
+        if state.inbox_update(task_id, peer["office_id"], add_message) is None:
             raise LinkError("no_such_task", "task is not yours", 404)
-        hit.setdefault("context", []).append({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "text": text})
-        _rewrite_inbox(state, entries)
         return {"ok": True}
     if op == "cancel":
         task_id = _require_arg(payload, "task_id")
-        entries = state.inbox()
-        hit = next((e for e in entries if e.get("task_id") == task_id and e.get("from") == peer["office_id"]), None)
-        if hit is None:
+
+        def mark_cancelled(hit: dict) -> None:
+            hit["status"] = "cancelled"
+
+        if state.inbox_update(task_id, peer["office_id"], mark_cancelled) is None:
             raise LinkError("no_such_task", "task is not yours", 404)
-        hit["status"] = "cancelled"
-        _rewrite_inbox(state, entries)
         return {"ok": True}
     if op == "task":
         task_id = _require_arg(payload, "task_id")
@@ -207,10 +242,9 @@ def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
 
 
 def _rewrite_inbox(state: LinkState, entries: list[dict]) -> None:
-    state.directory.mkdir(parents=True, exist_ok=True)
-    with open(state.inbox_path(), "w", encoding="utf-8", newline="\n") as handle:
-        for entry in entries:
-            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    """Compatibility helper for callers that already hold a complete snapshot."""
+    with state._inbox_lock:
+        state._rewrite_inbox_unlocked(entries)
 
 
 class _Handler(BaseHTTPRequestHandler):
