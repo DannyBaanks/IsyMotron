@@ -56,7 +56,8 @@
 
 - [x] **M2.1** Identidad con WebCrypto (llaves no extraíbles guardadas en IndexedDB), tarjeta pública, `office_id`, código de 6 dígitos.
   - → `mobile/src/link/identity.ts` + `keystore.ts`: Ed25519 + X25519 con WebCrypto y llaves privadas **no extraíbles**, guardadas en IndexedDB como objetos CryptoKey (nunca sus bytes). Se crea una vez y luego siempre es el mismo `office_id`. `office_id`, tarjeta pública y código de 6 dígitos iguales a los de la PC (vectores). Verificado en Chromium headless: IndexedDB guarda la llave no extraíble y sigue firmando. Commit `2a5d0ab`.
-- [ ] **M2.2** Sellar y abrir sobres idénticos al Python (vectores fijos generados por el Python de la PC; los mismos bytes en los dos sentidos).
+- [x] **M2.2** Sellar y abrir sobres idénticos al Python (vectores fijos generados por el Python de la PC; los mismos bytes en los dos sentidos).
+  - → `envelope.ts` sella **byte a byte igual** que `core/isymotron/link/envelope.py` para las mismas llaves y la misma aleatoriedad, y abre lo que sella la PC. Al abrir rechaza remitente desconocido, destinatario equivocado, sobre alterado, hora vieja y replay. `mobile/tools/link_vectors.py` corre el código de la PC con llaves de prueba fijas; CI regenera los vectores y falla si cualquiera de los dos lados cambia. Commit `2a5d0ab`.
 - [ ] **M2.3** Prueba viva en CI: servidor Link real en Python + cliente TS en Node → emparejar, `link aceptar`, `ping`, `delegate`, `task`.
 
 ## M3 — La PC acepta al teléfono
@@ -90,6 +91,7 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M2.2 | IsyMotron @ `18c49f3` | `claude/exciting-lamport-84gclk` | mobile/src/link/envelope.ts, mobile/tools/link_vectors.py, mobile/tests/fixtures/link-vectors.json, mobile.yml | vitest 10/10; drift de vectores en [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) |
 | 2026-10-01 | M2.1 | IsyMotron @ `18c49f3` | `claude/exciting-lamport-84gclk` | mobile/src/link/{bytes,identity,keystore}.ts | vitest, vectores de la PC; [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) |
 | 2026-10-01 | M1.2 | IsyMotron @ `22034d6` | `claude/exciting-lamport-84gclk` | .github/workflows/mobile.yml | GitHub Actions [run 36821707684](https://github.com/DannyBaanks/IsyMotron/actions/runs/36821707684) success |
 | 2026-10-01 | M1.1 | IsyMotron @ `22034d6` | `claude/exciting-lamport-84gclk` | mobile/* | vitest 3/3, tsc, vite build, render headless |
