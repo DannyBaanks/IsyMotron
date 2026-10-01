@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "models": [
+    {
+      "id": "qwen25-05b-q4km",
+      "name": "Qwen2.5-0.5B-Instruct · Q4_K_M",
+      "repository": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+      "filename": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "revision": "9217f5db79a29953eb74d5343926648285ec7e67",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/9217f5db79a29953eb74d5343926648285ec7e67/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "byteCount": 491400032,
+      "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "licenseName": "Apache License 2.0",
+      "licenseUrl": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/blob/9217f5db79a29953eb74d5343926648285ec7e67/LICENSE",
+      "attribution": "Qwen2.5 model; GGUF repository maintained by Qwen"
+    },
+    {
+      "id": "smollm2-360m-q4km",
+      "name": "SmolLM2-360M-Instruct · Q4_K_M",
+      "repository": "mfuntowicz/SmolLM2-360M-Instruct-Q4_K_M-GGUF",
+      "filename": "smollm2-360m-instruct-q4_k_m.gguf",
+      "revision": "de67c694b3fa2c6e9b45b50f286b2555c5dee2a8",
+      "url": "https://huggingface.co/mfuntowicz/SmolLM2-360M-Instruct-Q4_K_M-GGUF/resolve/de67c694b3fa2c6e9b45b50f286b2555c5dee2a8/smollm2-360m-instruct-q4_k_m.gguf",
+      "byteCount": 270590528,
+      "sha256": "8856952e27c65a87618f8347d1d06328c3953af04e8327b6dd1fab6670358fd0",
+      "licenseName": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "attribution": "SmolLM2 model family by HuggingFaceTB; GGUF uploaded/converted by mfuntowicz"
+    }
+  ]
+}
