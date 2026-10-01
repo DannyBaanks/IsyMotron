@@ -49,7 +49,8 @@
 
 - [x] **M1.1** `mobile/`: Capacitor 8 + Vite + TS, pantalla inicial en español, tests (vitest), `npm run build`.
   - → `mobile/` con Capacitor 8 + Vite + TS, appId `io.github.dannybaanks.isymotron`. Pantalla inicial en español: Mis PCs (enlazar llega en M4) y "Este teléfono", que prueba de verdad Ed25519, X25519, HKDF y AES-GCM de la plataforma; si falta uno, dice que no va a emparejar. Proyectos Android e iOS generados por Capacitor. vitest 3/3, tsc, build; se renderizó headless sin errores. Commit `5d62290`.
-- [ ] **M1.2** Workflow `mobile.yml`: tests + build + **APK** (Android) + **IPA sin firmar** (iOS) como artefactos en cada push que toque `mobile/` y en cada PR. Sin releases.
+- [x] **M1.2** Workflow `mobile.yml`: tests + build + **APK** (Android) + **IPA sin firmar** (iOS) como artefactos en cada push que toque `mobile/` y en cada PR. Sin releases.
+  - → `.github/workflows/mobile.yml`: tests + build → **IsyMotron-android-apk** (debug) e **IsyMotron-unsigned-ipa** como artefactos (30 días) en cada push que toque `mobile/` y en cada PR. Sin releases. Primer [run 36821707684](https://github.com/DannyBaanks/IsyMotron/actions/runs/36821707684) verde: tests, APK e IPA. **En teléfono: NOT_DEMONSTRATED.**
 
 ## M2 — Cliente Link en TypeScript (cripto de la plataforma)
 
@@ -88,5 +89,6 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M1.2 | IsyMotron @ `22034d6` | `claude/exciting-lamport-84gclk` | .github/workflows/mobile.yml | GitHub Actions [run 36821707684](https://github.com/DannyBaanks/IsyMotron/actions/runs/36821707684) success |
 | 2026-10-01 | M1.1 | IsyMotron @ `22034d6` | `claude/exciting-lamport-84gclk` | mobile/* | vitest 3/3, tsc, vite build, render headless |
 | 2026-10-01 | M0.1–M0.2 | IsyMotron @ `66f80bd` | `claude/exciting-lamport-84gclk` | solo lectura | inspección de `core/isymotron/link/*`, `tools/link_cli.py` |
