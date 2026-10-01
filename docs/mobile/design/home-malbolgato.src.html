@@ -21,6 +21,8 @@
   --display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
   --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --atlas: url("{{atlas}}");   /* Malbolgato v2 atlas, 8 x 11 cells */
+  --carry: url("{{carry}}");   /* drag / carry sheet, 8 cells */
 }
 html, body { height: 100%; }
 [hidden] { display: none !important; }
@@ -37,7 +39,7 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .phone::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--signal); z-index: 3; }
 .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 118px; height: 33px; border-radius: 20px; background: #000; z-index: 4; }
 .sbar { height: 50px; flex: none; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 30px 8px; font: 600 15px var(--body); }
-.screen { flex: 1; overflow-y: auto; padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: none;
+.screen { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 14px; scrollbar-width: none;
   background-image: linear-gradient(rgba(118,185,0,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(118,185,0,.03) 1px, transparent 1px); background-size: 26px 26px; }
 .screen::-webkit-scrollbar { display: none; }
 .screen > * { flex-shrink: 0; }
@@ -59,10 +61,14 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .state-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 8px var(--signal); }
 .pet-wrap { position: relative; align-self: end; display: flex; justify-content: center; }
 .pedestal { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 120px; height: 22px; border-radius: 50%; background: radial-gradient(closest-side, rgba(118,185,0,.45), transparent); }
-.pet { position: relative; width: 150px; height: 162px; border: 0; background: none; padding: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.pet img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; transition: transform .18s ease; filter: drop-shadow(0 0 1px rgba(198,255,61,.55)) drop-shadow(0 0 10px rgba(118,185,0,.28)); }
-.pet.bump img { transform: translateY(-6px) scale(1.04); }
-.pet.hold img { transform: scale(.94); }
+.pet { position: relative; width: 150px; height: 162px; border: 0; background: none; padding: 0; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; z-index: 3; }
+.pet.dragging { z-index: 8; cursor: grabbing; }
+/* Malbolgato v2: one cell of the Codex atlas (8 columns x 11 rows), drawn as a background. */
+.sprite { position: absolute; left: 3px; bottom: 0; width: 144px; height: 156px; background-image: var(--atlas); background-size: 1152px 1716px; background-repeat: no-repeat; pointer-events: none;
+  filter: drop-shadow(0 0 1px rgba(198,255,61,.5)) drop-shadow(0 0 10px rgba(118,185,0,.25)); }
+.sprite.carry { height: 252px; background-image: var(--carry); background-size: 1152px 252px; bottom: -40px; }
+.hero.dragging, .screen.dragging { overflow: visible; }
+.hero.dragging { z-index: 7; }
 .say { position: absolute; bottom: 138px; right: 4px; max-width: 146px; padding: 7px 9px; border-radius: 6px 6px 6px 0; background: var(--text); color: var(--bg); font: 600 12px/1.3 var(--body); box-shadow: 0 6px 20px rgba(0,0,0,.4); z-index: 2; }
 .hint { position: absolute; right: 8px; top: 8px; font: 600 10px var(--mono); color: var(--dim); letter-spacing: .06em; }
 
@@ -118,9 +124,11 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 .rail button { text-align: left; padding: 11px 12px; border-radius: 4px; border: 1px solid var(--rule); background: var(--panel); display: grid; gap: 2px; }
 .rail button b { font-weight: 600; }
 .rail button small { color: var(--dim); font-size: 12.5px; }
-.legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.legend figure { margin: 0; text-align: center; font: 600 11px var(--mono); color: var(--dim); }
-.legend img { width: 100%; max-width: 88px; height: auto; display: block; margin: 0 auto 2px; filter: drop-shadow(0 0 1px rgba(198,255,61,.5)); }
+.legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.legend button { padding: 4px 2px 6px; display: grid; justify-items: center; gap: 0; text-align: center; font: 600 10.5px var(--mono); color: var(--dim); }
+.legend button.on { border-color: var(--signal); color: var(--text); }
+.legend .cell { width: 64px; height: 69px; background-image: var(--atlas); background-size: 512px 762.67px; background-repeat: no-repeat; }
+.legend .cell.carry { height: 69px; background-image: var(--carry); background-size: 512px 112px; background-position: 0 -30px; }
 .note { font-size: 12.5px; color: var(--dim); border-top: 1px solid var(--rule); padding-top: 12px; }
 
 @media (max-width: 460px) {
@@ -129,7 +137,7 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
   .island, .sbar { display: none; }
   .rail { padding-inline: 16px; }
 }
-@media (prefers-reduced-motion: reduce) { .pet img { transition: none; } .pet.bump img, .pet.hold img { transform: none; } }
+
 </style>
 
 <main class="stage">
@@ -152,9 +160,9 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
         <div class="pet-wrap">
           <div class="pedestal"></div>
           <div class="say" id="say" hidden></div>
-          <button class="pet" id="pet" type="button" aria-label="Malbolgato. Toca para que reaccione; mantén presionado para sus controles."><img id="cat" alt="" src="{{idle}}"></button>
+          <button class="pet" id="pet" type="button" aria-label="Malbolgato. Toca para que salude, toca dos veces para que salte, arrástralo para cargarlo y mantén presionado para sus controles."><span class="sprite" id="cat"></span></button>
         </div>
-        <span class="hint">toca · mantén</span>
+        <span class="hint">toca · arrastra · mantén</span>
       </div>
 
       <div class="frame authority" id="auth" aria-live="polite"></div>
@@ -176,10 +184,11 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
     <div class="scrim" id="scrim" hidden>
       <div class="sheet" role="dialog" aria-label="Controles de Malbolgato">
         <div class="grab"></div>
-        <h3><img alt="" src="{{idle}}">Malbolgato</h3>
+        <h3>Malbolgato <span style="color:var(--dim);font:500 12px var(--mono)">v2</span></h3>
         <button type="button" data-act="ping">Probar conexión <span>isytron-escritorio</span></button>
         <button type="button" data-act="task">Mandar tarea rápida <span>«Revisar el respaldo»</span></button>
         <button type="button" data-act="pair">Enlazar otra PC <span>código 6 dígitos</span></button>
+        <button type="button" data-act="play">Jugar <span>corre por la tarjeta</span></button>
         <button type="button" data-act="close">Cerrar</button>
       </div>
     </div>
@@ -187,7 +196,7 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
 
   <aside class="rail">
     <h2>Prototipo: inicio con Malbolgato</h2>
-    <p>Toca a Malbolgato para que reaccione. Mantenlo presionado para abrir sus controles, como el clic derecho del Companion en Windows. «Ping» y «Enlazar otra PC» también lo mueven.</p>
+    <p>Toca a Malbolgato para que salude y tócalo dos veces para que salte. Arrástralo para cargarlo. Mantenlo presionado para abrir sus controles, como el clic derecho del Companion en Windows. Toca la tarjeta a su lado y voltea a ver tu dedo.</p>
     <div class="group">
       <div class="label">Simular lo que llega al teléfono</div>
       <button type="button" data-sim="allow"><b>Tu PC aprueba un permiso</b><small>Marco verde: ALLOW, recibo y sello</small></button>
@@ -196,30 +205,72 @@ button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
       <button type="button" data-sim="offline"><b>La laptop no contesta</b><small>Malbolgato se preocupa; nada se da por hecho</small></button>
     </div>
     <div class="group">
-      <div class="label">Sus 6 animaciones (Companion main, sin borde)</div>
-      <div class="legend">
-        <figure><img alt="" src="{{idle}}">idle</figure>
-        <figure><img alt="" src="{{thinking}}">thinking</figure>
-        <figure><img alt="" src="{{working}}">working</figure>
-        <figure><img alt="" src="{{waiting}}">waiting</figure>
-        <figure><img alt="" src="{{success}}">success</figure>
-        <figure><img alt="" src="{{error}}">error</figure>
-      </div>
+      <div class="label">Malbolgato v2 · toca una para verla</div>
+      <div class="legend" id="legend"></div>
     </div>
     <p class="note">Mismas reglas que el avatar de escritorio. El marco verde o rojo solo lo escribe tu PC, con su firma. Cualquier otro texto sale enmarcado como de terceros. Malbolgato no tiene autoridad: no aprueba ni pide permisos por su cuenta.</p>
   </aside>
 </main>
 
 <script>
-const A = { idle: "{{idle}}", thinking: "{{thinking}}", working: "{{working}}", waiting: "{{waiting}}", success: "{{success}}", error: "{{error}}" };
 const LABEL = { idle: "en reposo", thinking: "preguntando a tu PC…", working: "tu PC está trabajando", waiting: "esperándote", success: "respuesta firmada", error: "algo no salió" };
 const COLOR = { idle: "var(--signal)", thinking: "#e0d36a", working: "#5fb3ff", waiting: "#c9a7ff", success: "var(--ok)", error: "var(--deny)" };
 const $ = (id) => document.getElementById(id);
 const cat = $("cat"), pet = $("pet"), say = $("say");
 let stateTimer = 0, sayTimer = 0;
 
+/* ---- Malbolgato v2 sprite engine: same rows and timings as Companion's GTK window ---- */
+const CW = 144, CH = 156;                        // cell size at 0.75 scale (atlas 192 x 208)
+const R = { idle: 0, runR: 1, runL: 2, wave: 3, jump: 4, fail: 5, wait: 6, work: 7, review: 8, lookR: 9, lookL: 10 };
+const COUNT = [7, 8, 8, 4, 5, 8, 6, 6, 6, 8, 8];
+const FRAME_MS = { 1: 95, 2: 95, 3: 110, 4: 110, 5: 130, 6: 160, 7: 120, 8: 150, 9: 90, 10: 90 };
+const IDLE_SEQ = [0, 1, 2, 3, 5, 6];             // skip the second closed-eye cell, like Companion
+const IDLE_MS = { 0: 1000, 1: 120, 2: 1000, 3: 1300, 5: 1000, 6: 1100 };
+const STATE_ROW = { idle: R.idle, thinking: R.review, working: R.work, waiting: R.wait, success: R.wave, error: R.fail };
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const anim = { base: R.idle, row: R.idle, frame: 0, once: null, hold: null, carry: false, carryFrame: 0, last: 0 };
+
+function draw() {
+  if (anim.carry) {
+    cat.classList.add("carry");
+    cat.style.backgroundPosition = `${-anim.carryFrame * CW}px 0px`;
+    return;
+  }
+  cat.classList.remove("carry");
+  const row = anim.hold ? anim.hold.row : anim.row;
+  const frame = anim.hold ? anim.hold.frame : anim.frame;
+  cat.style.backgroundPosition = `${-frame * CW}px ${-row * CH}px`;
+}
+function tick(t) {
+  const row = anim.row;
+  const ms = anim.carry ? 110 : row === R.idle ? IDLE_MS[anim.frame] ?? 1000 : FRAME_MS[row] ?? 150;
+  if (!reduce && !anim.hold && t - anim.last >= ms) {
+    anim.last = t;
+    if (anim.carry) anim.carryFrame = (anim.carryFrame + 1) % 8;
+    else if (row === R.idle) anim.frame = IDLE_SEQ[(IDLE_SEQ.indexOf(anim.frame) + 1) % IDLE_SEQ.length];
+    else if (anim.frame + 1 < COUNT[row]) anim.frame++;
+    else if (anim.once) { const done = anim.once; anim.once = null; setRow(anim.base); done(); }
+    else anim.frame = 0;
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+function setRow(row) { anim.row = row; anim.frame = 0; anim.last = performance.now(); draw(); }
+/** Play a row once (or `loops` times), then go back to the current base state. */
+function playRow(row, loops = 1, then = () => {}) {
+  anim.hold = null;
+  let left = loops;
+  const again = () => (--left > 0 ? (setRow(row), (anim.once = again)) : then());
+  setRow(row);
+  anim.once = again;
+}
+
+/* App state → Malbolgato, the status chip and its color. `ms` returns to `then` afterwards. */
 function play(state, ms = 0, then = "idle") {
-  cat.src = A[state];
+  anim.base = STATE_ROW[state];
+  anim.once = null;
+  anim.hold = null;
+  setRow(anim.base);
   $("stateLabel").textContent = LABEL[state];
   $("dot").style.background = COLOR[state];
   $("dot").style.boxShadow = `0 0 8px ${COLOR[state]}`;
@@ -328,33 +379,116 @@ function pair() {
   }, 2800);
 }
 
-/* Tap: a small reaction. Long press (500 ms): the controls sheet. */
-const REACT = [
-  ["success", "¡Miau! Tus PCs están tranquilas."],
-  ["thinking", "Mmm… ¿y si probamos la conexión?"],
-  ["working", "Vigilo la bandeja por ti."],
-  ["waiting", "¿Me mandas algo? Mantén presionado."],
-];
-let reactIdx = 0, holdTimer = 0, held = false;
-pet.addEventListener("pointerdown", () => {
-  held = false;
-  pet.classList.add("hold");
-  holdTimer = setTimeout(() => { held = true; pet.classList.remove("hold"); openSheet(); }, 500);
+/* Gestures. Tap: wave. Double tap: jump. Drag: he is carried (Companion's drag sheet) and lands
+   back on his spot. Hold still 500 ms: the controls sheet. Tap the card beside him: he looks there. */
+const WAVES = ["¡Hola! Tus PCs están tranquilas.", "¿Probamos la conexión? Mantén presionado.", "Vigilo la bandeja por ti.", "Miau. Aquí sigo."];
+let waveIdx = 0, holdTimer = 0, tapTimer = 0, lastTap = 0, down = null;
+const hero = document.querySelector(".hero"), screenEl = $("screen");
+
+pet.addEventListener("pointerdown", (e) => {
+  down = { x: e.clientX, y: e.clientY, moved: false, sheet: false };
+  pet.setPointerCapture(e.pointerId);
+  holdTimer = setTimeout(() => { if (down && !down.moved) { down.sheet = true; openSheet(); } }, 500);
 });
-const cancelHold = () => { clearTimeout(holdTimer); pet.classList.remove("hold"); };
-pet.addEventListener("pointerleave", cancelHold);
-pet.addEventListener("pointercancel", cancelHold);
-pet.addEventListener("pointerup", () => {
-  cancelHold();
-  if (held) return;
-  const [state, line] = REACT[reactIdx++ % REACT.length];
-  play(state, 1700);
-  speak(line);
-  pet.classList.add("bump");
-  setTimeout(() => pet.classList.remove("bump"), 180);
+pet.addEventListener("pointermove", (e) => {
+  if (!down || down.sheet) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y;
+  if (!down.moved && Math.hypot(dx, dy) > 8) {
+    down.moved = true;
+    clearTimeout(holdTimer);
+    anim.carry = true; anim.hold = null; draw();
+    pet.classList.add("dragging"); hero.classList.add("dragging"); screenEl.classList.add("dragging");
+    pet.style.transition = "none";
+    speak("¡Ey! ¿A dónde me llevas?", 1800);
+  }
+  if (down.moved) pet.style.transform = `translate(${dx}px, ${dy}px)`;
 });
-pet.addEventListener("contextmenu", (e) => { e.preventDefault(); openSheet(); });
-pet.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); openSheet(); } });
+function endPress() {
+  clearTimeout(holdTimer);
+  if (!down) return;
+  const d = down; down = null;
+  if (d.sheet) return;
+  if (d.moved) {
+    pet.style.transition = "transform .35s cubic-bezier(.3,1.4,.5,1)";
+    pet.style.transform = "translate(0, 0)";
+    anim.carry = false; draw();
+    playRow(R.jump);
+    speak("Bájame con cuidado, humano.", 2000);
+    setTimeout(() => { pet.classList.remove("dragging"); hero.classList.remove("dragging"); screenEl.classList.remove("dragging"); pet.style.transition = ""; }, 380);
+    return;
+  }
+  const now = performance.now();
+  if (now - lastTap < 280) {           // double tap
+    clearTimeout(tapTimer); lastTap = 0;
+    playRow(R.jump);
+    speak("¡Hop!", 1200);
+    return;
+  }
+  lastTap = now;
+  tapTimer = setTimeout(() => { playRow(R.wave, 2); speak(WAVES[waveIdx++ % WAVES.length]); }, 280);
+}
+pet.addEventListener("pointerup", endPress);
+pet.addEventListener("pointercancel", endPress);
+pet.addEventListener("contextmenu", (e) => e.preventDefault());
+pet.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); openSheet(); }
+  else if (e.key === " " || e.key === "Enter") { e.preventDefault(); playRow(R.wave, 2); speak(WAVES[waveIdx++ % WAVES.length]); }
+});
+
+/* He looks where you touch: rows 9 and 10 sweep the gaze, frame 0 = straight, 7 = fully turned. */
+let lookTimer = 0;
+function lookAt(clientX) {
+  const box = pet.getBoundingClientRect();
+  const dx = clientX - (box.left + box.width / 2);
+  const reach = hero.getBoundingClientRect().width * 0.6;
+  const frame = Math.max(1, Math.min(7, Math.round((Math.abs(dx) / reach) * 7)));
+  anim.once = null;
+  anim.hold = { row: dx > 0 ? R.lookR : R.lookL, frame };
+  draw();
+  clearTimeout(lookTimer);
+  lookTimer = setTimeout(() => { anim.hold = null; setRow(anim.base); }, 1400);
+}
+hero.addEventListener("pointerdown", (e) => { if (!pet.contains(e.target)) lookAt(e.clientX); });
+hero.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse" && !down && !pet.contains(e.target)) lookAt(e.clientX); });
+
+/* Dock play: he runs across the card and back (Companion's running rows 1 and 2). */
+let running = false;
+function runAround() {
+  if (running) return;
+  running = true;
+  speak("¡A jugar!", 1500);
+  const span = hero.getBoundingClientRect().width - 160;
+  let x = 0, dir = -1, last = performance.now(), until = last + 5200;
+  anim.hold = null; anim.once = null; setRow(R.runL);
+  pet.style.transition = "none";
+  const step = (t) => {
+    x += dir * 0.17 * (t - last); last = t;
+    if (x <= -span) { x = -span; dir = 1; setRow(R.runR); }
+    if (x >= 0 && dir > 0 && t > until) { pet.style.transform = ""; pet.style.transition = ""; running = false; setRow(anim.base); playRow(R.wave); return; }
+    if (x >= 0 && dir > 0) { x = 0; dir = -1; setRow(R.runL); }
+    pet.style.transform = `translateX(${x}px)`;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* Legend: every v2 animation, tap to play it on the main pet. */
+const LEGEND = [["idle", R.idle], ["revisar", R.review], ["trabajar", R.work], ["esperar", R.wait], ["saludar", R.wave], ["falló", R.fail], ["saltar", R.jump], ["correr", R.runL], ["mirar →", R.lookR], ["mirar ←", R.lookL], ["cargar", "carry"], ["jugar", "play"]];
+for (const [label, row] of LEGEND) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.innerHTML = `<span class="cell${row === "carry" ? " carry" : ""}"></span>${label}`;
+  if (typeof row === "number") b.firstChild.style.backgroundPosition = `${row === R.lookR || row === R.lookL ? -4 * 64 : 0}px ${-row * 69.33}px`;
+  if (row === "play") b.firstChild.style.backgroundPosition = `${-2 * 64}px ${-R.runR * 69.33}px`;
+  b.addEventListener("click", () => {
+    if (row === "play") return runAround();
+    if (row === "carry") { anim.carry = true; draw(); setTimeout(() => { anim.carry = false; draw(); playRow(R.jump); }, 1600); return; }
+    if (row === R.lookR || row === R.lookL) { anim.hold = null; setRow(row); anim.once = () => setTimeout(() => setRow(anim.base), 600); return; }
+    playRow(row, row === R.idle ? 1 : 2);
+  });
+  $("legend").append(b);
+}
+requestAnimationFrame(tick);
 
 function openSheet() { $("scrim").hidden = false; $("scrim").querySelector("button").focus(); }
 function closeSheet() { $("scrim").hidden = true; pet.focus(); }
@@ -366,6 +500,7 @@ $("scrim").querySelectorAll("[data-act]").forEach((b) => b.addEventListener("cli
   if (act === "ping") ping(PCS[0]);
   if (act === "task") quickTask();
   if (act === "pair") pair();
+  if (act === "play") runAround();
 }));
 $("pair").addEventListener("click", pair);
 

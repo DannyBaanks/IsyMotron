@@ -1,16 +1,20 @@
-"""Inline Malbolgato's six Companion GIFs (avatar/packs/malbolge-cat) into the home prototype."""
+"""Build the home prototype: inline Malbolgato v2's sprite atlas and carry sheet as data URIs.
+
+The two WebP files in assets/ come from Companion main (packs/malbolge-cat/codex-pet,
+commit ffa2b13, MIT, same author), scaled to 0.75 and re-encoded so the page loads fast
+on a phone. Regenerate them with prepare_assets.py.
+
+    python3 docs/mobile/design/build_home.py /tmp/inicio-malbolgato.html
+"""
 import base64
-import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-pack = ROOT / "avatar" / "packs" / "malbolge-cat"
-manifest = json.loads((pack / "manifest.json").read_text())
-html = (Path(__file__).parent / "home-malbolgato.src.html").read_text(encoding="utf-8")
-for state, name in manifest["animations"].items():
-    uri = "data:image/gif;base64," + base64.b64encode((pack / name).read_bytes()).decode()
-    html = html.replace("{{" + state + "}}", uri)
+HERE = Path(__file__).parent
+html = (HERE / "home-malbolgato.src.html").read_text(encoding="utf-8")
+for key, name in (("atlas", "malbolgato-v2-atlas.webp"), ("carry", "malbolgato-v2-carry.webp")):
+    uri = "data:image/webp;base64," + base64.b64encode((HERE / "assets" / name).read_bytes()).decode()
+    html = html.replace("{{" + key + "}}", uri)
 assert "{{" not in html, "unfilled placeholder"
 out = Path(sys.argv[1])
 out.write_text(html, encoding="utf-8")
