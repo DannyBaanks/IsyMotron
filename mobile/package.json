@@ -1,0 +1,26 @@
+{
+  "name": "isymotron-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "IsyMotron Móvil: your phone pairs with your IsyMotron PC over Link. The PC keeps the authority; the phone is the human's hand.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "test": "vitest run",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2"
+  }
+}

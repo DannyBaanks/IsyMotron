@@ -1,0 +1,135 @@
+# IsyMotron Móvil (mobile/): tests, the web build, an Android APK and an unsigned iOS IPA.
+# Like iSyCode Móvil: every push that touches mobile/ (any branch) and every PR leaves the
+# APK and the IPA as workflow artifacts. Nothing is published as a release from here.
+# Compiling is not running on a phone: device behaviour stays NOT_DEMONSTRATED until tested.
+name: IsyMotron Móvil (APK + IPA)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: [mobile/**, .github/workflows/mobile.yml]
+  push:
+    paths: [mobile/**, .github/workflows/mobile.yml]
+concurrency:
+  group: mobile-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: mobile
+jobs:
+  web:
+    name: Tests + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  android:
+    name: Android APK
+    needs: web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Assemble debug APK
+        working-directory: mobile/android
+        run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Package APK
+        run: |
+          set -euo pipefail
+          APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          test -n "$APK" || { echo "::error::APK not found"; exit 1; }
+          unzip -l "$APK" | grep -q "assets/public/index.html" || { echo "::error::web app not bundled"; exit 1; }
+          mkdir -p out && cp "$APK" out/IsyMotron-debug.apk
+          (cd out && sha256sum IsyMotron-debug.apk | tee SHA256SUMS.txt)
+          {
+            echo "### IsyMotron-debug.apk"
+            echo "- Size: $(du -h out/IsyMotron-debug.apk | cut -f1)"
+            echo "- SHA-256: \`$(cut -d' ' -f1 out/SHA256SUMS.txt)\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Debug build. Running on a phone is NOT_DEMONSTRATED until someone does it."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IsyMotron-android-apk
+          path: mobile/out/
+          retention-days: 30
+
+  ios:
+    name: iOS IPA (sin firmar)
+    needs: web
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Build unsigned (device)
+        run: |
+          set -o pipefail
+          xcodebuild -version
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath /tmp/isy_dd \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tee build-output.log
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP=$(find /tmp/isy_dd/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" -type d | head -1)
+          test -n "$APP" || { echo "::error::no .app produced"; exit 1; }
+          test -f "$APP/Info.plist" && test -d "$APP/public" || { echo "::error::.app missing Info.plist or web assets"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" -c "Print :CFBundleShortVersionString" -c "Print :MinimumOSVersion" "$APP/Info.plist"
+          mkdir -p out/Payload && cp -R "$APP" out/Payload/
+          (cd out && zip -qry IsyMotron-unsigned.ipa Payload && rm -rf Payload)
+          (cd out && shasum -a 256 IsyMotron-unsigned.ipa | tee SHA256SUMS.txt)
+          {
+            echo "### IsyMotron-unsigned.ipa"
+            echo "- Size: $(du -h out/IsyMotron-unsigned.ipa | cut -f1)"
+            echo "- SHA-256: \`$(cut -d' ' -f1 out/SHA256SUMS.txt)\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Unsigned: sign it with your Apple ID (Sideloadly / iloader). Running on an iPhone is NOT_DEMONSTRATED until someone does it."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IsyMotron-unsigned-ipa
+          path: mobile/out/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build-log
+          path: mobile/build-output.log
+          retention-days: 14
