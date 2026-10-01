@@ -63,7 +63,8 @@
 
 ## M3 — La PC acepta al teléfono
 
-- [ ] **M3.1** `isymotron link servir --red`: escucha en la red local solo si el usuario lo pide, muestra la IP:puerto para escribirla en el teléfono y lo deja en un recibo. Por defecto sigue en `127.0.0.1`.
+- [x] **M3.1** `isymotron link servir --red`: escucha en la red local solo si el usuario lo pide, muestra la IP:puerto para escribirla en el teléfono y lo deja en un recibo. Por defecto sigue en `127.0.0.1`.
+  - → `isymotron link servir --red` escucha en `0.0.0.0` **solo si el humano lo pide**. Imprime "En el teléfono escribe: IP:puerto" y el siguiente paso (`isymotron link aceptar <código>`), y deja el recibo `link_serve_lan`. Por defecto sigue en `127.0.0.1`. Tests: sin `--red` escucha en loopback y no deja recibo; con `--red` escucha en 0.0.0.0, responde `/link/v1/status`, imprime la dirección y escribe el recibo. pytest: 530 ok, 17 skipped (`test_linux_real::test_app_allowlist_runs_only_the_granted_file` falla en este sandbox con o sin el cambio). Commit `f1f1b25`.
 
 ## M4 — Pantallas de la v1
 
@@ -92,6 +93,7 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M3.1 | IsyMotron @ `12d6fe1` | `claude/exciting-lamport-84gclk` | tools/link_cli.py, tests/test_link_cli.py | pytest local 530 passed |
 | 2026-10-01 | M2.3 | IsyMotron @ `2a5d0ab` | `claude/exciting-lamport-84gclk` | mobile/src/link/client.ts, mobile/tools/link_pc_for_tests.py, mobile/tests/live.test.ts | vitest 13/13 (live incluida); [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) success |
 | 2026-10-01 | M2.2 | IsyMotron @ `18c49f3` | `claude/exciting-lamport-84gclk` | mobile/src/link/envelope.ts, mobile/tools/link_vectors.py, mobile/tests/fixtures/link-vectors.json, mobile.yml | vitest 10/10; drift de vectores en [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) |
 | 2026-10-01 | M2.1 | IsyMotron @ `18c49f3` | `claude/exciting-lamport-84gclk` | mobile/src/link/{bytes,identity,keystore}.ts | vitest, vectores de la PC; [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) |
