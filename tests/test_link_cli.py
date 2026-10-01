@@ -12,6 +12,7 @@ REPO = Path(__file__).resolve().parent.parent
 LINK_CLI = REPO / "tools" / "link_cli.py"
 sys.path.insert(0, str(REPO / "tools"))
 from link_cli import lan_addresses
+import link_cli
 
 
 @pytest.fixture()
@@ -125,20 +126,51 @@ def test_servir_defaults_to_this_machine_only(state_home):
         proc.wait()
 
 
-def test_servir_red_listens_on_the_network_says_how_and_leaves_a_receipt(state_home):
-    import json
-
+def test_servir_red_listens_on_the_network_and_explains_pairing(state_home):
     proc, lines = _serve(state_home, "--red")
     try:
         assert lines[0].startswith("sirviendo enlace en 0.0.0.0:")
-        receipts = (state_home / "isymotron" / "link" / "receipts.jsonl").read_text(encoding="utf-8").splitlines()
-        record = json.loads(receipts[-1])
-        port = record["port"]
-        assert any("En el teléfono escribe:" in line and line.endswith(f":{port}") for line in lines)
+        assert any("En el teléfono escribe:" in line for line in lines)
         assert any("isymotron link aceptar" in line for line in lines)
+        port = int(next(line.rsplit(":", 1)[1] for line in lines if "En el teléfono escribe:" in line))
         assert _status(f"127.0.0.1:{port}")["paired"] == 0
-        assert record["kind"] == "link_serve_lan"
-        assert isinstance(port, int)
     finally:
         proc.kill()
         proc.wait()
+
+
+def test_servir_red_records_the_actual_http_port(tmp_path, monkeypatch, capsys):
+    import json
+    from types import SimpleNamespace
+
+    class StoppedServer:
+        tcp_address = "0.0.0.0:4321"
+        http = SimpleNamespace(server_address=("0.0.0.0", 8765))
+
+        def __init__(self, directory, **_kwargs):
+            self.directory = directory
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+    directory = tmp_path / "isymotron" / "link"
+    monkeypatch.setattr(link_cli, "LinkServer", StoppedServer)
+    monkeypatch.setattr(link_cli, "lan_addresses", lambda: ["192.0.2.10"])
+
+    def stop_loop(_seconds):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("time.sleep", stop_loop)
+
+    assert link_cli.cmd_servir(SimpleNamespace(red=True, port=0, udp_port=0), directory) == 0
+    record = json.loads((directory / "receipts.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+    assert record == {
+        "kind": "link_serve_lan",
+        "ts": record["ts"],
+        "port": 8765,
+        "addresses": ["192.0.2.10"],
+    }
+    assert "192.0.2.10:8765" in capsys.readouterr().out
