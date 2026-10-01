@@ -20,7 +20,8 @@ function privateIpv4(host: string): boolean {
   if (octets.length !== 4) return false;
   const nums = octets.map((part) => Number(part));
   if (nums.some((n, i) => !Number.isInteger(n) || n < 0 || n > 255 || String(n) !== octets[i])) return false;
-  const [a, b] = nums;
+  const a = nums[0]!;
+  const b = nums[1]!;
   return a === 10 || a === 127 || (a === 169 && b === 254) ||
     (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) ||
     (a === 100 && b >= 64 && b <= 127); // RFC 6598, used by Tailscale
