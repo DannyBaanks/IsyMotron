@@ -228,7 +228,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     - timeout → fallback, y el save guardado queda byte a byte idéntico;
     - caja rechazada → nunca llega al runtime (de M3.2).
     Lado nativo: el glue JNI se probó en escritorio con `-Xcheck:jni` (UTF-8, modelo faltante y handle nulo → excepción, recarga). Suite 111/111. Commit `c57f7b9`.
-  - [ ] **M3.4e** Provenance de cierre (§28): SHAs, rutas, hashes, tests, builds, evidencia de dispositivo y los huecos NOT_DEMONSTRATED.
+  - [x] **M3.4e** Provenance de cierre (§28): SHAs, rutas, hashes, tests, builds, evidencia de dispositivo y los huecos NOT_DEMONSTRATED.
+    - → Cierre (§28). **Base → resultado:** TamagotchIA `b7fe4b1` → `81b2367` en `claude/gus-life-m1` (sin PR). **Upstream:** iSyCodeMovil `9c8a659840045cb31da7b501022645a194f4422d`; llama.cpp `842b1880415d6f508f03b789e5ce70194def7bfd`. **Copiado (allowlist):** `Sources/Model/GUSLlamaBridge.c` (`b79fb3e4a50a…`); `Sources/Model/GUSLlamaBridge.h` (`c521205b8d5e…`); `scripts/build-llama-xcframework.sh` (`134f1d072946…`). **Tests:** vitest 111/111, tsc, build. **CI ([run 36794433294](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36794433294), todo verde):** drift byte a byte; smoke nativo con Qwen2.5-0.5B Q4_K_M de hash congelado (1380 tokens de prompt reales, ~44 tok/s, ~606 MB RSS); APK arm64 con `libtama_gus.so` y sin `.gguf`; build iOS con enlace estricto. **Huecos NOT_DEMONSTRATED:** inferencia en Android o iPhone físico (M3.6); UI conectada (M3.5); salida que cumpla MindReplyV1 de forma fiable (el modelo 0.5B a veces repite al jugador; eso es M4); presupuesto medido con el tokenizer real (M4.0). Egress remoto: sigue fail-closed.
 - [ ] **M3.5** PWA: mensaje "GUS local requiere la app nativa" y el juego sigue funcionando.
 - [ ] **M3.6** Prueba en teléfono físico con modo avión. Hasta entonces: NOT_DEMONSTRATED.
 
@@ -290,6 +291,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M3.4e | TamagotchIA @ `b7fe4b1` → `81b2367`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | provenance de cierre | runs 36793725023 y 36794433294 verdes; vitest 111/111 |
 | 2026-10-01 | M3.4c | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | ios/App/GusLocal/*, SceneDelegate.swift, project.pbxproj, ios.yml, gus-runtime.yml | GitHub Actions [run 36794433294](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36794433294): iOS job success (strict link check) |
 | 2026-09-30 | M3.4b | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | android/app/src/main/cpp/*, GusLocalPlugin.java, MainActivity.java, build.gradle | GitHub Actions: Android APK job success ×2 |
 | 2026-09-30 | M3.4d | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/localMind.test.ts | vitest 111/111, tsc |
