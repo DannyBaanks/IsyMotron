@@ -66,6 +66,8 @@
 - [x] **M3.1** `isymotron link servir --red`: escucha en la red local solo si el usuario lo pide, muestra la IP:puerto para escribirla en el teléfono y lo deja en un recibo. Por defecto sigue en `127.0.0.1`.
   - → `isymotron link servir --red` escucha en `0.0.0.0` **solo si el humano lo pide**. Imprime "En el teléfono escribe: IP:puerto" y el siguiente paso (`isymotron link aceptar <código>`), y deja el recibo `link_serve_lan`. Por defecto sigue en `127.0.0.1`. Tests: sin `--red` escucha en loopback y no deja recibo; con `--red` escucha en 0.0.0.0, responde `/link/v1/status`, imprime la dirección y escribe el recibo. pytest: 530 ok, 17 skipped (`test_linux_real::test_app_allowlist_runs_only_the_granted_file` falla en este sandbox con o sin el cambio). Commit `f1f1b25`.
 
+- [ ] **M3.2** Respuestas selladas: la PC también sella sus respuestas (campo extra, compatible con el CLI actual) y el teléfono solo confía en una respuesta firmada por la PC emparejada. Sin esto, alguien en la misma red podría fingir un "pong" mientras se empareja.
+
 ## M4 — Pantallas de la v1
 
 - [ ] **M4.1** Enlazar: escribir IP:puerto de la PC → ver el código → confirmar que coincide → la PC queda guardada.
