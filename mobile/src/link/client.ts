@@ -15,12 +15,37 @@ export class LinkClientError extends Error {
   }
 }
 
-/** "192.168.1.20:47931" → validated host:port. No paths, no schemes, nothing else. */
+function privateIpv4(host: string): boolean {
+  const octets = host.split(".");
+  if (octets.length !== 4) return false;
+  const nums = octets.map((part) => Number(part));
+  if (nums.some((n, i) => !Number.isInteger(n) || n < 0 || n > 255 || String(n) !== octets[i])) return false;
+  const [a, b] = nums;
+  return a === 10 || a === 127 || (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) ||
+    (a === 100 && b >= 64 && b <= 127); // RFC 6598, used by Tailscale
+}
+
+function localHost(host: string): boolean {
+  const value = host.toLowerCase();
+  if (privateIpv4(value)) return true;
+  if (value.startsWith("[") && value.endsWith("]")) {
+    const ip = value.slice(1, -1);
+    if (ip === "::1") return true;
+    const first = Number.parseInt(ip.split(":", 1)[0] ?? "", 16);
+    return (first >= 0xfc00 && first <= 0xfdff) || (first >= 0xfe80 && first <= 0xfebf);
+  }
+  return value === "localhost" || !value.includes(".") || value.endsWith(".local") || value.endsWith(".ts.net");
+}
+
+/** Local/Tailscale host:port only. No paths and no arbitrary public cleartext destination. */
 export function parseAddress(text: string): string {
   const value = text.trim().replace(/^http:\/\//, "").replace(/\/+$/, "");
   const m = /^([A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\]):(\d{1,5})$/.exec(value);
   const port = m ? Number(m[2]) : 0;
-  if (!m || port < 1 || port > 65535) throw new LinkClientError("bad_address", "Escribe la dirección como IP:puerto, por ejemplo 192.168.1.20:47931.");
+  if (!m || port < 1 || port > 65535 || !localHost(m[1])) {
+    throw new LinkClientError("bad_address", "Escribe una dirección local o de Tailscale como IP:puerto, por ejemplo 192.168.1.20:47931.");
+  }
   return `${m[1]}:${port}`;
 }
 
@@ -54,8 +79,9 @@ export interface PairingProposal {
 }
 
 export async function requestPairing(own: LinkIdentity, address: string, fetchFn: Fetch, timeoutMs = 15_000): Promise<PairingProposal> {
+  const safeAddress = parseAddress(address);
   const nonce = freshNonce();
-  const { status, body } = await postJson(fetchFn, `http://${address}/link/v1/pair`, { ...publicCard(own), nonce, port: 0 }, timeoutMs);
+  const { status, body } = await postJson(fetchFn, `http://${safeAddress}/link/v1/pair`, { ...publicCard(own), nonce, port: 0 }, timeoutMs);
   if (status !== 200 || body.ok !== true) throw new LinkClientError(String(body.code ?? `http_${status}`), `La PC rechazó el emparejamiento: ${String(body.error ?? body.code ?? status)}`);
   const card = body.peer as PublicCard | undefined;
   const peerNonce = body.nonce;
@@ -64,7 +90,7 @@ export async function requestPairing(own: LinkIdentity, address: string, fetchFn
   }
   if (card.office_id === own.officeId) throw new LinkClientError("self", "Esa dirección es este mismo teléfono.");
   return {
-    peer: { office_id: card.office_id, name: String(card.name).slice(0, 64), sign_pub: card.sign_pub, box_pub: card.box_pub, addresses: [address] },
+    peer: { office_id: card.office_id, name: String(card.name).slice(0, 64), sign_pub: card.sign_pub, box_pub: card.box_pub, addresses: [safeAddress] },
     code: await shortCode(own.signPub, card.sign_pub, nonce, peerNonce),
     expiresAt: Number(body.expires_at ?? 0) * 1000,
   };
@@ -81,7 +107,14 @@ const seenReplies = new Map<string, number>();
  */
 export async function call(own: LinkIdentity, peer: Peer, payload: Record<string, unknown>, fetchFn: Fetch, timeoutMs = 15_000): Promise<Record<string, unknown>> {
   let last: LinkClientError = new LinkClientError("unreachable", `Sin dirección para ${peer.name}.`);
-  for (const address of peer.addresses) {
+  for (const rawAddress of peer.addresses) {
+    let address: string;
+    try {
+      address = parseAddress(rawAddress);
+    } catch (error) {
+      last = error instanceof LinkClientError ? error : new LinkClientError("bad_address", String(error));
+      continue;
+    }
     const env = await seal(own, peer, payload);
     try {
       const { status, body } = await postJson(fetchFn, `http://${address}/link/v1/call`, { env }, timeoutMs);
@@ -113,4 +146,3 @@ export const ping = (own: LinkIdentity, peer: Peer, f: Fetch) => call(own, peer,
 export const delegate = (own: LinkIdentity, peer: Peer, title: string, body: string, f: Fetch) => call(own, peer, { op: "delegate", title, body }, f);
 export const task = (own: LinkIdentity, peer: Peer, taskId: string, f: Fetch) => call(own, peer, { op: "task", task_id: taskId }, f);
 export const cancel = (own: LinkIdentity, peer: Peer, taskId: string, f: Fetch) => call(own, peer, { op: "cancel", task_id: taskId }, f);
-
