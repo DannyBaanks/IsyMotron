@@ -66,7 +66,8 @@
 - [x] **M3.1** `isymotron link servir --red`: escucha en la red local solo si el usuario lo pide, muestra la IP:puerto para escribirla en el teléfono y lo deja en un recibo. Por defecto sigue en `127.0.0.1`.
   - → `isymotron link servir --red` escucha en `0.0.0.0` **solo si el humano lo pide**. Imprime "En el teléfono escribe: IP:puerto" y el siguiente paso (`isymotron link aceptar <código>`), y deja el recibo `link_serve_lan`. Por defecto sigue en `127.0.0.1`. Tests: sin `--red` escucha en loopback y no deja recibo; con `--red` escucha en 0.0.0.0, responde `/link/v1/status`, imprime la dirección y escribe el recibo. pytest: 530 ok, 17 skipped (`test_linux_real::test_app_allowlist_runs_only_the_granted_file` falla en este sandbox con o sin el cambio). Commit `f1f1b25`.
 
-- [ ] **M3.2** Respuestas selladas: la PC también sella sus respuestas (campo extra, compatible con el CLI actual) y el teléfono solo confía en una respuesta firmada por la PC emparejada. Sin esto, alguien en la misma red podría fingir un "pong" mientras se empareja.
+- [x] **M3.2** Respuestas selladas: la PC también sella sus respuestas (campo extra, compatible con el CLI actual) y el teléfono solo confía en una respuesta firmada por la PC emparejada. Sin esto, alguien en la misma red podría fingir un "pong" mientras se empareja.
+  - → **La PC** (`core/isymotron/link/server.py`) sigue respondiendo los mismos campos en claro, así que el CLI entre PCs sigue igual, y agrega `renv`: el resultado sellado de vuelta al que llama y atado al nonce de su petición (`re`). **El teléfono** solo cree una respuesta si `renv` abre con la llave de la PC emparejada, viene sellado para este teléfono, no es un replay y contesta a esta petición; el JSON en claro se ignora. Si la PC no sella, le pide actualizar. Tests: pytest con ida y vuelta de `renv` (una tercera oficina no lo puede abrir); prueba viva donde un "pong" falso en claro y uno sellado con la llave de un atacante se rechazan y el de la PC real pasa. pytest 531 ok; vitest 14/14; CI [run 36822646078](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822646078) verde. Commit `0e582df`.
 
 ## M4 — Pantallas de la v1
 
@@ -95,6 +96,7 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M3.2 | IsyMotron @ `f1f1b25` | `claude/exciting-lamport-84gclk` | core/isymotron/link/server.py, tests/test_link_server.py, mobile/src/link/client.ts, mobile/tests/live.test.ts | pytest 531 passed; vitest 14/14; [run 36822646078](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822646078) success |
 | 2026-10-01 | M3.1 | IsyMotron @ `12d6fe1` | `claude/exciting-lamport-84gclk` | tools/link_cli.py, tests/test_link_cli.py | pytest local 530 passed |
 | 2026-10-01 | M2.3 | IsyMotron @ `2a5d0ab` | `claude/exciting-lamport-84gclk` | mobile/src/link/client.ts, mobile/tools/link_pc_for_tests.py, mobile/tests/live.test.ts | vitest 13/13 (live incluida); [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) success |
 | 2026-10-01 | M2.2 | IsyMotron @ `18c49f3` | `claude/exciting-lamport-84gclk` | mobile/src/link/envelope.ts, mobile/tools/link_vectors.py, mobile/tests/fixtures/link-vectors.json, mobile.yml | vitest 10/10; drift de vectores en [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) |
