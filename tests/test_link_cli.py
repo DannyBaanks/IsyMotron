@@ -1,13 +1,17 @@
 """M3: link CLI verbs. Hermetic via XDG_STATE_HOME; no servers, no network."""
 import os
+import socket
 import subprocess
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 LINK_CLI = REPO / "tools" / "link_cli.py"
+sys.path.insert(0, str(REPO / "tools"))
+from link_cli import lan_addresses
 
 
 @pytest.fixture()
@@ -57,6 +61,27 @@ def test_olvidar_unknown_is_clean_error(state_home):
 def test_unknown_subcommand_is_exit_two(state_home):
     proc = run_cli("nosub")
     assert proc.returncode == 2
+
+
+def test_lan_addresses_on_macos_use_bounded_interface_probes(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+
+    def no_route(*_args, **_kwargs):
+        raise OSError("hosted macOS runner has no configured default route")
+
+    monkeypatch.setattr(socket, "socket", no_route)
+    monkeypatch.setattr(socket, "getaddrinfo", no_route)
+    calls = []
+
+    def ipconfig(args, **kwargs):
+        calls.append((args, kwargs))
+        address = "192.168.1.42\n" if args[-1] == "en0" else ""
+        return SimpleNamespace(returncode=0 if address else 1, stdout=address)
+
+    monkeypatch.setattr(subprocess, "run", ipconfig)
+
+    assert lan_addresses() == ["192.168.1.42"]
+    assert calls and all(call[1]["timeout"] <= 0.25 for call in calls)
 
 
 def _serve(state_home, *extra):
