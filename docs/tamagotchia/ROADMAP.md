@@ -233,6 +233,11 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
 
 ## M4 — Salida estructurada
 
+- [ ] **M4.0** Presupuesto **medido, no a ojo** (propuesta del usuario, 2026-10-01):
+  `PET_CONTEXT_BUDGET = model_context_limit − output_reserve − safety_margin − actual_system_tokens − current_turn_tokens`.
+  - Contar tokens con el tokenizer real del modelo cargado (el bridge ya tokeniza; exponer "count tokens" vía el plugin), no con 2.5 caracteres por token.
+  - Evidencia que lo motiva: el mismo chat midió 1380 tokens con Qwen2.5 (CI) y 1662 con el vocabulario llama (local): depende del tokenizer.
+  - No inflar la Context Box antes de tener esto.
 - [ ] **M4.1** Probar la grammar de llama.cpp contra MindReplyV1 en el smoke de CI del catálogo.
 - [ ] **M4.2** Validar el schema después de generar; lo inválido cae al fallback.
 - [ ] **M4.3** Si la grammar no es fiable o portable, GUS genera solo `speech` y el código decide emoción, intención y animación.
