@@ -10,3 +10,12 @@ Pantallas: 1 Inicio · 2 Enlazar (dirección) · 3 Enlazar (código) · 4 Mi PC 
 Navegación inferior nueva: Inicio, Tareas, Recibos, Teléfono.
 
 Fuente editable: `mockups.html` (`#a` o `#b` en la URL). Se renderiza a PNG con Playwright.
+
+## Inicio con Malbolgato (prototipo interactivo)
+
+`home-malbolgato.src.html` + `build_home.py`: la pantalla de inicio en Verde terminal con Malbolgato y sus
+6 animaciones del Companion (`avatar/packs/malbolge-cat`). Toca = reacción; mantener = controles (como el clic
+derecho del avatar de escritorio). Mismas reglas que `docs/AVATAR_CONTRACT.md`: el marco verde o rojo solo viene
+de una PC firmada; cualquier otro texto sale como tercero no verificado; Malbolgato no tiene autoridad.
+
+    python3 docs/mobile/design/build_home.py /tmp/inicio-malbolgato.html
