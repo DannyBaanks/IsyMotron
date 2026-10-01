@@ -161,18 +161,22 @@ def _darwin_lan_addresses() -> list[str]:
     import socket
     import subprocess
 
+    # Avoid socket.if_nameindex() here: on a macOS hosted runner with partially
+    # configured networking it can block for about two minutes. The common
+    # macOS hardware/bridge interface names are cheap to probe individually,
+    # and every subprocess has its own hard deadline.
+    interfaces = [
+        "en0", "en1", "en2", "en3", "en4", "en5", "en6", "en7", "en8",
+        "bridge0", "bridge100",
+    ]
     found: set[str] = set()
-    try:
-        interfaces = [name for _, name in socket.if_nameindex()]
-    except OSError:
-        interfaces = ["en0", "en1"]
     for name in interfaces:
         try:
             done = subprocess.run(
                 ["/usr/sbin/ipconfig", "getifaddr", name],
                 capture_output=True,
                 text=True,
-                timeout=0.5,
+                timeout=0.25,
                 check=False,
             )
         except (OSError, subprocess.TimeoutExpired):
