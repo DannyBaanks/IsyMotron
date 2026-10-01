@@ -216,7 +216,8 @@ Entrega: `docs/tamagotchia/M0_INSPECTION.md` con los 10 puntos de la sección 43
     - **Salida:** `{"speech": "¡Hola! ¿Qué comiste hoy? 🐟", "emotion": "happy", "intent": "request_play", "animation": "side_eye"}` → **pasa el contrato de persona**, pero repite lo que dijo el jugador: calidad baja; para M4 y la elección de modelo.
     - **Local:** el pipeline se probó con un GGUF de juguete (Hugging Face está bloqueado aquí). Con el vocabulario llama, el prompt midió 1662 tokens: **el estimador de 2.5 caracteres por token puede quedarse corto** según el tokenizer (pendiente para M3.5 o M4).
     - En dispositivo: NOT_DEMONSTRATED.
-  - [ ] **M3.4b** Android: plugin Capacitor `GusLocal` (Kotlin) + glue JNI propio de TamagotchIA (bytes UTF-8) + CMake con el vendor; compila en CI.
+  - [x] **M3.4b** Android: plugin Capacitor `GusLocal` (Kotlin) + glue JNI propio de TamagotchIA (bytes UTF-8) + CMake con el vendor; compila en CI.
+    - → Android **compila en CI**: el APK arm64 incluye `lib/arm64-v8a/libtama_gus.so` y no trae ningún `.gguf` (chequeo estricto en el workflow). Runs [36793522941](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36793522941) (`29cd6c1`) y [36793725023](https://github.com/DannyBaanks/TamagotchIA/actions/runs/36793725023) (`744d1fd`) verdes; el APK queda como artefacto. Glue JNI ejercitada en escritorio con `-Xcheck:jni`. Plugin Java (el proyecto no tiene Kotlin); modelos solo por nombre dentro de `filesDir/models`. **En teléfono Android físico: NOT_DEMONSTRATED.**
   - [ ] **M3.4c** iOS: plugin Capacitor `GusLocal` (Swift) + xcframework de llama.cpp fijado; compila en CI.
   - [x] **M3.4d** Tests del adapter: plugin ausente, error nativo, timeout, respuesta malformada o vacía, UTF-8, caja rechazada → fallback sin tocar el save.
     - → Tests del adapter en `tests/localMind.test.ts` (6 en total):
@@ -283,6 +284,7 @@ World, lease de autoridad, avatar/takeover, mundo social, PvP, compute tiers, co
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-09-30 | M3.4b | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | android/app/src/main/cpp/*, GusLocalPlugin.java, MainActivity.java, build.gradle | GitHub Actions: Android APK job success ×2 |
 | 2026-09-30 | M3.4d | TamagotchIA @ `b7fe4b1` | `claude/gus-life-m1` | tests/localMind.test.ts | vitest 111/111, tsc |
 | 2026-09-30 | M3.4a | TamagotchIA @ `b7fe4b1`, iSyCodeMovil @ `9c8a659` | `claude/gus-life-m1` | native/gus-smoke/*, tools/gus-smoke/*, gus-runtime.yml | GitHub Actions run 36793218434: success |
 | 2026-09-30 | M3.3 | TamagotchIA @ `b7fe4b1` → `ca54ec5` | `claude/gus-life-m1` | M3.3a–f | gate COMPOSE_M3_VENDOR §24 |
