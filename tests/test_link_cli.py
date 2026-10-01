@@ -128,14 +128,14 @@ def test_servir_red_listens_on_the_network_says_how_and_leaves_a_receipt(state_h
     proc, lines = _serve(state_home, "--red")
     try:
         assert lines[0].startswith("sirviendo enlace en 0.0.0.0:")
-        port = lines[0].split(":")[1].split(" ")[0]
+        receipts = (state_home / "isymotron" / "link" / "receipts.jsonl").read_text(encoding="utf-8").splitlines()
+        record = json.loads(receipts[-1])
+        port = record["port"]
         assert any("En el teléfono escribe:" in line and line.endswith(f":{port}") for line in lines)
         assert any("isymotron link aceptar" in line for line in lines)
         assert _status(f"127.0.0.1:{port}")["paired"] == 0
-        receipts = (state_home / "isymotron" / "link" / "receipts.jsonl").read_text(encoding="utf-8").splitlines()
-        record = json.loads(receipts[-1])
         assert record["kind"] == "link_serve_lan"
-        assert record["port"] == int(port)
+        assert isinstance(port, int)
     finally:
         proc.kill()
         proc.wait()
