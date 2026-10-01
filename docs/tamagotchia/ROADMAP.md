@@ -36,6 +36,8 @@ verificadas**, y cada tachado va en su propio commit con push.
 
 ## Estado actual
 
+- **Cambio de rumbo (2026-10-01, decisión del dueño):** TamagotchIA se queda como está en su repo. Su `main` sigue en `b7fe4b1`; la rama `claude/gus-life-m1` queda **sin mergear**, como referencia reutilizable (GUS local, descarga de modelos, IPA y APK). Se hace una app nueva de IsyMotron en `mobile/` → [`docs/mobile/ROADMAP.md`](../mobile/ROADMAP.md). TamagotchIA se conectará como función y al final se juntan en una sola app. M3.6b queda en pausa.
+
 - **Milestone activo:** M3. M0, M1, M2, M3.1 y M3.2 están hechos; el código vive en TamagotchIA `claude/gus-life-m1` (99 tests, sin PR hasta que el usuario lo pida).
 - **Decidido (2026-09-30):** para M3.3/M3.4 se usa copia fijada del bridge ([`COMPOSE_M3_VENDOR.md`](COMPOSE_M3_VENDOR.md)). El egress remoto sigue fail-closed hasta M5.
 - **Decisión pendiente del usuario (para M3):** cómo compartir el bridge C de iSyCode (vendoring fijado a un commit, submódulo o paquete).
