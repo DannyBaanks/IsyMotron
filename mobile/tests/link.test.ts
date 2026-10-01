@@ -102,3 +102,13 @@ describe("the phone keeps one identity", () => {
     expect((await store.get())!.box.privateKey.extractable).toBe(false);
   });
 });
+
+import { parseAddress } from "../src/link/client";
+
+describe("the PC address the human types", () => {
+  it("accepts IP:port (and a pasted http://) and rejects anything else", () => {
+    expect(parseAddress(" 192.168.1.20:47931 ")).toBe("192.168.1.20:47931");
+    expect(parseAddress("http://pc.local:47931/")).toBe("pc.local:47931");
+    for (const bad of ["192.168.1.20", "192.168.1.20:0", "192.168.1.20:70000", "https://x:1/a", "a b:1", "x:1/evil"]) expect(() => parseAddress(bad)).toThrow();
+  });
+});
