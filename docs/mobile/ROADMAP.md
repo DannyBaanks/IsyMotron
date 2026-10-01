@@ -58,7 +58,8 @@
   - → `mobile/src/link/identity.ts` + `keystore.ts`: Ed25519 + X25519 con WebCrypto y llaves privadas **no extraíbles**, guardadas en IndexedDB como objetos CryptoKey (nunca sus bytes). Se crea una vez y luego siempre es el mismo `office_id`. `office_id`, tarjeta pública y código de 6 dígitos iguales a los de la PC (vectores). Verificado en Chromium headless: IndexedDB guarda la llave no extraíble y sigue firmando. Commit `2a5d0ab`.
 - [x] **M2.2** Sellar y abrir sobres idénticos al Python (vectores fijos generados por el Python de la PC; los mismos bytes en los dos sentidos).
   - → `envelope.ts` sella **byte a byte igual** que `core/isymotron/link/envelope.py` para las mismas llaves y la misma aleatoriedad, y abre lo que sella la PC. Al abrir rechaza remitente desconocido, destinatario equivocado, sobre alterado, hora vieja y replay. `mobile/tools/link_vectors.py` corre el código de la PC con llaves de prueba fijas; CI regenera los vectores y falla si cualquiera de los dos lados cambia. Commit `2a5d0ab`.
-- [ ] **M2.3** Prueba viva en CI: servidor Link real en Python + cliente TS en Node → emparejar, `link aceptar`, `ping`, `delegate`, `task`.
+- [x] **M2.3** Prueba viva en CI: servidor Link real en Python + cliente TS en Node → emparejar, `link aceptar`, `ping`, `delegate`, `task`.
+  - → Prueba viva: el servidor Link **real** de la PC (Python) en un puerto efímero + el cliente TS por HTTP real. Recorrido: emparejar → una llamada antes de aceptar se rechaza → la PC acepta el código → `ping` → `delegate` cae en el inbox de la PC con recibo `link_received` → `task` → `cancel`. Un código equivocado no empareja nada. **Hallazgo:** la PC contesta las llamadas en JSON sin sellar (la petición va sellada, la respuesta no). El teléfono muestra las respuestas pero nunca las trata como autoridad; queda como M3.2. Commit `12d6fe1`, CI [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) verde.
 
 ## M3 — La PC acepta al teléfono
 
@@ -91,6 +92,7 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-01 | M2.3 | IsyMotron @ `2a5d0ab` | `claude/exciting-lamport-84gclk` | mobile/src/link/client.ts, mobile/tools/link_pc_for_tests.py, mobile/tests/live.test.ts | vitest 13/13 (live incluida); [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) success |
 | 2026-10-01 | M2.2 | IsyMotron @ `18c49f3` | `claude/exciting-lamport-84gclk` | mobile/src/link/envelope.ts, mobile/tools/link_vectors.py, mobile/tests/fixtures/link-vectors.json, mobile.yml | vitest 10/10; drift de vectores en [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) |
 | 2026-10-01 | M2.1 | IsyMotron @ `18c49f3` | `claude/exciting-lamport-84gclk` | mobile/src/link/{bytes,identity,keystore}.ts | vitest, vectores de la PC; [run 36822054916](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822054916) |
 | 2026-10-01 | M1.2 | IsyMotron @ `22034d6` | `claude/exciting-lamport-84gclk` | .github/workflows/mobile.yml | GitHub Actions [run 36821707684](https://github.com/DannyBaanks/IsyMotron/actions/runs/36821707684) success |
