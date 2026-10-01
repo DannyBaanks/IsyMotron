@@ -27,3 +27,13 @@ describe("what the phone remembers", () => {
     expect(spacedCode("012345")).toBe("012 345");
   });
 });
+
+import { describeReceipt } from "../src/home";
+
+describe("receipts read like a sentence", () => {
+  it("names what happened and with which PC", () => {
+    const base = { at: "2026-10-01T10:24:00Z", office_id: "x", name: "isytron-pc" };
+    expect(describeReceipt({ ...base, kind: "link_delegated", title: "Revisar el respaldo" })).toBe("Tarea enviada · Revisar el respaldo → isytron-pc");
+    expect(describeReceipt({ ...base, kind: "link_paired" })).toBe("PC enlazada · isytron-pc");
+  });
+});
