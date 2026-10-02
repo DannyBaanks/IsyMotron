@@ -9,7 +9,7 @@ let package = Package(
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.5.2")
     ],
     targets: [
-        .target(name: "GUSBridge", exclude: ["GUSLlamaBridge.c"], path: "Sources/GUSBridge", publicHeadersPath: "include"),
+        .target(name: "GUSBridge", path: "Sources/GUSBridge", exclude: ["GUSLlamaBridge.c"], publicHeadersPath: "include"),
         .target(name: "GusModelStore", path: "Sources/GusModelStore"),
         .target(
             name: "GusLocalPlugin",
