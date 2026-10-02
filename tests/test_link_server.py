@@ -75,7 +75,9 @@ def test_envelope_roundtrip_and_tamper(tmp_path):
     peer, payload = envelope.open_envelope(ident_b, peers_b, env, {})
     assert payload == {"op": "ping"} and peer["office_id"] == ident_a["office_id"]
     tampered = dict(env)
-    tampered["ct"] = "A" + tampered["ct"][1:]
+    first = "B" if tampered["ct"].startswith("A") else "A"
+    tampered["ct"] = first + tampered["ct"][1:]
+    assert tampered["ct"] != env["ct"]
     with pytest.raises(envelope.EnvelopeError):
         envelope.open_envelope(ident_b, peers_b, tampered, {})
     with pytest.raises(envelope.EnvelopeError):
