@@ -377,6 +377,11 @@ def _run_in_pty(keys=b"q", timeout=20.0, env=None):
     import pty
     master, slave = pty.openpty()
     child_env = dict(os.environ)
+    # A PTY-backed interaction test should not inherit the container's
+    # non-interactive TERM=dumb setting. Tests that exercise that case pass it
+    # explicitly through env below.
+    if "TERM" not in (env or {}):
+        child_env["TERM"] = "xterm-256color"
     child_env.update(env or {})
     proc = subprocess.Popen([sys.executable, str(CLI_PATH)], cwd=str(REPO),
                             stdin=slave, stdout=slave, stderr=slave,
