@@ -10,6 +10,8 @@ import { startApp } from "./home";
 import { indexedDbKeyStore, loadOrCreateIdentity } from "./link/keystore";
 import type { LinkIdentity } from "./link/identity";
 import { cryptoSupport } from "./support";
+import { nativeGus } from "./gus/native";
+import { GUS_MODELS } from "./gus/catalog.generated";
 
 let identity: Promise<LinkIdentity> | null = null;
 
@@ -21,4 +23,5 @@ startApp({
   support: cryptoSupport(),
   // In the native app CapacitorHttp routes this through native HTTP (no CORS).
   fetch: (url, init) => fetch(url, init),
+  gus: { local: nativeGus.local, secureStore: nativeGus.secureStore, models: nativeGus.models, catalogue: GUS_MODELS },
 });

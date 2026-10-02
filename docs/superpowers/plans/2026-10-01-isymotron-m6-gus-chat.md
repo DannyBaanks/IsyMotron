@@ -168,7 +168,6 @@
 - Create: `mobile/src/gus/native.ts`
 - Create: `mobile/src/gus/chat.ts`
 - Create: `mobile/src/gus/chat.testable.ts` (pure view-state transitions only)
-- Create: `mobile/src/gus/e2e-mock.ts` (included only in Vite `e2e` mode)
 - Test: `mobile/tests/gus-chat.test.ts`
 - Test: `mobile/tests/gus-native-boundary.test.ts`
 - Modify: `mobile/src/home.ts`
@@ -180,13 +179,13 @@
 - `GusChatController` exposes `getState(): GusChatState`, `subscribe(listener: (state: GusChatState) => void): () => void`, `send(text: string): Promise<void>`, `cancel(): Promise<void>`, `selectMode(mode: GusMode): void`, `downloadModel(id: string): Promise<void>`, `importModels(): Promise<void>`, `exportModel(id: string): Promise<void>`, and `clearSession(): void`. `createGusChat(deps)` accepts the local/remote providers, model catalogue, and secure config adapter and returns this controller.
 - `GusAppDeps = { local: GusProvider | null; remoteConfig: GusRemoteConfig | null; secureStore: GusSecureStore; catalogue: readonly GusModelManifest[] }`. `createGusChat` builds the remote provider from `remoteConfig` and `secureStore`; `startApp` receives `gus: GusAppDeps` through `AppDeps`; Home shows a **GUS** entry, and `gusScreen()` renders without adding a bottom-navigation tab.
 
-- [ ] **Step 1: Write failing tests** for blank-message rejection, session-only turns, abort-signal calling native `cancel()`, loading/cancel state, selected mode persistence for the session, model setup/import/export outcomes, and no route change after provider failure; add a native-boundary contract test proving only model ID, message strings, and fixed generation limits cross the Capacitor bridge, with no Link keys, leases, or file path.
-- [ ] **Step 2: Run** `cd mobile && npm test -- tests/gus-chat.test.ts`; confirm missing controller behavior fails.
-- [ ] **Step 3: Implement** the testable chat controller and Capacitor wrappers; serialize only approved local-plugin fields, show native-unavailable state on browser/PWA, and do not trigger remote automatically.
-- [ ] **Step 4: Add the Home entry and GUS screen** with chat composer, local/remote selector, model catalogue with size/source/license, progress/cancel, import/export, remote HTTPS configuration, and explicit remote-data notice.
-- [ ] **Step 5: Add styles** consistent with Verde terminal and accessible button labels, live progress/error announcements, and keyboard focus behavior.
-- [ ] **Step 6: Run** `cd mobile && npm test && npm run build`; expect all mobile tests and the production TypeScript/Vite build to pass.
-- [ ] **Step 7: Commit** only GUS TypeScript/UI/CSS/tests as `feat: add GUS chat to mobile home`.
+- [x] **Step 1: Write failing tests** for blank-message rejection, session-only turns, abort-signal calling native `cancel()`, loading/cancel state, selected mode persistence for the session, model setup/import/export outcomes, and no route change after provider failure; add a native-boundary contract test proving only model ID, message strings, and fixed generation limits cross the Capacitor bridge, with no Link keys, leases, or file path.
+- [x] **Step 2: Run** `cd mobile && npm test -- tests/gus-chat.test.ts`; confirmed the missing controller and native wrapper failed before implementation.
+- [x] **Step 3: Implement** the testable chat controller and Capacitor wrappers; serialize only approved local-plugin fields, show native-unavailable state on browser/PWA, and do not trigger remote automatically.
+- [x] **Step 4: Add the Home entry and GUS screen** with chat composer, local/remote selector, model catalogue with size/source/license, progress/cancel, import/export, remote HTTPS configuration, and explicit remote-data notice.
+- [x] **Step 5: Add styles** consistent with Verde terminal and accessible button labels, live progress/error announcements, and keyboard focus behavior.
+- [x] **Step 6: Run** `cd mobile && npm test && npm run build`; 14 files / 70 tests passed and the production TypeScript/Vite build completed.
+- [x] **Step 7: Commit** only GUS TypeScript/UI/CSS/tests as `feat: add GUS chat to mobile home`.
 
 ### Task 7: Add native CI, end-to-end coverage, and the operator guide
 
@@ -195,6 +194,7 @@
 - Create: `.github/workflows/gus-runtime.yml`
 - Create: `mobile/e2e/gus.e2e.mjs`
 - Create: `mobile/tests/gus-e2e-isolation.test.ts`
+- Create: `mobile/src/gus/e2e-mock.ts` (included only in Vite `e2e` mode)
 - Modify: `mobile/package.json` (add `build:e2e` and `e2e:gus` scripts)
 - Create: `docs/mobile/GUS_GUIDE.md`
 

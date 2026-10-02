@@ -10,6 +10,9 @@ import { prettyFingerprint, type LinkIdentity } from "./link/identity";
 import { createPet, ROW, type PetState } from "./pet";
 import { addReceipt, forgetPeer, loadPeers, loadReceipts, spacedCode, trustPeer, type KeyValue, type PhoneReceipt } from "./store";
 import { canPair, type CryptoSupport } from "./support";
+import { createGusChat, type GusAppDeps, type GusChatController } from "./gus/chat";
+import { GUS_MODELS } from "./gus/catalog.generated";
+import { NVIDIA_NIM_PRESET } from "./gus/remote";
 
 export function supportLines(s: CryptoSupport): string[] {
   const mark = (ok: boolean) => (ok ? "✓" : "✗");
@@ -88,6 +91,7 @@ export interface AppDeps {
   identity: () => Promise<LinkIdentity>;
   support: Promise<CryptoSupport>;
   fetch: Fetch;
+  gus?: GusAppDeps;
 }
 
 type Tab = "home" | "tasks" | "permissions" | "receipts" | "phone";
@@ -102,6 +106,16 @@ export function startApp(deps: AppDeps): void {
   let pet: ReturnType<typeof createPet> | null = null;
   let chip: { dot: HTMLElement; label: HTMLElement } | null = null;
   let frameEl: HTMLElement | null = null;
+  let gusUnsubscribe: (() => void) | null = null;
+  const gus: GusChatController = createGusChat(deps.gus ?? {
+    local: null, remote: null, catalogue: GUS_MODELS, models: null,
+    secureStore: {
+      async getRemoteConfig() { return null; }, async getApiKey() { return null; },
+      async saveRemoteConfig() { throw new Error("La configuración remota requiere almacenamiento seguro nativo."); },
+      async saveApiKey() { throw new Error("La llave remota requiere almacenamiento seguro nativo."); },
+      async clearRemoteConfig() { throw new Error("La configuración remota requiere almacenamiento seguro nativo."); },
+    },
+  });
   void deps.support.then((s) => (support = s));
 
   /** What the app is doing, shown by Malbolgato and the status chip. */
@@ -138,6 +152,7 @@ export function startApp(deps: AppDeps): void {
   }
 
   function layout(content: HTMLElement[], tab: Tab | null): void {
+    gusUnsubscribe?.(); gusUnsubscribe = null;
     pet?.destroy();
     pet = null;
     chip = null;
@@ -223,6 +238,7 @@ export function startApp(deps: AppDeps): void {
     }
     const pair = button(peers.length ? "Enlazar otra PC" : "Enlazar con mi PC", "btn primary", () => pairScreen());
     if (support && !canPair(support)) pair.disabled = true;
+    const openGus = button("Abrir GUS · asistente", "btn gus-entry", () => gusScreen());
 
     const feed = el("div", "feed");
     const recent = loadReceipts(kv).slice(-4).reverse();
@@ -240,6 +256,7 @@ export function startApp(deps: AppDeps): void {
       (() => { const s = el("div", "sec"); s.append(el("h2", undefined, "Mis PCs"), el("span", peers.length ? "pill" : "pill off", peers.length ? `${peers.length} enlazada${peers.length > 1 ? "s" : ""}` : "ninguna")); return s; })(),
       ...(peers.length ? [pcs] : [el("p", "hint", "Todavía no enlazas ninguna PC.")]),
       pair,
+      openGus,
       (() => { const s = el("div", "sec"); s.append(el("h2", undefined, "Actividad")); return s; })(),
       feed,
     ], "home");
@@ -250,6 +267,113 @@ export function startApp(deps: AppDeps): void {
     setMood(mood);
     renderFrame();
     void deps.support.then((s) => { if (!canPair(s)) { pair.disabled = true; pet?.say("Este teléfono no tiene la criptografía del Link.", 4000); } });
+  }
+
+  // --------------------------------------------------------------- GUS
+  function gusScreen(): void {
+    const state = gus.getState();
+    const top = button("‹ Inicio", "back", () => home());
+    const modeRow = el("div", "gus-modes");
+    const localMode = button("En este teléfono", "btn small", () => gus.selectMode("local"));
+    const remoteMode = button("Proveedor remoto", "btn small", () => gus.selectMode("remote"));
+    const modeHint = el("p", "hint small");
+    const modelList = el("div", "gus-models");
+    const status = el("p", "gus-status"); status.setAttribute("aria-live", "polite");
+    const transcript = el("div", "gus-transcript"); transcript.setAttribute("aria-label", "Conversación con GUS");
+    const prompt = el("textarea", "field gus-prompt"); prompt.rows = 2; prompt.maxLength = 12000; prompt.placeholder = "Pregúntale algo a GUS"; prompt.setAttribute("aria-label", "Mensaje para GUS");
+    const composer = el("form", "gus-composer");
+    const send = el("button", "btn primary small", "Enviar"); send.type = "submit";
+    const stop = button("Cancelar respuesta", "btn small", () => void gus.cancel());
+    const clear = button("Borrar conversación", "btn small", () => gus.clearSession());
+    const remotePanel = el("section", "card gus-remote");
+    const endpoint = el("input", "field"); endpoint.type = "url"; endpoint.autocomplete = "off"; endpoint.setAttribute("aria-label", "URL HTTPS del proveedor remoto"); endpoint.placeholder = "https://integrate.api.nvidia.com/v1";
+    const modelName = el("input", "field"); modelName.autocomplete = "off"; modelName.setAttribute("aria-label", "Nombre del modelo remoto"); modelName.placeholder = "nvidia/nemotron-3-nano-30b-a3b";
+    const apiKey = el("input", "field"); apiKey.type = "password"; apiKey.autocomplete = "new-password"; apiKey.setAttribute("aria-label", "API key del proveedor remoto"); apiKey.placeholder = "Pega aquí tu API key";
+    const saved = el("p", "hint small", "La API key solo se guarda en el almacén seguro del sistema."); saved.setAttribute("aria-live", "polite");
+    const nim = button("Usar preset NVIDIA NIM", "btn small", () => {
+      endpoint.value = NVIDIA_NIM_PRESET.baseUrl;
+      modelName.value = NVIDIA_NIM_PRESET.model;
+      gus.selectMode("remote");
+      renderState(gus.getState());
+    });
+    const saveRemote = button("Guardar configuración y API key", "btn", async () => {
+      await gus.saveRemoteConfig({ baseUrl: endpoint.value.trim(), model: modelName.value.trim() });
+      if (gus.getState().error) { saved.textContent = gus.getState().error; return; }
+      if (apiKey.value) { await gus.saveApiKey(apiKey.value); apiKey.value = ""; }
+      saved.textContent = gus.getState().error || gus.getState().notice;
+      renderState(gus.getState());
+    });
+    remotePanel.append(el("h2", undefined, "Conexión remota"), nim,
+      el("label", "gus-label", "URL HTTPS"), endpoint,
+      el("label", "gus-label", "Modelo"), modelName,
+      el("label", "gus-label", "API key (se guarda en Keychain/Keystore)"), apiKey,
+      el("div", "warnbox", "Al elegir modo remoto, tu mensaje y contexto se envían al proveedor seleccionado. No se manda nada hasta que selecciones remoto y envíes."), saveRemote, saved);
+    composer.append(prompt, send);
+
+    function renderModels(): void {
+      const current = gus.getState();
+      modelList.replaceChildren();
+      for (const model of GUS_MODELS) {
+        const installed = current.installedModelIds.includes(model.id);
+        const card = el("article", "gus-model");
+        const pick = button(model.name, current.selectedModelId === model.id ? "btn small selected" : "btn small", () => { gus.selectModel(model.id); renderState(gus.getState()); });
+        card.append(pick, el("p", "hint small", `${(model.byteCount / 1_000_000_000).toFixed(2)} GB · ${model.repository} · ${model.licenseName}`), el("p", "hint small", model.attribution), el("a", "gus-license", "Ver licencia"));
+        const link = card.querySelector("a") as HTMLAnchorElement; link.href = model.licenseUrl; link.target = "_blank"; link.rel = "noreferrer";
+        if (model.limitations?.length) {
+          const limits = el("ul", "gus-limitations");
+          for (const limitation of model.limitations) limits.append(el("li", undefined, limitation));
+          card.append(limits);
+        }
+        if (deps.gus?.models) {
+          card.append(installed ? el("span", "pill", "verificado e instalado") : button("Descargar y verificar", "btn small", () => void gus.downloadModel(model.id)));
+          if (installed) card.append(button("Guardar copia externa", "btn small", () => void gus.exportModel(model.id)));
+          if (current.progress?.modelId === model.id) card.append(button("Cancelar descarga", "btn small", () => void gus.cancelDownload(model.id)));
+        } else card.append(el("p", "hint small", "Instala la app nativa para descargar, importar o ejecutar modelos locales."));
+        modelList.append(card);
+      }
+    }
+
+    function renderState(next: ReturnType<GusChatController["getState"]>): void {
+      localMode.classList.toggle("selected", next.mode === "local"); remoteMode.classList.toggle("selected", next.mode === "remote");
+      localMode.setAttribute("aria-pressed", String(next.mode === "local")); remoteMode.setAttribute("aria-pressed", String(next.mode === "remote"));
+      modeHint.textContent = next.mode === "local"
+        ? deps.gus?.local ? "Modo local: el modelo seleccionado se ejecuta en este teléfono." : "Modo local seleccionado. En navegador no hay runtime; la app no enviará nada a la nube."
+        : "Modo remoto seleccionado. Solo se enviarán mensajes cuando pulses Enviar.";
+      status.textContent = next.error || next.notice || (next.loading ? "GUS está respondiendo…" : "");
+      status.className = next.error ? "gus-status error" : "gus-status";
+      send.disabled = next.loading;
+      stop.disabled = !next.loading;
+      transcript.replaceChildren();
+      for (const message of next.messages) {
+        const bubble = el("p", `gus-message ${message.role}`, message.content);
+        transcript.append(bubble);
+      }
+      if (next.progress) {
+        const mb = (next.progress.receivedBytes / 1_000_000).toFixed(0);
+        const total = next.progress.totalBytes ? ` / ${(next.progress.totalBytes / 1_000_000).toFixed(0)} MB` : "";
+        status.textContent = `Descargando modelo: ${mb}${total}`;
+      }
+      renderModels();
+    }
+
+    modeRow.setAttribute("role", "group"); modeRow.setAttribute("aria-label", "Modo de inferencia");
+    modeRow.append(localMode, remoteMode);
+    composer.addEventListener("submit", (event) => {
+      event.preventDefault(); const value = prompt.value; prompt.value = ""; void gus.send(value);
+    });
+    layout([
+      top, el("div", "eyebrow", "Orientación · sin acceso a Link"), el("h1", undefined, "GUS"),
+      el("p", "hint small", "GUS solo conversa. No puede usar tus permisos, leer archivos ni mandar tareas a tus PCs."),
+      modeRow, modeHint,
+      el("h2", undefined, "Modelos locales verificados"), modelList,
+      ...(deps.gus?.models ? [button("Importar copia guardada con iSyCode", "btn small", () => void gus.importModels())] : []),
+      remotePanel, transcript, status, composer, stop, clear,
+    ], null);
+    gusUnsubscribe = gus.subscribe(renderState);
+    renderState(state);
+    void gus.refreshModels();
+    void deps.gus?.secureStore.getRemoteConfig().then((config) => { if (config) { endpoint.value = config.baseUrl; modelName.value = config.model; } }).catch(() => {});
+    prompt.focus();
   }
 
   /** Long press on Malbolgato: his controls, like the desktop pet's right click. */
