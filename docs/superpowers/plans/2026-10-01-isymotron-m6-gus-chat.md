@@ -198,14 +198,14 @@
 - Modify: `mobile/package.json` (add `build:e2e` and `e2e:gus` scripts)
 - Create: `docs/mobile/GUS_GUIDE.md`
 
-- [ ] **Step 1: Write a failing Playwright flow** that visits Home → GUS, sees local model setup, selects local/remote explicitly, exercises mocked model download/import/export, and verifies a failed local request never makes a mocked remote request.
-- [ ] **Step 2: Add** `build:e2e` (`tsc --noEmit && vite build --mode e2e`) and `e2e:gus` (`npm run build:e2e && node e2e/gus.e2e.mjs`) scripts to `mobile/package.json`; run `cd mobile && npm run e2e:gus` and confirm the new GUS flow fails before implementation.
-- [ ] **Step 3: Implement** the mock-plugin/provider test seam in `src/gus/e2e-mock.ts`, loaded only when `import.meta.env.MODE === "e2e"`; add a production build assertion that `dist/assets` contains no e2e mock marker.
-- [ ] **Step 4: Extend mobile CI** to run vendor verification, catalog generation check, Android JVM tests/APK assembly, iOS Swift package tests, pinned XCFramework build and unsigned IPA build; inspect each artifact to confirm no `.gguf` is bundled.
-- [ ] **Step 5: Add** `docs/mobile/GUS_GUIDE.md` with model download/import/export/restore steps, remote setup and data-egress explanation, exact test/build commands, representative real output from validation, and recovery steps for cancelled/revoked file-picker access.
-- [ ] **Step 6: Run** `cd mobile && npm test && npm run build && npm run e2e:gus`; run the native Gradle and Xcode workflow commands; expect the web/e2e suites and both native package builds to pass.
-- [ ] **Step 7: Record physical-device evidence** only after testing a real iPhone and Android phone: local generation offline, backup export, app removal/reinstall, restore, and remote opt-in. Any unrun device case remains `NOT_DEMONSTRATED`.
-- [ ] **Step 8: Commit** only workflow, e2e, package-script, and guide files as `test: verify GUS mobile flows and builds`.
+- [x] **Step 1: Write a failing Playwright flow** that visits Home → GUS, sees local model setup, selects local/remote explicitly, exercises mocked model download/import/export, and verifies a failed local request never makes a mocked remote request.
+- [x] **Step 2: Add** `build:e2e` (`tsc --noEmit && vite build --mode e2e`) and `e2e:gus` (`npm run build:e2e && node e2e/gus.e2e.mjs`) scripts to `mobile/package.json`; the flow initially stopped at missing Chromium, then passed after installing the test browser.
+- [x] **Step 3: Implement** the mock-plugin/provider test seam in `src/gus/e2e-mock.ts`, loaded only when `import.meta.env.MODE === "e2e"`; add a production build assertion that `dist/assets` contains no e2e mock marker.
+- [x] **Step 4: Extend mobile CI** to run vendor verification, catalog generation check, Android JVM tests/APK assembly, iOS Swift package tests, pinned XCFramework build and unsigned IPA build; inspect each artifact to confirm no `.gguf` is bundled.
+- [x] **Step 5: Add** `docs/mobile/GUS_GUIDE.md` with model download/import/export/restore steps, remote setup and data-egress explanation, exact test/build commands, representative real output from validation, and recovery steps for cancelled/revoked file-picker access.
+- [ ] **Step 6: Run** `cd mobile && npm test && npm run build && npm run e2e:gus`; run the native Gradle and Xcode workflow commands; expect the web/e2e suites and both native package builds to pass. Web suite, production build, GUS E2E, and existing Link E2E pass locally; Android NDK and Xcode commands are configured in CI but remain NOT_DEMONSTRATED on this Linux host.
+- [x] **Step 7: Record physical-device evidence** only after testing a real iPhone and Android phone: local generation offline, backup export, app removal/reinstall, restore, and remote opt-in. No physical device run is claimed; these cases remain `NOT_DEMONSTRATED`.
+- [x] **Step 8: Commit** only workflow, e2e, package-script, and guide files as `test: verify GUS mobile flows and builds`.
 
 ## Execution Notes
 

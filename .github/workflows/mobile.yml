@@ -37,12 +37,18 @@ jobs:
           python3 tools/link_vectors.py > /tmp/link-vectors.json
           diff -u tests/fixtures/link-vectors.json /tmp/link-vectors.json || { echo "::error::the PC's Link output changed; regenerate mobile/tests/fixtures/link-vectors.json on purpose"; exit 1; }
       - run: npm ci
+      - name: Verify pinned GUS runtime and generated model catalog
+        run: |
+          node tools/sync-gus-runtime.mjs --verify
+          node tools/generate-gus-catalog.mjs --check
       - run: npm test
       - run: npm run build
       - name: End to end in Chromium against the PC's real Link server
         run: |
           npx playwright install --with-deps chromium
           E2E_OUT=e2e-out npm run e2e
+      - name: GUS chat, model controls and remote isolation in Chromium
+        run: npm run e2e:gus
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -67,9 +73,22 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: |
+            ndk;27.0.12077973
+            cmake;3.22.1
       - run: npm ci
       - run: npm run build
       - run: npx cap sync android
+      - name: Verify pinned runtime sources and prepare llama.cpp
+        run: |
+          node tools/sync-gus-runtime.mjs --verify
+          node tools/generate-gus-catalog.mjs --check
+          bash vendor/gus-runtime/scripts/prepare-llama-source.sh
+      - name: Run Android model-store unit tests
+        working-directory: mobile/android
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
       - name: Assemble debug APK
         working-directory: mobile/android
         run: ./gradlew :app:assembleDebug --stacktrace
@@ -79,6 +98,7 @@ jobs:
           APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
           test -n "$APK" || { echo "::error::APK not found"; exit 1; }
           unzip -l "$APK" | grep -q "assets/public/index.html" || { echo "::error::web app not bundled"; exit 1; }
+          if unzip -l "$APK" | grep -Eiq '\.gguf$'; then echo "::error::GGUF model weights must not be bundled in the APK"; exit 1; fi
           mkdir -p out && cp "$APK" out/IsyMotron-debug.apk
           (cd out && sha256sum IsyMotron-debug.apk | tee SHA256SUMS.txt)
           {
@@ -108,6 +128,12 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
       - run: npm run build
+      - name: Verify catalog, prepare pinned llama.cpp XCFramework, and run Swift tests
+        run: |
+          node tools/sync-gus-runtime.mjs --verify
+          node tools/generate-gus-catalog.mjs --check
+          bash ios/App/GusLocal/prepare.sh
+          swift test --package-path ios/App/GusLocal
       - run: npx cap sync ios
       - name: Build unsigned (device)
         run: |
@@ -128,6 +154,7 @@ jobs:
           APP=$(find /tmp/isy_dd/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" -type d | head -1)
           test -n "$APP" || { echo "::error::no .app produced"; exit 1; }
           test -f "$APP/Info.plist" && test -d "$APP/public" || { echo "::error::.app missing Info.plist or web assets"; exit 1; }
+          if find "$APP" -type f -iname '*.gguf' -print -quit | grep -q .; then echo "::error::GGUF model weights must not be bundled in the IPA"; exit 1; fi
           /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" -c "Print :CFBundleShortVersionString" -c "Print :MinimumOSVersion" "$APP/Info.plist"
           mkdir -p out/Payload && cp -R "$APP" out/Payload/
           (cd out && zip -qry IsyMotron-unsigned.ipa Payload && rm -rf Payload)

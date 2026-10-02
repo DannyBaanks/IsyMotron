@@ -7,11 +7,13 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node tools/assert-gus-production.mjs",
+    "build:e2e": "tsc --noEmit && vite build --mode e2e",
     "preview": "vite preview --host",
     "test": "vitest run",
     "check": "tsc --noEmit",
-    "e2e": "node e2e/pairing.e2e.mjs"
+    "e2e": "node e2e/pairing.e2e.mjs",
+    "e2e:gus": "npm run build:e2e && node e2e/gus.e2e.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",

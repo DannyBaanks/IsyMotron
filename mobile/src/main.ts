@@ -15,13 +15,18 @@ import { GUS_MODELS } from "./gus/catalog.generated";
 
 let identity: Promise<LinkIdentity> | null = null;
 
-startApp({
-  root: document.getElementById("app")!,
-  kv: localStorage,
-  // Created on first use, so a phone without the crypto never makes a half identity.
-  identity: () => (identity ??= loadOrCreateIdentity(indexedDbKeyStore())),
-  support: cryptoSupport(),
-  // In the native app CapacitorHttp routes this through native HTTP (no CORS).
-  fetch: (url, init) => fetch(url, init),
-  gus: { local: nativeGus.local, secureStore: nativeGus.secureStore, models: nativeGus.models, catalogue: GUS_MODELS },
-});
+async function boot(): Promise<void> {
+  const e2eGus = import.meta.env.MODE === "e2e" ? await import("./gus/e2e-mock") : null;
+  startApp({
+    root: document.getElementById("app")!,
+    kv: localStorage,
+    // Created on first use, so a phone without the crypto never makes a half identity.
+    identity: () => (identity ??= loadOrCreateIdentity(indexedDbKeyStore())),
+    support: cryptoSupport(),
+    // In the native app CapacitorHttp routes this through native HTTP (no CORS).
+    fetch: (url, init) => fetch(url, init),
+    gus: e2eGus?.e2eMockGus ?? { local: nativeGus.local, secureStore: nativeGus.secureStore, models: nativeGus.models, catalogue: GUS_MODELS },
+  });
+}
+
+void boot();
