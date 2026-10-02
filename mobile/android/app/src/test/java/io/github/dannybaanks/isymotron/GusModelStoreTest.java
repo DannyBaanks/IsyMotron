@@ -41,7 +41,17 @@ public class GusModelStoreTest {
     @Test public void onlyGeneratedCatalogueIdsResolveInProduction() {
         assertNotNull(GusCatalog.find("qwen25-05b-q4km"));
         assertNotNull(GusCatalog.find("smollm2-360m-q4km"));
+        assertNotNull(GusCatalog.find("nemotron3-nano-4b-q4km"));
         assertNull(GusCatalog.find("../../private/file"));
+    }
+
+    @Test public void rejectsCatalogueEntriesAboveTheThreeGigabyteSafetyCeiling() throws Exception {
+        byte[] fixture = bytes("fixture");
+        GusCatalog.Model base = fixture(fixture);
+        GusCatalog.Model oversized = new GusCatalog.Model(base.id, base.name, base.repository, base.filename,
+                base.revision, base.url, 3_000_000_001L, base.sha256, base.licenseName, base.licenseUrl, base.attribution);
+        GusModelStore store = store(temporaryFolder.newFolder("large-model"), oversized);
+        assertThrows(IOException.class, () -> store.importStream(oversized.id, new ByteArrayInputStream(fixture)));
     }
 
     @Test public void adoptsExactVerifiedBytesIntoPrivateModelDirectory() throws Exception {

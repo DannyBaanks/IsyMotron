@@ -26,6 +26,31 @@
       "licenseName": "Apache License 2.0",
       "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
       "attribution": "SmolLM2 model family by HuggingFaceTB; GGUF uploaded/converted by mfuntowicz"
+    },
+    {
+      "id": "nemotron3-nano-4b-q4km",
+      "name": "NVIDIA Nemotron 3 Nano 4B · Q4_K_M · experimental en móvil",
+      "repository": "nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF",
+      "filename": "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
+      "revision": "ba223d14e45525f7fae81db77ea8cabeb2fc6c25",
+      "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF/resolve/ba223d14e45525f7fae81db77ea8cabeb2fc6c25/NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
+      "byteCount": 2837072864,
+      "sha256": "be5d9a656a51922f24f1f09a759cebb694e1f5d9728bf0ef9f8c972c5a0b5ef2",
+      "licenseName": "NVIDIA Nemotron Open Model License",
+      "licenseUrl": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-nemotron-open-model-license/",
+      "attribution": "NVIDIA Corporation · Nemotron 3 Nano 4B · Q4_K_M",
+      "supportedLanguages": [
+        "English",
+        "code"
+      ],
+      "appContextLimit": 2048,
+      "limitations": [
+        "Descarga de 2.84 GB; confirma espacio libre suficiente antes de iniciar.",
+        "NVIDIA indica inglés y lenguajes de programación; español no aparece como idioma compatible.",
+        "IsyMotron limita el contexto a 2,048 tokens aunque el modelo anuncie una ventana mayor.",
+        "NVIDIA lo orienta a Jetson Thor, GeForce RTX y DGX Spark; rendimiento, RAM, batería y temperatura en teléfonos: NOT DEMONSTRATED.",
+        "Si reemplazas una copia ya instalada, la verificación por etapas necesita espacio temporal adicional mientras conserva el modelo anterior."
+      ]
     }
   ]
 }

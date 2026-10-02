@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { GUS_MODELS, getGusModel } from '../src/gus/catalog.generated';
 
 describe('GUS UI model catalogue', () => {
-  it('exposes only the two pinned small Apache-licensed models with provenance', () => {
-    expect(GUS_MODELS.map((model) => model.id)).toEqual(['qwen25-05b-q4km', 'smollm2-360m-q4km']);
+  it('exposes pinned mobile models with source provenance and hardware limitations', () => {
+    expect(GUS_MODELS.map((model) => model.id)).toEqual(['qwen25-05b-q4km', 'smollm2-360m-q4km', 'nemotron3-nano-4b-q4km']);
     expect(getGusModel('qwen25-05b-q4km')).toMatchObject({
       byteCount: 491400032,
       repository: 'Qwen/Qwen2.5-0.5B-Instruct-GGUF',
@@ -20,6 +20,16 @@ describe('GUS UI model catalogue', () => {
       licenseName: 'Apache License 2.0',
       attribution: 'SmolLM2 model family by HuggingFaceTB; GGUF uploaded/converted by mfuntowicz',
     });
+    expect(getGusModel('nemotron3-nano-4b-q4km')).toMatchObject({
+      byteCount: 2_837_072_864,
+      repository: 'nvidia/NVIDIA-Nemotron-3-Nano-4B-GGUF',
+      revision: 'ba223d14e45525f7fae81db77ea8cabeb2fc6c25',
+      sha256: 'be5d9a656a51922f24f1f09a759cebb694e1f5d9728bf0ef9f8c972c5a0b5ef2',
+      licenseName: 'NVIDIA Nemotron Open Model License',
+      supportedLanguages: ['English', 'code'],
+      appContextLimit: 2048,
+    });
+    expect(getGusModel('nemotron3-nano-4b-q4km')?.limitations).toContainEqual(expect.stringContaining('rendimiento, RAM, batería y temperatura en teléfonos: NOT DEMONSTRATED.'));
     expect(getGusModel('unlisted-model')).toBeUndefined();
   });
 });

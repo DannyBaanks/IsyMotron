@@ -134,7 +134,10 @@ public final class GusModelStore {
         try fileManager.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
         let staged = modelsDirectory.appendingPathComponent(".import-\(UUID().uuidString).part")
         defer { try? fileManager.removeItem(at: staged) }
-        try fileAccess.copyImportedFile(from: source, to: staged, using: copyFile)
+        try fileAccess.copyImportedFile(from: source, to: staged) { coordinatedSource, destination in
+            guard self.fileSize(coordinatedSource) == model.byteCount else { throw GusModelStoreError.invalidSize }
+            try self.copyFile(coordinatedSource, destination)
+        }
         try verify(staged, matches: model, throwOnFailure: true)
         return try adopt(staged, for: model)
     }
@@ -156,7 +159,11 @@ public final class GusModelStore {
         try fileManager.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
         let staged = modelsDirectory.appendingPathComponent(".import-\(UUID().uuidString).part")
         defer { try? fileManager.removeItem(at: staged) }
-        try fileAccess.copyImportedFile(from: source, to: staged, using: copyFile)
+        try fileAccess.copyImportedFile(from: source, to: staged) { coordinatedSource, destination in
+            let size = self.fileSize(coordinatedSource)
+            guard self.catalogue.contains(where: { $0.byteCount == size }) else { throw GusModelStoreError.invalidSize }
+            try self.copyFile(coordinatedSource, destination)
+        }
         guard let model = catalogue.first(where: { verify(staged, matches: $0) }) else {
             let size = fileSize(staged)
             guard catalogue.contains(where: { $0.byteCount == size }) else { throw GusModelStoreError.invalidSize }
@@ -191,7 +198,7 @@ public final class GusModelStore {
 
     private func validate(_ model: GusModelManifest) throws {
         guard model.id.range(of: "^[a-z0-9]+(?:-[a-z0-9]+)*$", options: .regularExpression) != nil else { throw GusModelStoreError.invalidManifest("invalid model ID") }
-        guard model.byteCount > 0, model.byteCount <= 500_000_000 else { throw GusModelStoreError.invalidManifest("invalid model size") }
+        guard model.byteCount > 0, model.byteCount <= 3_000_000_000 else { throw GusModelStoreError.invalidManifest("invalid model size") }
         guard model.revision.range(of: "^[a-f0-9]{40}$", options: .regularExpression) != nil,
               model.sha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil else { throw GusModelStoreError.invalidManifest("invalid revision or SHA-256") }
         guard model.url.scheme == "https", model.url.host == "huggingface.co", model.url.user == nil, model.url.password == nil,

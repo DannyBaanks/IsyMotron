@@ -22,7 +22,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 /** Verified app-private store. Public construction always uses the generated catalogue. */
 public final class GusModelStore {
-    private static final long MAX_MODEL_BYTES = 500_000_000L;
+    private static final long MAX_MODEL_BYTES = 3_000_000_000L;
     private static final int REDIRECT_LIMIT = 5;
     private final File modelsDir;
     private final Map<String, GusCatalog.Model> catalog;

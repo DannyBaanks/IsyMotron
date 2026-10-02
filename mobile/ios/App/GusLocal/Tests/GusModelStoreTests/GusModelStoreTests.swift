@@ -49,6 +49,23 @@ final class GusModelStoreTests: XCTestCase {
         XCTAssertNil(store.modelURL(id: "../../outside"))
     }
 
+    func testRejectsCatalogueManifestAboveTheThreeGigabyteSafetyCeiling() throws {
+        let data = Data("fixture bytes".utf8)
+        let base = manifest(data)
+        let model = GusModelManifest(
+            id: base.id, name: base.name, repository: base.repository, filename: base.filename,
+            revision: base.revision, url: base.url, byteCount: 3_000_000_001,
+            sha256: base.sha256, licenseName: base.licenseName, licenseURL: base.licenseURL,
+            attribution: base.attribution
+        )
+        let root = try temporaryDirectory()
+        let store = makeStore(root: root, manifest: model)
+        let source = root.appendingPathComponent("model.gguf")
+        try data.write(to: source)
+        XCTAssertThrowsError(try store.installModel(id: model.id, from: source))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.modelsDirectory.path))
+    }
+
     func testRejectsWrongSizeAndHashWithoutReplacingInstalledModel() throws {
         let valid = Data("known good model".utf8)
         let root = try temporaryDirectory()
