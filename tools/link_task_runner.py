@@ -95,6 +95,8 @@ def run_task(relay, provider: Provider, task: dict) -> dict:
     except ProviderError as exc:
         attribution = exc.outcome.attribution.value if exc.outcome else "UNKNOWN"
         return {"status": "failed", "detail": str(exc), "attribution": attribution}
+    if plan.is_refusal() or not plan.steps:
+        return {"status": "rejected", "detail": plan.refused or "the planner returned no steps"}
 
     execution = Executor(relay, f"{SUBJECT}:{task.get('from', '')}").run(plan)
     receipts = []
