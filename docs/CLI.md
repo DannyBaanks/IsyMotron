@@ -37,7 +37,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `test` | the acceptance suite (default `-q`) |
 | `build` | rebuild `IsyMotron.exe` (smoke test included) |
 | `spoof` | append the hostile demo lines to an inbox |
-| `host` | `status \| grant \| revoke \| do` — the local human, via `tools/host_cli.py` |
+| `host` | `status \| grant \| revoke \| do \| profile show\|set\|custom` — the local human, via `tools/host_cli.py` |
 | `demo` | the M0 walkthrough (writes `evidence/M0/`) |
 | `learn` | a verified lesson from a learning pack (Malbolge) |
 | `install` | print the command that makes `isymotron` reachable from a new shell |

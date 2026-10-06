@@ -62,6 +62,62 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_profile(args) -> int:
+    """Inspect or switch the machine's tool profile."""
+    grants = Grants.load(args.grants)
+    if args.profile_cmd == "show":
+        print(f"profile: {grants.tool_profile}")
+        if grants.tool_profile == "full":
+            print("default capabilities: all manifest capabilities")
+            print("allow_request_prompts: n/a (no per-capability prompt)")
+        elif grants.tool_profile == "security":
+            print("default capabilities: none without per-capability approval")
+            print("allow_request_prompts: implicit")
+        else:
+            custom = grants.custom or {}
+            print(f"default capabilities: {custom.get('capabilities', [])}")
+            print(f"allow_request_prompts: {bool(custom.get('allow_request_prompts'))}")
+        print(f"source: {grants.source}")
+        return 0
+    try:
+        if args.profile_cmd == "set":
+            if args.name not in ("full", "security", "custom"):
+                print(f"[DENY] unknown profile {args.name!r}; valid: full, security, custom")
+                return 1
+            grants.tool_profile = args.name
+            if args.name == "custom" and grants.custom is None:
+                grants.custom = {"capabilities": [], "allow_request_prompts": False}
+            grants.save(args.grants)
+            print(f"[PROFILE] {args.name} written to {grants.source}")
+            args.profile_cmd = "show"
+            return cmd_profile(args)
+        if args.profile_cmd == "custom":
+            if grants.custom is None:
+                grants.custom = {"capabilities": [], "allow_request_prompts": False}
+            caps = list(grants.custom.get("capabilities", []))
+            for cap in args.enable or []:
+                if cap not in caps:
+                    caps.append(cap)
+            for cap in args.disable or []:
+                if cap in caps:
+                    caps.remove(cap)
+            grants.custom["capabilities"] = caps
+            if args.allow_prompts:
+                grants.custom["allow_request_prompts"] = True
+            if args.no_prompts:
+                grants.custom["allow_request_prompts"] = False
+            grants.tool_profile = "custom"
+            grants.save(args.grants)
+            print(f"[PROFILE] custom written to {grants.source}")
+            args.profile_cmd = "show"
+            return cmd_profile(args)
+        print("[DENY] unknown profile subcommand")
+        return 1
+    except Exception as exc:
+        print(f"[DENY] {exc}")
+        return 1
+
+
 def cmd_grant(args) -> int:
     g = Grants.load(args.grants)
     if g.source.startswith("<inert:"):
@@ -161,6 +217,19 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--root", action="append", help="add a filesystem root (repeatable)")
     g.add_argument("--app", action="append", help="add an app to the allowlist (repeatable)")
     g.set_defaults(fn=cmd_grant)
+
+    prof = sub.add_parser("profile", help="show/set/custom tool profile for this host")
+    prof_sub = prof.add_subparsers(dest="profile_cmd", required=True)
+    prof_sub.add_parser("show", help="print the current tool profile").set_defaults(fn=cmd_profile)
+    pset = prof_sub.add_parser("set", help="set full|security|custom")
+    pset.add_argument("name")
+    pset.set_defaults(fn=cmd_profile)
+    pcust = prof_sub.add_parser("custom", help="configure the custom default set + prompts switch")
+    pcust.add_argument("--enable", action="append", help="cap to enable by default (repeatable)")
+    pcust.add_argument("--disable", action="append", help="cap to disable by default (repeatable)")
+    pcust.add_argument("--allow-prompts", action="store_true", help="allow approval prompts for other caps")
+    pcust.add_argument("--no-prompts", action="store_true", help="deny unlisted caps outright")
+    pcust.set_defaults(fn=cmd_profile)
 
     r = sub.add_parser("revoke", help="revoke a capability")
     r.add_argument("capability")

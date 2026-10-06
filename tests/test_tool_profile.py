@@ -142,3 +142,47 @@ def test_legacy_grants_parse_to_security(tmp_path):
     g.write_text(json.dumps({"host_id": "h", "granted": [], "scopes": {}}), encoding="utf-8")
     loaded = Grants.load(str(g))
     assert loaded.tool_profile == "security"
+
+
+# -- M3: host_cli profile surface --------------------------------------------
+
+import subprocess
+import sys
+
+REPO_CLI = Path(__file__).resolve().parent.parent
+
+def _cli(grants: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(REPO_CLI / "tools" / "host_cli.py"), "--grants", str(grants), *args],
+        capture_output=True, text=True, timeout=60,
+    )
+
+
+def test_cli_profile_set_show_roundtrip(tmp_path):
+    g = tmp_path / "grants.json"
+    Grants(host_id="h", display_name="d", granted=["filesystem.read"],
+           scopes={"filesystem.read": {"roots": ["/srv"]}}).save(str(g))
+    r = _cli(g, "profile", "set", "full")
+    assert r.returncode == 0 and "full written" in r.stdout
+    r = _cli(g, "profile", "show")
+    assert r.returncode == 0 and "profile: full" in r.stdout
+
+
+def test_cli_profile_custom_enable_disable_prompts(tmp_path):
+    g = tmp_path / "grants.json"
+    Grants(host_id="h", display_name="d", granted=["filesystem.read", "system.info"],
+           scopes={"filesystem.read": {"roots": ["/srv"]}, "system.info": {}}).save(str(g))
+    r = _cli(g, "profile", "custom", "--enable", "filesystem.read", "--allow-prompts")
+    assert r.returncode == 0
+    r = _cli(g, "profile", "show")
+    assert "profile: custom" in r.stdout
+    assert "filesystem.read" in r.stdout
+    assert "True" in r.stdout
+    r = _cli(g, "profile", "custom", "--disable", "filesystem.read", "--no-prompts")
+    r = _cli(g, "profile", "show")
+    assert "False" in r.stdout
+
+
+def test_cli_profile_set_unknown_fails():
+    r = _cli(Path("/tmp/nonexistent.json"), "profile", "set", "yolo")
+    assert r.returncode == 1

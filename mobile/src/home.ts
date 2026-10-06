@@ -187,11 +187,14 @@ export function startApp(deps: AppDeps): void {
     if (tab === "phone") phoneScreen();
   }
 
+  let lastProfile: string | null = null;
+
   async function doPing(peer: Peer): Promise<boolean> {
     setMood("thinking");
     pet?.say(`Preguntándole a ${peer.name}…`, 1400);
     try {
-      await ping(await deps.identity(), peer, deps.fetch);
+      const reply = await ping(await deps.identity(), peer, deps.fetch);
+      lastProfile = (reply?.tool_profile as string | null | undefined) ?? null;
       setMood("success", 1800);
       showSigned(peer.name, "pong", `respuesta sellada y atada a la petición · ${new Date().toTimeString().slice(0, 5)}`);
       return true;
@@ -200,6 +203,13 @@ export function startApp(deps: AppDeps): void {
       pet?.say(explain(error), 3200);
       return false;
     }
+  }
+
+  function profileBadge(): string {
+    if (!lastProfile) return "Perfil de herramientas: desconocido (haz ping)";
+    if (lastProfile === "full") return "Perfil de tools: FULL ⚠ testing/no recomendado";
+    if (lastProfile === "custom") return "Perfil de tools: CUSTOM";
+    return "Perfil de tools: SECURITY";
   }
 
   // ---------------------------------------------------------------- Inicio
@@ -595,6 +605,7 @@ export function startApp(deps: AppDeps): void {
       button("‹ Mis PCs", "back", () => home()),
       el("h1", undefined, peer.name),
       el("p", "hint small", `Huella ${prettyFingerprint(peer.office_id)} · ${peer.addresses.join(", ")}`),
+      el("p", "hint small", profileBadge()),
       button("Probar conexión", "btn", async () => {
         out.textContent = "Llamando…";
         out.textContent = (await doPing(peer)) ? `✓ ${peer.name} contestó, con su firma.` : "No contestó. Revisa la Wi-Fi y que corra «isymotron link servir --red».";

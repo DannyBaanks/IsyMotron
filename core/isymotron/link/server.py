@@ -191,7 +191,11 @@ def sealed_reply(state: LinkState, peer: dict, env: dict, result: dict) -> dict:
 def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
     op = payload.get("op")
     if op == "ping":
-        return {"ok": True, "pong": True, "from": state.identity["office_id"]}
+        profile = None
+        if state.permissions is not None:
+            profile = getattr(state.permissions.host, "tool_profile", None)
+        return {"ok": True, "pong": True, "from": state.identity["office_id"],
+                "tool_profile": profile}
     if op == "delegate":
         task_id = _task_id()
         state.inbox_append(
