@@ -216,7 +216,19 @@ def _permission_queue(relay):
     return PermissionQueue(_ident.state_dir(), host)
 
 
-def _derive_scope(cap: str | None, params: dict) -> dict:
+def _derive_scope(cap: str | None, params: dict, relay=None) -> dict:
+    # Prefer the host's declared file scope: it is the maximum the host will
+    # honor for any approval. Fall back to a narrow scope derived from the
+    # step's params for hosts without static grants for the capability.
+    if cap is not None and relay is not None and relay.hosts():
+        for h in relay.hosts():
+            try:
+                host = relay._host(h["host_id"])
+                declared = host._grant_scopes.get(cap)
+                if isinstance(declared, dict) and declared:
+                    return dict(declared)
+            except Exception:
+                continue
     if cap and cap.startswith("filesystem.") and params.get("path"):
         from pathlib import PurePath
         return {"roots": [str(PurePath(str(params["path"])).parent)]}
@@ -237,7 +249,12 @@ def _approval_outcome(queue, request_id, timeout_s):
         if item["status"] in ("denied", "expired"):
             return "denied", item.get("decision_reason", item["status"])
         time.sleep(min(0.5, max(deadline - time.time(), 0.0)))
-    # mark expired locally so the phone's view and the ledger agree
+    # Reflect expiry into the shared queue so the pending item cannot be
+    # re-used by a later dedupe scan.
+    try:
+        queue.local_status(request_id)
+    except Exception:
+        pass
     return "denied", "request_timeout"
 
 
@@ -262,7 +279,9 @@ def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
     if existing is not None:
         request_id = existing["request_id"]
     else:
-        scope = outcome.get("derived_scope") or _derive_scope(cap, outcome.get("params") or {})
+        # Always prefer the host's declared bound as the approval scope; the
+        # approval mint clamps it against the file scope anyway.
+        scope = _derive_scope(cap, outcome.get("params") or {}, relay) or outcome.get("derived_scope") or {}
         item = queue.submit({
             "subject": subject,
             "capability": cap,
