@@ -99,6 +99,30 @@ def run_task(relay, provider: Provider, task: dict) -> dict:
         return {"status": "rejected", "detail": plan.refused or "the planner returned no steps"}
 
     execution = Executor(relay, f"{SUBJECT}:{task.get('from', '')}").run(plan)
+    if execution.stop_reason and "NEEDS_APPROVAL" in execution.stop_reason:
+        cap = None
+        import re as _re
+        m = _re.search(r"host refused a lease for (\S+): NEEDS_APPROVAL", execution.stop_reason)
+        if m:
+            cap = m.group(1)
+        outcome = {"status": "needs_approval", "capability": cap}
+        # derive a narrow approval scope from the step's params where possible
+        params = {}
+        if cap is not None:
+            for s in plan.steps:
+                if s.capability == cap:
+                    params = dict(s.params)
+                    break
+        if cap and cap.startswith("filesystem.") and params.get("path"):
+            from pathlib import PurePath
+            outcome["derived_scope"] = {"roots": [str(PurePath(str(params["path"])).parent)]}
+        elif cap == "apps.launch" and params.get("app"):
+            from pathlib import PurePath
+            outcome["derived_scope"] = {"allowlist": [PurePath(str(params["app"])).name]}
+        else:
+            outcome["derived_scope"] = {}
+        outcome["params"] = params
+        return outcome
     receipts = []
     denied = None
     for step in execution.steps:
@@ -133,7 +157,7 @@ def run_task(relay, provider: Provider, task: dict) -> dict:
     }
 
 
-def process_inbox(relay, provider_factory, limit: int | None = None) -> int:
+def process_inbox(relay, provider_factory, limit: int | None = None, approvals_timeout_s: float = 60.0) -> int:
     entries = load_inbox()
     changed = False
     processed = 0
@@ -153,7 +177,9 @@ def process_inbox(relay, provider_factory, limit: int | None = None) -> int:
                 "detail": str(exc),
             })
         else:
-            outcome = run_task(relay, provider, entry)
+            outcome, request_id = _run_with_approval_flow(relay, provider, entry, approvals_timeout_s)
+            if request_id:
+                entry["permission_request_id"] = request_id
             entry.update(outcome)
             profile = "unknown"
             try:
@@ -161,6 +187,7 @@ def process_inbox(relay, provider_factory, limit: int | None = None) -> int:
                 profile = getattr(relay._host(first["host_id"]), "tool_profile", "unknown")
             except Exception:
                 pass
+            entry["tool_profile"] = profile
             append_receipt({
                 "kind": f"link_task_{outcome['status']}",
                 "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -177,6 +204,102 @@ def process_inbox(relay, provider_factory, limit: int | None = None) -> int:
     if changed:
         save_inbox(entries)
     return processed
+
+
+def _permission_queue(relay):
+    """Queue bound to the shared state dir (the Link server reads the same file)."""
+    from isymotron.link.permissions import PermissionQueue
+    from isymotron.link import identity as _ident
+
+    first = relay.hosts()[0]
+    host = relay._host(first["host_id"])
+    return PermissionQueue(_ident.state_dir(), host)
+
+
+def _derive_scope(cap: str | None, params: dict) -> dict:
+    if cap and cap.startswith("filesystem.") and params.get("path"):
+        from pathlib import PurePath
+        return {"roots": [str(PurePath(str(params["path"])).parent)]}
+    if cap == "apps.launch" and params.get("app"):
+        from pathlib import PurePath
+        return {"allowlist": [PurePath(str(params["app"])).name]}
+    return {}
+
+
+def _approval_outcome(queue, request_id, timeout_s):
+    deadline = time.time() + max(float(timeout_s), 0.0)
+    while time.time() < deadline:
+        item = queue.local_status(request_id)
+        if item is None:
+            return "denied", "lost_request"
+        if item["status"] == "approved":
+            return "approved", item
+        if item["status"] in ("denied", "expired"):
+            return "denied", item.get("decision_reason", item["status"])
+        time.sleep(min(0.5, max(deadline - time.time(), 0.0)))
+    # mark expired locally so the phone's view and the ledger agree
+    return "denied", "request_timeout"
+
+
+def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
+    outcome = run_task(relay, provider, task)
+    if outcome.get("status") != "needs_approval":
+        return outcome, None
+    cap = outcome.get("capability")
+    subject = f"{SUBJECT}:{task.get('from', '')}"
+    try:
+        queue = _permission_queue(relay)
+    except Exception:
+        return {"status": "failed", "detail": "no permission queue available"}, None
+    # dedupe: reuse a pending request for the same subject+capability
+    existing = None
+    for item in queue.pending() + [
+        e for it in queue._latest().values() for e in [it] if it.get("status") == "pending"
+    ]:
+        if item.get("subject") == subject and item.get("capability") == cap:
+            existing = item
+            break
+    if existing is not None:
+        request_id = existing["request_id"]
+    else:
+        scope = outcome.get("derived_scope") or _derive_scope(cap, outcome.get("params") or {})
+        item = queue.submit({
+            "subject": subject,
+            "capability": cap,
+            "scope": scope,
+            "ttl_s": 120.0,
+            "reason": f"{task.get('title', '')}: {task.get('body', '')}"[:280],
+        })
+        request_id = item["request_id"]
+    # Persist the pending state so the phone/CLI sees the wait, not "queued".
+    task["status"] = "pending_permission"
+    task["permission_request_id"] = request_id
+    try:
+        _entries = load_inbox()
+        for _e in _entries:
+            if _e.get("task_id") == task.get("task_id"):
+                _e.update({"status": "pending_permission", "permission_request_id": request_id})
+        save_inbox(_entries)
+    except Exception:
+        pass
+    decision, detail = _approval_outcome(queue, request_id, approvals_timeout_s)
+    if decision == "approved":
+        # The shared queue recorded the approval. The runner's own host gets
+        # the exact same bound injected so the retry can lease it.
+        scope = detail.get("scope") or {} if isinstance(detail, dict) else {}
+        ttl = (detail.get("ttl_s") if isinstance(detail, dict) else None) or 120.0
+        try:
+            first = relay.hosts()[0]
+            relay._host(first["host_id"]).record_external_approval(
+                subject, cap, scope, ttl
+            )
+        except Exception:
+            pass
+        outcome = run_task(relay, provider, task)
+        if isinstance(outcome, dict):
+            outcome["permission_request_id"] = request_id
+        return outcome, request_id
+    return {"status": "denied", "detail": str(detail)}, request_id
 
 
 def main(argv=None) -> int:

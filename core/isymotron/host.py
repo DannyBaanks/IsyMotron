@@ -225,6 +225,16 @@ class Host(ABC):
         self._leases[lease.lease_id] = lease
         return lease, PolicyDecision(Decision.ALLOW)
 
+    def record_external_approval(self, subject: str, capability: str,
+                                 scope: Mapping[str, Any] | None, ttl_s: float) -> None:
+        """Apply an approval fact recorded in the shared permission queue
+        (decisions arrive from process(); this host just needs to honor the
+        bound for its TTL). No new lease is minted here."""
+        import time as _t
+        horizon = _t.time() + max(float(ttl_s), 0.0)
+        self._approved[capability] = (horizon, dict(scope or {}))
+        self._rebuild_enforcer()
+
     def mint_approved_lease(self, subject: str, capability: str,
                             scope: Mapping[str, Any] | None, ttl_s: float) -> tuple[Lease | None, PolicyDecision]:
         """Approval mints: a human said yes; enforce bounds, omit the profile gate."""
