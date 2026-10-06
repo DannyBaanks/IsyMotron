@@ -87,7 +87,8 @@
 
 ## M6 — GUS en el teléfono
 
-- [ ] **M6.1** Chat con GUS local (runtime vendorizado de iSyCode Móvil, como en la rama `claude/gus-life-m1` de TamagotchIA) y remoto solo si el usuario lo elige.
+- [x] **M6.1** Chat con GUS local (runtime vendorizado de iSyCode Móvil, como en la rama `claude/gus-life-m1` de TamagotchIA) y remoto solo si el usuario lo elige.
+  - → Implementado en `codex/isymotron-m6-gus` (integrado vía merge `75e4957` en `claude/exciting-lamport-84gclk`): chat GUS en `mobile/src/gus/`, runtime GUSLlamaBridge vendorizado en `mobile/vendor/gus-runtime/`, preset NVIDIA NIM explícito, credenciales en Keychain/Keystore, `docs/mobile/GUS_GUIDE.md`, `mobile/e2e/gus.e2e.mjs` con respuesta NIM **simulada**. Local: producción nativa compila en CI; **inferencia en iPhone físico NOT_DEMONSTRATED**, española NOT_DEMONSTRATED, rendimiento/memoria/batería NOT_DEMONSTRATED. Remoto: preset definido y aislado, **round trip real de NIM desde iPhone físico NOT_DEMONSTRATED**.
 
 ## M7 — TamagotchIA como función
 
@@ -102,6 +103,7 @@
 
 | Fecha | Tarea | Repo @ base | Rama | Qué cambió | Verificación |
 |---|---|---|---|---|---|
+| 2026-10-06 | M6.1 | IsyMotron @ merge `75e4957` | `claude/exciting-lamport-84gclk` | codex/isymotron-m6-gus integrado: `mobile/src/gus/*`, `mobile/vendor/gus-runtime/*`, docs/mobile/GUS_GUIDE.md, mobile/e2e/gus.e2e.mjs, mobile/catalog/gus-models.json | pytest 544 passed / 15 skipped; vitest 71/71; npm run build OK; e2e:gus PASS; e2e pairing PASS tras fix `fileURLToPath`; ningún test físico de móvil: todos NOT_DEMONSTRATED |
 | 2026-10-01 | M5.1 | IsyMotron @ `e9228e5` | `claude/exciting-lamport-84gclk` | core/isymotron/link/{permissions,server}.py, tools/link_cli.py, tests/test_link_{permissions,server,identity}.py, docs/LINK.md, mobile/src/{home,link/client,store,styles}.ts/css, mobile/tests/live.test.ts, mobile/tools/link_pc_for_tests.py, mobile/e2e/pairing.e2e.mjs | pytest 544 passed / 15 skipped; 3 PTY menu failures unrelated; Vitest 27/27; CI build + Chromium e2e + APK + IPA pass; app approval demonstrated (`permission-0815426a03f14653952a825da9e14f4b`, receipt `2026-10-01T21:48:00Z`); write access not demonstrated (`scope: {}`) |
 | 2026-10-01 | M4.4 | IsyMotron @ `474bd3d`, Companion @ `ffa2b13` | `claude/exciting-lamport-84gclk` | mobile/src/{pet,home,main}.ts, mobile/src/styles.css, mobile/public/malbolgato/*, mobile/tests/pet.test.ts, mobile/e2e/pairing.e2e.mjs | vitest 22/22; e2e + APK + IPA en [run 36838884718](https://github.com/DannyBaanks/IsyMotron/actions/runs/36838884718) |
 | 2026-10-01 | M4.2 | IsyMotron @ `0e582df` | `claude/exciting-lamport-84gclk` | mobile/src/home.ts, mobile/src/store.ts, mobile/tests/store.test.ts | vitest 17/17; e2e en [run 36822953911](https://github.com/DannyBaanks/IsyMotron/actions/runs/36822953911) |
