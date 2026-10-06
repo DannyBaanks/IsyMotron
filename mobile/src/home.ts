@@ -188,6 +188,7 @@ export function startApp(deps: AppDeps): void {
   }
 
   let lastProfile: string | null = null;
+  let lastSessionUntil: string | null = null;
 
   async function doPing(peer: Peer): Promise<boolean> {
     setMood("thinking");
@@ -195,6 +196,7 @@ export function startApp(deps: AppDeps): void {
     try {
       const reply = await ping(await deps.identity(), peer, deps.fetch);
       lastProfile = (reply?.tool_profile as string | null | undefined) ?? null;
+      lastSessionUntil = (reply?.session_until as string | null | undefined) ?? null;
       setMood("success", 1800);
       showSigned(peer.name, "pong", `respuesta sellada y atada a la petición · ${new Date().toTimeString().slice(0, 5)}`);
       return true;
@@ -203,6 +205,14 @@ export function startApp(deps: AppDeps): void {
       pet?.say(explain(error), 3200);
       return false;
     }
+  }
+
+  function sessionBadge(): string {
+    if (!lastSessionUntil) return "Sesión: aún no validada";
+    const when = new Date(lastSessionUntil);
+    const now = new Date();
+    if (when.getTime() + 60000 < now.getTime()) return `Sesión expirada (${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} UTC renueva con ping)`;
+    return `Sesión activa hasta ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   }
 
   function profileBadge(): string {
@@ -561,6 +571,9 @@ export function startApp(deps: AppDeps): void {
   }
 
   function peerScreen(peer: Peer, notice = ""): void {
+    // Opening the PC card refreshes the Link session window so the badge
+    // "Sesión activa" is what the human sees first, not a stale one.
+    if (!lastProfile || !lastSessionUntil) void doPing(peer);
     const out = el("p", "hint", notice);
     out.setAttribute("aria-live", "polite");
     const title = el("input", "field");
@@ -606,6 +619,7 @@ export function startApp(deps: AppDeps): void {
       el("h1", undefined, peer.name),
       el("p", "hint small", `Huella ${prettyFingerprint(peer.office_id)} · ${peer.addresses.join(", ")}`),
       el("p", "hint small", profileBadge()),
+      el("p", "hint small", sessionBadge()),
       button("Probar conexión", "btn", async () => {
         out.textContent = "Llamando…";
         out.textContent = (await doPing(peer)) ? `✓ ${peer.name} contestó, con su firma.` : "No contestó. Revisa la Wi-Fi y que corra «isymotron link servir --red».";

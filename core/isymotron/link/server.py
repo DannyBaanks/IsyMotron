@@ -60,6 +60,10 @@ class LinkState:
             permissions.PermissionQueue(self.directory, permission_host)
             if permission_host is not None else None
         )
+        # Session window: every sealed inbound call refreshes it. The phone
+        # can show "sesión activa hasta HH:MM" without keeping a socket
+        # alive; the PC stays the sole authority of when it is valid.
+        self.session_expires_at: float = 0.0
 
     def inbox_path(self) -> Path:
         return self.directory / "inbox.jsonl"
@@ -180,7 +184,19 @@ def handle_call_with_peer(state: LinkState, env: dict) -> tuple[dict, dict]:
             )
     except envelope.EnvelopeError as exc:
         raise LinkError("rejected", str(exc), 403) from exc
-    return (_dispatch(state, peer, payload), peer)
+    result = _dispatch(state, peer, payload)
+    if isinstance(result, dict):
+        result.setdefault("session_until", _session_until_iso(state))
+    return (result, peer)
+
+
+SESSION_TTL_S = 4 * 3600
+
+
+def _session_until_iso(state: LinkState) -> str | None:
+    if state.session_expires_at <= 0:
+        return None
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(state.session_expires_at))
 
 
 def sealed_reply(state: LinkState, peer: dict, env: dict, result: dict) -> dict:
@@ -190,6 +206,7 @@ def sealed_reply(state: LinkState, peer: dict, env: dict, result: dict) -> dict:
 
 def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
     op = payload.get("op")
+    state.session_expires_at = time.time() + SESSION_TTL_S
     if op == "ping":
         profile = None
         if state.permissions is not None:

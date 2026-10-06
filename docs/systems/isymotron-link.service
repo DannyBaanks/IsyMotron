@@ -1,0 +1,18 @@
+[Unit]
+Description=IsyMotron Link server (phone ↔ PC, sealed calls)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Point at the same Python you used to run the CLI. Adjust to your checkout.
+ExecStart=/usr/bin/python3 -m tools.link_cli link servir --red
+WorkingDirectory=%h/Development/ISyCo Git/IsyMotron
+Restart=on-failure
+RestartSec=3
+# Keep the inertia: if the operator kills it deliberately, keep it down.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Install]
+WantedBy=default.target
