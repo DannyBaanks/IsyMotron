@@ -100,7 +100,11 @@ def test_paired_phone_can_approve_a_locally_queued_narrow_lease(tmp_path):
         assert lease["scope"] == {"roots": ["C:/Photos"]}
         assert lease["expires_at"] - lease["issued_at"] <= 30
         assert host.validate_lease(lease["lease_id"])
-        assert receipts.read_receipts(server.state.directory, "link_permission_decided") == [
+        permission_receipts = receipts.read_receipts(server.state.directory, "link_permission_decided")
+        assert len(permission_receipts) == 1
+        profile = permission_receipts[0].pop("tool_profile", None)
+        assert profile in ("full", "security", "custom", "unknown")
+        assert permission_receipts == [
             {
                 "kind": "link_permission_decided",
                 "ts": receipts.read_receipts(server.state.directory)[-1]["ts"],

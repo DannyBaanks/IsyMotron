@@ -52,7 +52,8 @@ class PermissionQueue:
                     {"request_id": item["request_id"], "subject": item["subject"],
                      "capability": item["capability"], "decision": "expired",
                      "decision_reason": "host_restarted", "lease_id": None,
-                     "by": "host:restart"},
+                     "by": "host:restart",
+                     "tool_profile": getattr(self.host, "tool_profile", "unknown")},
                 )
 
     def _latest(self) -> dict[str, dict]:
@@ -146,7 +147,8 @@ class PermissionQueue:
                         self.directory,
                         "link_permission_decided",
                         {"request_id": item["request_id"], "subject": item["subject"],
-                         "capability": item["capability"], "decision": "expired", "by": "host:timeout"},
+                         "capability": item["capability"], "decision": "expired", "by": "host:timeout",
+                         "tool_profile": getattr(self.host, "tool_profile", "unknown")},
                     )
                     continue
                 out.append(item)
@@ -169,7 +171,8 @@ class PermissionQueue:
                     {"request_id": item["request_id"], "subject": item["subject"],
                      "capability": item["capability"], "decision": "expired",
                      "decision_reason": "request_timeout", "lease_id": None,
-                     "by": "host:timeout"},
+                     "by": "host:timeout",
+                     "tool_profile": getattr(self.host, "tool_profile", "unknown")},
                 )
             lease = self._issued.get(request_id)
             if lease is not None and not self.host.validate_lease(lease.lease_id):
@@ -226,6 +229,7 @@ class PermissionQueue:
                 {"request_id": request_id, "subject": item["subject"],
                  "capability": item["capability"], "decision": status,
                  "decision_reason": decision_reason, "lease_id": lease.lease_id if lease else None,
-                 "by": office_id},
+                 "by": office_id,
+                 "tool_profile": getattr(self.host, "tool_profile", "unknown")},
             )
             return {"request_id": request_id, "status": status, "decision_reason": decision_reason}
