@@ -90,7 +90,7 @@ def show_plan(plan: Plan) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--provider", help="nvidia | nebius | ollama | llamacpp (default: $ISYMOTRON_PROVIDER)")
+    ap.add_argument("--provider", help="openai | nvidia | nebius | ollama | llamacpp (default: $ISYMOTRON_PROVIDER)")
     ap.add_argument("--model")
     ap.add_argument("--models", action="store_true", help="list visible models and exit")
     ap.add_argument("--save", action="store_true", default=True)
@@ -112,9 +112,14 @@ def main(argv=None) -> int:
     if args.models:
         rule("models this key can see")
         ids = provider.models()
-        nem = [i for i in ids if "nemotron" in i.lower()]
-        print(f"  total {len(ids)}, nemotron {len(nem)}")
-        for i in nem:
+        available = ids if provider.name == "openai" else [
+            item for item in ids if "nemotron" in item.lower()
+        ]
+        if provider.name == "openai":
+            print(f"  total {len(available)}")
+        else:
+            print(f"  total {len(ids)}, nemotron {len(available)}")
+        for i in available:
             print(f"    {i}")
         return 0
 
