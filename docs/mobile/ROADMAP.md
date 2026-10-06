@@ -87,7 +87,8 @@
 
 ## M6 — GUS en el teléfono
 
-- [ ] **M6.1** Chat con GUS local (runtime vendorizado de iSyCode Móvil, como en la rama `claude/gus-life-m1` de TamagotchIA) y remoto solo si el usuario lo elige.
+- [x] **M6.1** Chat con GUS local y remoto solo si el usuario lo elige.
+  - → Implementado y empaquetado en **v1.2.0-rc.2**: GUS local con catálogo GGUF fijado y verificación de tamaño/SHA-256, importación/exportación mediante el selector del sistema, NVIDIA Nemotron 3 Nano como opción local experimental y proveedor remoto explícito con preset NVIDIA NIM. El modo remoto no hace fallback automático ni recibe datos de Link, permisos o archivos de las PCs. APK e IPA se construyen en CI. **Inferencia física local en teléfonos sigue NOT_DEMONSTRATED** hasta medir rendimiento, memoria, temperatura y batería on-device. Ver [GUS_GUIDE.md](GUS_GUIDE.md).
 
 ## M7 — TamagotchIA como función
 
