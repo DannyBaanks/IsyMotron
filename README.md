@@ -535,7 +535,7 @@ docs/               architecture, findings and operational guides
 | M2 — real Linux host with demonstrated parity | **done** (v1.1.0-rc.1) |
 | M3 — real macOS host (`mac-real/0.1`, CI-gated on `macos-latest`; APFS case answer: case-sensitive re-check, false denies only) | **done** (scoped: no awareness clocks, no process verification source) |
 | M4 — network relay with secure pairing, replacing the loopback relay | planned |
-| M5 — mobile approver app: approves leases and reads receipts, never executes | planned |
+| M5 — IsyMotron Móvil: secure Link pairing, tasks/receipts and bounded human lease approval; the phone never becomes host authority | **done, scoped** (real iPhone + Linux pairing/task/approval demonstrated; Android physical flow and on-device inference remain NOT_DEMONSTRATED) |
 | M6 — **ISyCode**: minimalist TUI agent on the IsyMotron fabric (provider → planner → enforcer → receipts in-terminal) | planned — [`../ISyCode/ROADMAP.md`](../ISyCode/ROADMAP.md) |
 | ~~Real Windows 10 verification~~ | retired 2026-09-26 (no licence/hardware; claim F is OUT_OF_SCOPE) |
 
