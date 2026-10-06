@@ -36,6 +36,22 @@ def _default_path() -> str:
 DEFAULT_PATH = _default_path()
 
 
+TOOL_PROFILES = ("full", "security", "custom")
+
+
+def _valid_custom(raw: Any) -> dict[str, Any] | None:
+    """custom must be {capabilities: [str], allow_request_prompts: bool}."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        return None
+    caps = raw.get("capabilities")
+    prompts = raw.get("allow_request_prompts")
+    if isinstance(caps, list) and all(isinstance(c, str) for c in caps) and isinstance(prompts, bool):
+        return {"capabilities": list(caps), "allow_request_prompts": prompts}
+    return None
+
+
 @dataclass
 class Grants:
     host_id: str
@@ -45,6 +61,8 @@ class Grants:
     admin_granted: bool = False
     max_lease_ttl_s: float = 900.0
     source: str = "<none>"
+    tool_profile: str = "security"
+    custom: dict[str, Any] | None = None
 
     @staticmethod
     def inert(reason: str) -> "Grants":
@@ -73,6 +91,21 @@ class Grants:
         # every scope checker treats as a refusal.
         for cap in granted:
             scopes.setdefault(cap, {})
+        tool_profile = str(raw.get("tool_profile", "security")).strip().lower()
+        if tool_profile not in TOOL_PROFILES:
+            # Fail closed: an unknown profile never widens authority.
+            return Grants.inert(f"invalid tool_profile: {raw.get('tool_profile')!r}")
+        custom_raw = raw.get("custom")
+        custom = None
+        if tool_profile == "custom":
+            custom = _valid_custom(custom_raw)
+            if custom is None:
+                return Grants.inert("invalid custom profile block")
+        elif custom_raw is not None:
+            # Present but not under custom: keep if well-formed, drop if not.
+            custom = _valid_custom(custom_raw)
+            if custom_raw is not None and custom is None:
+                return Grants.inert("invalid custom profile block")
         return Grants(
             host_id=str(raw.get("host_id") or _default_host_id()),
             display_name=str(raw.get("display_name") or _default_display_name()),
@@ -81,6 +114,8 @@ class Grants:
             admin_granted=bool(raw.get("admin_granted", False)),
             max_lease_ttl_s=float(raw.get("max_lease_ttl_s", 900.0)),
             source=path,
+            tool_profile=tool_profile,
+            custom=custom,
         )
 
     def save(self, path: str | None = None) -> str:
@@ -93,7 +128,10 @@ class Grants:
             "scopes": self.scopes,
             "admin_granted": self.admin_granted,
             "max_lease_ttl_s": self.max_lease_ttl_s,
+            "tool_profile": self.tool_profile,
         }
+        if self.custom is not None:
+            payload["custom"] = self.custom
         # utf-8, never utf-8-sig: a BOM here would make the file unparseable
         # and silently demote the host to inert.
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
