@@ -155,6 +155,12 @@ def process_inbox(relay, provider_factory, limit: int | None = None) -> int:
         else:
             outcome = run_task(relay, provider, entry)
             entry.update(outcome)
+            profile = "unknown"
+            try:
+                first = relay.hosts()[0]
+                profile = getattr(relay._host(first["host_id"]), "tool_profile", "unknown")
+            except Exception:
+                pass
             append_receipt({
                 "kind": f"link_task_{outcome['status']}",
                 "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -162,6 +168,7 @@ def process_inbox(relay, provider_factory, limit: int | None = None) -> int:
                 "from": entry.get("from"),
                 "receipts": outcome.get("receipts", []),
                 "detail": outcome.get("detail"),
+                "tool_profile": profile,
             })
         changed = True
         processed += 1

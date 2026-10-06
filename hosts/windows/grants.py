@@ -63,13 +63,14 @@ class Grants:
     source: str = "<none>"
     tool_profile: str = "security"
     custom: dict[str, Any] | None = None
+    no_grant_file: bool = False
 
     @staticmethod
     def inert(reason: str) -> "Grants":
         """A host with no authority at all. Still a valid, describable host."""
         return Grants(
             host_id=_default_host_id(), display_name=_default_display_name(),
-            granted=[], scopes={}, source=f"<inert: {reason}>",
+            granted=[], scopes={}, source=f"<inert: {reason}>", no_grant_file=True,
         )
 
     @staticmethod

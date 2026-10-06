@@ -21,6 +21,7 @@ class DenyReason(str, Enum):
 
     CAPABILITY_UNAVAILABLE = "CAPABILITY_UNAVAILABLE"  # host does not implement it
     CAPABILITY_NOT_GRANTED = "CAPABILITY_NOT_GRANTED"  # implemented, not granted here
+    NEEDS_APPROVAL = "NEEDS_APPROVAL"                  # profile gate: approval or nothing
     OUT_OF_SCOPE = "OUT_OF_SCOPE"                      # inside capability, outside scope
     EXCESS_AUTHORITY = "EXCESS_AUTHORITY"              # asks for more than manifest declares
     LEASE_MISSING = "LEASE_MISSING"

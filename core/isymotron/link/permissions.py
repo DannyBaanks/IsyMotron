@@ -191,9 +191,18 @@ class PermissionQueue:
             elif decision == "deny":
                 status, decision_reason, lease = "denied", "human_denied", None
             else:
-                lease, policy = self.host.request_lease(
-                    item["subject"], item["capability"], item["ttl_s"], item["scope"]
-                )
+                # Approvals mint through the new approval path (security/custom),
+                # falling back to the classic grant lookup when the host
+                # predates the profile model.
+                mint = getattr(self.host, "mint_approved_lease", None)
+                if mint is not None:
+                    lease, policy = mint(
+                        item["subject"], item["capability"], item["scope"], item["ttl_s"]
+                    )
+                else:
+                    lease, policy = self.host.request_lease(
+                        item["subject"], item["capability"], item["ttl_s"], item["scope"]
+                    )
                 if lease is None:
                     status = "denied"
                     decision_reason = policy.reason.value if policy.reason else "host_denied"

@@ -72,17 +72,70 @@ class Host(ABC):
                  granted: list[str],
                  grant_scopes: Mapping[str, Mapping[str, Any]],
                  admin_granted: bool = False,
-                 max_lease_ttl_s: float = 900.0) -> None:
+                 max_lease_ttl_s: float = 900.0,
+                 tool_profile: str = "security",
+                 custom: Mapping[str, Any] | None = None,
+                 inert: bool = False) -> None:
         self._identity = identity
         self._capabilities = capabilities
         self._granted = list(granted)
         self._grant_scopes = {k: dict(v) for k, v in grant_scopes.items()}
         self._admin_granted = admin_granted
         self._max_ttl = max_lease_ttl_s
+        self._tool_profile = tool_profile if tool_profile in ("full", "security", "custom") else "security"
+        self._inert = inert
+        self._custom = dict(custom) if isinstance(custom, Mapping) else None
+        # capability -> (horizon, approved_scope) for approval-minted grants.
+        self._approved: dict[str, tuple[float, dict[str, Any]]] = {}
         self._leases: dict[str, Lease] = {}
         self._receipts: dict[str, ExecutionReceipt] = {}
         self._claim_bundles: dict[str, ClaimBundle] = {}
         self._enforcer = Enforcer(self.describe(), admin_granted=admin_granted)
+
+    # -- tool profile view --------------------------------------------------
+
+    @property
+    def tool_profile(self) -> str:
+        return self._tool_profile
+
+    @property
+    def custom_profile(self) -> dict[str, Any] | None:
+        return dict(self._custom) if isinstance(self._custom, Mapping) else None
+
+    def _prune_expired_approvals(self) -> bool:
+        import time as _t
+        now = _t.time()
+        expired = [c for c, (horizon, _scope) in self._approved.items() if horizon <= now]
+        for c in expired:
+            del self._approved[c]
+        return bool(expired)
+
+    def _rebuild_enforcer(self) -> None:
+        self._enforcer = Enforcer(self.describe(), admin_granted=self._admin_granted)
+
+    def _effective_granted(self) -> list[str]:
+        static = list(self._granted)
+        extra = []
+        import time as _t
+        now = _t.time()
+        for cap, (horizon, _scope) in self._approved.items():
+            if horizon > now:
+                extra.append(cap)
+        # Planner-visible catalogue per profile:
+        # full and security expose all manifest capabilities; the difference
+        # is at the lease gate (no prompt vs prompt). custom exposes only its
+        # pre-selected set plus live approval grants.
+        if self._inert:
+            return []
+        if self._tool_profile == "full":
+            return [c.id for c in self._capabilities]
+        if self._tool_profile == "custom":
+            allowed = self._custom.get("capabilities") if isinstance(self._custom, Mapping) else None
+            allowed_ids = set(allowed) if isinstance(allowed, list) else set()
+            ids = [c.id for c in self._capabilities if c.id in allowed_ids]
+            ids.extend(extra)
+            return ids
+        return [c.id for c in self._capabilities]
 
     # -- 1 ------------------------------------------------------------------
     def identify(self) -> HostIdentity:
@@ -90,15 +143,17 @@ class Host(ABC):
 
     # -- 2 ------------------------------------------------------------------
     def describe(self) -> HostDescription:
-        granted_scopes = {c: self._grant_scopes.get(c, {}) for c in self._granted}
+        granted = self._effective_granted()
+        granted_scopes = {c: self._grant_scopes.get(c, {}) for c in granted}
         return HostDescription(self._identity, list(self._capabilities),
-                               list(self._granted), logical_bounds(granted_scopes))
+                               granted, logical_bounds(granted_scopes))
 
     # -- 3 ------------------------------------------------------------------
     def list_capabilities(self) -> list[CapabilityManifest]:
         """Only granted capabilities are listed. Ungranted ones are absent from
         the agent's world, not merely forbidden in it (invariant 2.5)."""
-        return [c for c in self._capabilities if c.id in self._granted]
+        effective = self._effective_granted()
+        return [c for c in self._capabilities if c.id in effective]
 
     # -- 4 ------------------------------------------------------------------
     def request_lease(self, subject: str, capability: str,
@@ -110,16 +165,92 @@ class Host(ABC):
         for more. Anything outside the local grant is dropped, not refused, so
         that narrowing is always safe to attempt.
         """
-        if capability not in self._granted:
-            known = any(c.id == capability for c in self._capabilities)
-            reason = DenyReason.CAPABILITY_NOT_GRANTED if known else DenyReason.CAPABILITY_UNAVAILABLE
-            return None, PolicyDecision(Decision.DENY, reason, capability)
+        known = any(c.id == capability for c in self._capabilities)
+        if not known:
+            return None, PolicyDecision(Decision.DENY, DenyReason.CAPABILITY_UNAVAILABLE, capability)
+        if self._inert:
+            return None, PolicyDecision(
+                Decision.DENY, DenyReason.CAPABILITY_UNAVAILABLE,
+                f"host is inert: {self._tool_profile} profile with no grant file")
+        cap = next(c for c in self._capabilities if c.id == capability)
+        if cap.requires_admin and not self._admin_granted:
+            return None, PolicyDecision(Decision.DENY, DenyReason.EXCESS_AUTHORITY, capability)
+        if self._prune_expired_approvals():
+            self._rebuild_enforcer()
 
+        if self._tool_profile == "security":
+            approved = self._approved.get(capability)
+            if approved is None:
+                return None, PolicyDecision(
+                    Decision.DENY, DenyReason.NEEDS_APPROVAL,
+                    f"{capability} needs approval in security mode")
+            horizon, approved_scope = approved
+            effective = _narrow(approved_scope, scope)
+            ttl = min(float(ttl_s), self._max_ttl, max(horizon - time.time(), 0.0))
+            lease = Lease.issue(self._identity.host_id, subject, capability, effective, ttl)
+            self._leases[lease.lease_id] = lease
+            return lease, PolicyDecision(Decision.ALLOW)
+
+        if self._tool_profile == "custom":
+            allowed = self._custom.get("capabilities") if isinstance(self._custom, Mapping) else []
+            prompts = bool(self._custom.get("allow_request_prompts", False)) if isinstance(self._custom, Mapping) else False
+            if capability in allowed:
+                granted_scope = dict(self._grant_scopes.get(capability, {}))
+                effective = _narrow(granted_scope, scope)
+                ttl = min(float(ttl_s), self._max_ttl)
+                lease = Lease.issue(self._identity.host_id, subject, capability, effective, ttl)
+                self._leases[lease.lease_id] = lease
+                return lease, PolicyDecision(Decision.ALLOW)
+            approved = self._approved.get(capability)
+            if approved is not None:
+                horizon, approved_scope = approved
+                effective = _narrow(approved_scope, scope)
+                ttl = min(float(ttl_s), self._max_ttl, max(horizon - time.time(), 0.0))
+                lease = Lease.issue(self._identity.host_id, subject, capability, effective, ttl)
+                self._leases[lease.lease_id] = lease
+                return lease, PolicyDecision(Decision.ALLOW)
+            if prompts:
+                return None, PolicyDecision(
+                    Decision.DENY, DenyReason.NEEDS_APPROVAL,
+                    f"{capability} needs approval in custom mode")
+            return None, PolicyDecision(
+                Decision.DENY, DenyReason.CAPABILITY_NOT_GRANTED,
+                f"{capability} is not in the custom allow-list")
+
+        # full: every manifest capability may lease immediately.
         granted_scope = dict(self._grant_scopes.get(capability, {}))
         effective = _narrow(granted_scope, scope)
         ttl = min(float(ttl_s), self._max_ttl)
         lease = Lease.issue(self._identity.host_id, subject, capability, effective, ttl)
         self._leases[lease.lease_id] = lease
+        return lease, PolicyDecision(Decision.ALLOW)
+
+    def mint_approved_lease(self, subject: str, capability: str,
+                            scope: Mapping[str, Any] | None, ttl_s: float) -> tuple[Lease | None, PolicyDecision]:
+        """Approval mints: a human said yes; enforce bounds, omit the profile gate."""
+        known = any(c.id == capability for c in self._capabilities)
+        if not known:
+            return None, PolicyDecision(Decision.DENY, DenyReason.CAPABILITY_UNAVAILABLE, capability)
+        if self._inert:
+            return None, PolicyDecision(
+                Decision.DENY, DenyReason.CAPABILITY_UNAVAILABLE,
+                f"host is inert: no grant file")
+        # The grants file bounds anything a human may approve.
+        if capability not in self._granted and self._tool_profile != "full":
+            return None, PolicyDecision(
+                Decision.DENY, DenyReason.CAPABILITY_NOT_GRANTED,
+                f"capability {capability} is not declared on this host")
+        cap = next(c for c in self._capabilities if c.id == capability)
+        if cap.requires_admin and not self._admin_granted:
+            return None, PolicyDecision(Decision.DENY, DenyReason.EXCESS_AUTHORITY, capability)
+        # The declared file scope bounds anything human approval may widen to.
+        scope = _narrow(dict(self._grant_scopes.get(capability, {})), dict(scope or {}))
+        ttl = min(float(ttl_s), self._max_ttl)
+        lease = Lease.issue(self._identity.host_id, subject, capability, scope, ttl)
+        self._leases[lease.lease_id] = lease
+        import time as _t
+        self._approved[capability] = (_t.time() + ttl, scope)
+        self._rebuild_enforcer()
         return lease, PolicyDecision(Decision.ALLOW)
 
     # -- 5 ------------------------------------------------------------------
