@@ -54,6 +54,18 @@ await p.waitForSelector("text=· queued");
 await p.click(".task >> text=Cancelar");
 await p.waitForSelector("text=· cancelled");
 assert.deepEqual((await say("inbox")).inbox.map((t) => t.status), ["cancelled"]);
+// GUS ISYMOTRON: the phone turns the last GUS message into a Link task and the PC records it.
+await p.click("text=‹ Mis PCs");
+await p.click("text=Abrir GUS · asistente");
+await p.waitForSelector("text=GUS ISYMOTRON");
+await p.fill('[aria-label="Mensaje para GUS"]', "leéme la foto del inbox");
+await p.click("button:has-text(\"Enviar\")");
+await p.waitForTimeout(500);
+await p.click("text=Mandar el último mensaje a mi PC");
+await p.waitForSelector("text=Tarea en la bandeja");
+assert.deepEqual((await say("inbox")).inbox.map((t) => [t.title, t.status]), [["Revisar el respaldo", "cancelled"], ["leéme la foto del inbox", "queued"]]);
+await p.click("text=Borrar conversación");
+await p.click("text=‹ Inicio");
 const permission = await say("request-permission");
 const permissionId = permission.request.request_id;
 const secondPermission = await say("request-permission");

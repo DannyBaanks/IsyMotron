@@ -13,6 +13,7 @@ import { canPair, type CryptoSupport } from "./support";
 import { createGusChat, type GusAppDeps, type GusChatController } from "./gus/chat";
 import { GUS_MODELS } from "./gus/catalog.generated";
 import { NVIDIA_NIM_PRESET } from "./gus/remote";
+import { composeDelegateFromMessages } from "./gus/compose";
 
 export function supportLines(s: CryptoSupport): string[] {
   const mark = (ok: boolean) => (ok ? "✓" : "✗");
@@ -358,16 +359,34 @@ export function startApp(deps: AppDeps): void {
 
     modeRow.setAttribute("role", "group"); modeRow.setAttribute("aria-label", "Modo de inferencia");
     modeRow.append(localMode, remoteMode);
+    const isyCard = el("section", "card gus-isymotron");
+    isyCard.append(
+      el("div", "eyebrow", "GUS ISYMOTRON"),
+      el("p", "hint small", "GUS te ayuda a formular; la PC recibe la tarea por Link, la decide, la ejecuta y deja recibo. GUS nunca toca Link, permisos ni archivos por su cuenta."),
+      button("Mandar el último mensaje a mi PC", "btn", async () => {
+        const peer = Object.values(loadPeers(kv))[0];
+        if (!peer) { status.textContent = "Enlaza una PC primero (Inicio → Enlazar con mi PC)."; return; }
+        const composed = composeDelegateFromMessages(gus.getState().messages);
+        if (!composed) { status.textContent = "Escribe primero un mensaje para GUS."; return; }
+        status.textContent = "Delegando…";
+        try {
+          const reply = await delegate(await deps.identity(), peer, composed.title, composed.body, deps.fetch);
+          addReceipt(kv, { kind: "link_delegated", office_id: peer.office_id, name: peer.name, task_id: String(reply.task_id), title: composed.title });
+          status.textContent = `✓ Tarea en la bandeja de ${peer.name} (${String(reply.task_id)}). Sigue su estado en Tareas.`;
+        } catch (error) { status.textContent = explain(error); }
+      }),
+    );
     composer.addEventListener("submit", (event) => {
       event.preventDefault(); const value = prompt.value; prompt.value = ""; void gus.send(value);
     });
     layout([
-      top, el("div", "eyebrow", "Orientación · sin acceso a Link"), el("h1", undefined, "GUS"),
-      el("p", "hint small", "GUS solo conversa. No puede usar tus permisos, leer archivos ni mandar tareas a tus PCs."),
+      top, el("div", "eyebrow", "Orientación · GUS no decide"), el("h1", undefined, "GUS"),
+      el("p", "hint small", "GUS solo conversa. No puede usar tus permisos, leer archivos ni mandar tareas a tus PCs. Para delegar una tarea en tu PC usa la tarjeta GUS ISYMOTRON de abajo."),
       modeRow, modeHint,
       el("h2", undefined, "Modelos locales verificados"), modelList,
       ...(deps.gus?.models ? [button("Importar copia guardada con iSyCode", "btn small", () => void gus.importModels())] : []),
       remotePanel, transcript, status, composer, stop, clear,
+      isyCard,
     ], null);
     gusUnsubscribe = gus.subscribe(renderState);
     renderState(state);

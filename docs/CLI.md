@@ -55,6 +55,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `repaint` | request UI repaint without restart |
 | `ctl` | `ping | status | stop` — control channel |
 | `link` | `buscar | emparejar | aceptar | enviar | tarea | mensaje | cancelar | olvidar | estado | servir` — linked offices (Munder Link port; EN aliases included) |
+| `task-runner` | drain the Link inbox: queued task → planner → host enforcer → done/denied/rejected/failed + receipt |
 
 Flags after a verb are forwarded **verbatim** to the command that implements
 it. The top-level dispatch parses no flags, so there is no `--` separator to

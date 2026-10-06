@@ -215,6 +215,12 @@ VERBS: dict[str, Verb] = {
         argv=("tools/link_cli.py",),
         entrypoint="tools/link_cli.py",
     ),
+    "task-runner": Verb(
+        name="task-runner",
+        summary="drain the Link inbox: queued task -> planner -> host enforcer -> done/denied",
+        argv=("tools/link_task_runner.py",),
+        entrypoint="tools/link_task_runner.py",
+    ),
 }
 
 
