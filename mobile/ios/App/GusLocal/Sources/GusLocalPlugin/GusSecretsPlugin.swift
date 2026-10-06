@@ -1,3 +1,4 @@
+#if os(iOS) && canImport(Capacitor)
 import Capacitor
 import Foundation
 import Security
@@ -87,3 +88,4 @@ public final class GusSecretsPlugin: CAPPlugin, CAPBridgedPlugin {
         guard status == errSecSuccess || status == errSecItemNotFound else { throw NSError(domain: NSOSStatusErrorDomain, code: Int(status)) }
     }
 }
+#endif

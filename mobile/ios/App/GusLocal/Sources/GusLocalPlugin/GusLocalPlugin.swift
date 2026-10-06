@@ -1,3 +1,4 @@
+#if os(iOS) && canImport(Capacitor) && canImport(UIKit)
 import Capacitor
 import Foundation
 import GusModelStore
@@ -231,3 +232,4 @@ private final class GusDownloadJob: NSObject, URLSessionDownloadDelegate, URLSes
         if let error { finish(.failure(error)) }
     }
 }
+#endif

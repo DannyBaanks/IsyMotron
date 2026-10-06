@@ -88,7 +88,7 @@
 ## M6 — GUS en el teléfono
 
 - [x] **M6.1** Chat con GUS local (runtime vendorizado de iSyCode Móvil, como en la rama `claude/gus-life-m1` de TamagotchIA) y remoto solo si el usuario lo elige.
-  - → Implementado en `codex/isymotron-m6-gus` (integrado vía merge `75e4957` en `claude/exciting-lamport-84gclk`): chat GUS en `mobile/src/gus/`, runtime GUSLlamaBridge vendorizado en `mobile/vendor/gus-runtime/`, preset NVIDIA NIM explícito, credenciales en Keychain/Keystore, `docs/mobile/GUS_GUIDE.md`, `mobile/e2e/gus.e2e.mjs` con respuesta NIM **simulada**. Local: producción nativa compila en CI; **inferencia en iPhone físico NOT_DEMONSTRATED**, española NOT_DEMONSTRATED, rendimiento/memoria/batería NOT_DEMONSTRATED. Remoto: preset definido y aislado, **round trip real de NIM desde iPhone físico NOT_DEMONSTRATED**.
+  - → Implementado en `codex/isymotron-m6-gus` (integrado vía merge `75e4957` en `claude/exciting-lamport-84gclk`): chat GUS en `mobile/src/gus/`, runtime GUSLlamaBridge vendorizado en `mobile/vendor/gus-runtime/`, preset NVIDIA NIM explícito, credenciales en Keychain/Keystore, `docs/mobile/GUS_GUIDE.md`, `mobile/e2e/gus.e2e.mjs` con respuesta NIM **simulada**. Local: producción nativa compila en CI; **inferencia en iPhone físico NOT_DEMONSTRATED**, española NOT_DEMONSTRATED, rendimiento/memoria/batería NOT_DEMONSTRATED. Remoto: preset definido y aislado, **round trip real de NIM desde iPhone físico NOT_DEMONSTRATED**. Integrado después en `origin/master` (v1.2.0-rc.2, merge de hoy) con fixes nativos iOS (llama headers/framework embed, role prompt dedicado); APK/IPA publicados en Releases.
 
 ## M7 — TamagotchIA como función
 

@@ -133,9 +133,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v4
         with:
-          packages: |
-            ndk;27.0.12077973
-            cmake;3.22.1
+          packages: ndk;27.0.12077973 cmake;3.22.1
       - run: npm ci
       - run: npm run build
       - run: node tools/sync-gus-runtime.mjs --verify
@@ -202,6 +200,7 @@ jobs:
           app="$(find /tmp/isy_release_dd/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d -print -quit)"
           test -n "$app"
           test -f "$app/Info.plist" && test -d "$app/public"
+          test -d "$app/Frameworks/llama.framework" || { echo "llama.framework is linked but missing from the app bundle" >&2; exit 1; }
           if find "$app" -type f -iname '*.gguf' -print -quit | grep -q .; then echo 'GGUF weights must not be bundled' >&2; exit 1; fi
           mkdir -p /tmp/isy_release_ipa/Payload release
           cp -R "$app" /tmp/isy_release_ipa/Payload/IsyMotron.app

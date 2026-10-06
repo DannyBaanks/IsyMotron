@@ -75,9 +75,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v4
         with:
-          packages: |
-            ndk;27.0.12077973
-            cmake;3.22.1
+          packages: ndk;27.0.12077973 cmake;3.22.1
       - run: npm ci
       - run: npm run build
       - run: npx cap sync android
@@ -154,6 +152,7 @@ jobs:
           APP=$(find /tmp/isy_dd/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" -type d | head -1)
           test -n "$APP" || { echo "::error::no .app produced"; exit 1; }
           test -f "$APP/Info.plist" && test -d "$APP/public" || { echo "::error::.app missing Info.plist or web assets"; exit 1; }
+          test -d "$APP/Frameworks/llama.framework" || { echo "::error::llama.framework is linked but missing from the app bundle"; exit 1; }
           if find "$APP" -type f -iname '*.gguf' -print -quit | grep -q .; then echo "::error::GGUF model weights must not be bundled in the IPA"; exit 1; fi
           /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" -c "Print :CFBundleShortVersionString" -c "Print :MinimumOSVersion" "$APP/Info.plist"
           mkdir -p out/Payload && cp -R "$APP" out/Payload/

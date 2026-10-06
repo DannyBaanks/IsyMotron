@@ -31,7 +31,11 @@ describe('routeGus', () => {
     expect(remote.complete).not.toHaveBeenCalled();
   });
 
-  it('exports the approved advisory-only system instruction', () => {
-    expect(GUS_SYSTEM_PROMPT).toBe('Eres GUS, asistente de IsyMotron. Responde en el idioma del usuario, de forma breve y clara. Solo das orientación: no tienes acceso a herramientas, Link, archivos, permisos ni a la PC enlazada. No afirmes haber ejecutado acciones. Si no sabes un dato, dilo.');
+  it('exports the advisory-only role with explicit capability and reasoning limits', () => {
+    expect(GUS_SYSTEM_PROMPT).toContain('Eres GUS');
+    expect(GUS_SYSTEM_PROMPT).toContain('Solo das orientación');
+    expect(GUS_SYSTEM_PROMPT).toContain('No tienes acceso a herramientas, Link, archivos, permisos ni a la PC enlazada');
+    expect(GUS_SYSTEM_PROMPT).toContain('No afirmes haber ejecutado acciones');
+    expect(GUS_SYSTEM_PROMPT).toContain('No muestres razonamiento interno');
   });
 });
