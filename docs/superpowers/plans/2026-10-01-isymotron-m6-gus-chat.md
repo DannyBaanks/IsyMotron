@@ -168,7 +168,6 @@
 - Create: `mobile/src/gus/native.ts`
 - Create: `mobile/src/gus/chat.ts`
 - Create: `mobile/src/gus/chat.testable.ts` (pure view-state transitions only)
-- Create: `mobile/src/gus/e2e-mock.ts` (included only in Vite `e2e` mode)
 - Test: `mobile/tests/gus-chat.test.ts`
 - Test: `mobile/tests/gus-native-boundary.test.ts`
 - Modify: `mobile/src/home.ts`
@@ -180,13 +179,13 @@
 - `GusChatController` exposes `getState(): GusChatState`, `subscribe(listener: (state: GusChatState) => void): () => void`, `send(text: string): Promise<void>`, `cancel(): Promise<void>`, `selectMode(mode: GusMode): void`, `downloadModel(id: string): Promise<void>`, `importModels(): Promise<void>`, `exportModel(id: string): Promise<void>`, and `clearSession(): void`. `createGusChat(deps)` accepts the local/remote providers, model catalogue, and secure config adapter and returns this controller.
 - `GusAppDeps = { local: GusProvider | null; remoteConfig: GusRemoteConfig | null; secureStore: GusSecureStore; catalogue: readonly GusModelManifest[] }`. `createGusChat` builds the remote provider from `remoteConfig` and `secureStore`; `startApp` receives `gus: GusAppDeps` through `AppDeps`; Home shows a **GUS** entry, and `gusScreen()` renders without adding a bottom-navigation tab.
 
-- [ ] **Step 1: Write failing tests** for blank-message rejection, session-only turns, abort-signal calling native `cancel()`, loading/cancel state, selected mode persistence for the session, model setup/import/export outcomes, and no route change after provider failure; add a native-boundary contract test proving only model ID, message strings, and fixed generation limits cross the Capacitor bridge, with no Link keys, leases, or file path.
-- [ ] **Step 2: Run** `cd mobile && npm test -- tests/gus-chat.test.ts`; confirm missing controller behavior fails.
-- [ ] **Step 3: Implement** the testable chat controller and Capacitor wrappers; serialize only approved local-plugin fields, show native-unavailable state on browser/PWA, and do not trigger remote automatically.
-- [ ] **Step 4: Add the Home entry and GUS screen** with chat composer, local/remote selector, model catalogue with size/source/license, progress/cancel, import/export, remote HTTPS configuration, and explicit remote-data notice.
-- [ ] **Step 5: Add styles** consistent with Verde terminal and accessible button labels, live progress/error announcements, and keyboard focus behavior.
-- [ ] **Step 6: Run** `cd mobile && npm test && npm run build`; expect all mobile tests and the production TypeScript/Vite build to pass.
-- [ ] **Step 7: Commit** only GUS TypeScript/UI/CSS/tests as `feat: add GUS chat to mobile home`.
+- [x] **Step 1: Write failing tests** for blank-message rejection, session-only turns, abort-signal calling native `cancel()`, loading/cancel state, selected mode persistence for the session, model setup/import/export outcomes, and no route change after provider failure; add a native-boundary contract test proving only model ID, message strings, and fixed generation limits cross the Capacitor bridge, with no Link keys, leases, or file path.
+- [x] **Step 2: Run** `cd mobile && npm test -- tests/gus-chat.test.ts`; confirmed the missing controller and native wrapper failed before implementation.
+- [x] **Step 3: Implement** the testable chat controller and Capacitor wrappers; serialize only approved local-plugin fields, show native-unavailable state on browser/PWA, and do not trigger remote automatically.
+- [x] **Step 4: Add the Home entry and GUS screen** with chat composer, local/remote selector, model catalogue with size/source/license, progress/cancel, import/export, remote HTTPS configuration, and explicit remote-data notice.
+- [x] **Step 5: Add styles** consistent with Verde terminal and accessible button labels, live progress/error announcements, and keyboard focus behavior.
+- [x] **Step 6: Run** `cd mobile && npm test && npm run build`; 14 files / 70 tests passed and the production TypeScript/Vite build completed.
+- [x] **Step 7: Commit** only GUS TypeScript/UI/CSS/tests as `feat: add GUS chat to mobile home`.
 
 ### Task 7: Add native CI, end-to-end coverage, and the operator guide
 
@@ -195,17 +194,18 @@
 - Create: `.github/workflows/gus-runtime.yml`
 - Create: `mobile/e2e/gus.e2e.mjs`
 - Create: `mobile/tests/gus-e2e-isolation.test.ts`
+- Create: `mobile/src/gus/e2e-mock.ts` (included only in Vite `e2e` mode)
 - Modify: `mobile/package.json` (add `build:e2e` and `e2e:gus` scripts)
 - Create: `docs/mobile/GUS_GUIDE.md`
 
-- [ ] **Step 1: Write a failing Playwright flow** that visits Home → GUS, sees local model setup, selects local/remote explicitly, exercises mocked model download/import/export, and verifies a failed local request never makes a mocked remote request.
-- [ ] **Step 2: Add** `build:e2e` (`tsc --noEmit && vite build --mode e2e`) and `e2e:gus` (`npm run build:e2e && node e2e/gus.e2e.mjs`) scripts to `mobile/package.json`; run `cd mobile && npm run e2e:gus` and confirm the new GUS flow fails before implementation.
-- [ ] **Step 3: Implement** the mock-plugin/provider test seam in `src/gus/e2e-mock.ts`, loaded only when `import.meta.env.MODE === "e2e"`; add a production build assertion that `dist/assets` contains no e2e mock marker.
-- [ ] **Step 4: Extend mobile CI** to run vendor verification, catalog generation check, Android JVM tests/APK assembly, iOS Swift package tests, pinned XCFramework build and unsigned IPA build; inspect each artifact to confirm no `.gguf` is bundled.
-- [ ] **Step 5: Add** `docs/mobile/GUS_GUIDE.md` with model download/import/export/restore steps, remote setup and data-egress explanation, exact test/build commands, representative real output from validation, and recovery steps for cancelled/revoked file-picker access.
-- [ ] **Step 6: Run** `cd mobile && npm test && npm run build && npm run e2e:gus`; run the native Gradle and Xcode workflow commands; expect the web/e2e suites and both native package builds to pass.
-- [ ] **Step 7: Record physical-device evidence** only after testing a real iPhone and Android phone: local generation offline, backup export, app removal/reinstall, restore, and remote opt-in. Any unrun device case remains `NOT_DEMONSTRATED`.
-- [ ] **Step 8: Commit** only workflow, e2e, package-script, and guide files as `test: verify GUS mobile flows and builds`.
+- [x] **Step 1: Write a failing Playwright flow** that visits Home → GUS, sees local model setup, selects local/remote explicitly, exercises mocked model download/import/export, and verifies a failed local request never makes a mocked remote request.
+- [x] **Step 2: Add** `build:e2e` (`tsc --noEmit && vite build --mode e2e`) and `e2e:gus` (`npm run build:e2e && node e2e/gus.e2e.mjs`) scripts to `mobile/package.json`; the flow initially stopped at missing Chromium, then passed after installing the test browser.
+- [x] **Step 3: Implement** the mock-plugin/provider test seam in `src/gus/e2e-mock.ts`, loaded only when `import.meta.env.MODE === "e2e"`; add a production build assertion that `dist/assets` contains no e2e mock marker.
+- [x] **Step 4: Extend mobile CI** to run vendor verification, catalog generation check, Android JVM tests/APK assembly, iOS Swift package tests, pinned XCFramework build and unsigned IPA build; inspect each artifact to confirm no `.gguf` is bundled.
+- [x] **Step 5: Add** `docs/mobile/GUS_GUIDE.md` with model download/import/export/restore steps, remote setup and data-egress explanation, exact test/build commands, representative real output from validation, and recovery steps for cancelled/revoked file-picker access.
+- [ ] **Step 6: Run** `cd mobile && npm test && npm run build && npm run e2e:gus`; run the native Gradle and Xcode workflow commands; expect the web/e2e suites and both native package builds to pass. Web suite, production build, GUS E2E, and existing Link E2E pass locally; Android NDK and Xcode commands are configured in CI but remain NOT_DEMONSTRATED on this Linux host.
+- [x] **Step 7: Record physical-device evidence** only after testing a real iPhone and Android phone: local generation offline, backup export, app removal/reinstall, restore, and remote opt-in. No physical device run is claimed; these cases remain `NOT_DEMONSTRATED`.
+- [x] **Step 8: Commit** only workflow, e2e, package-script, and guide files as `test: verify GUS mobile flows and builds`.
 
 ## Execution Notes
 

@@ -1,8 +1,8 @@
-# Release workflow: builds IsyMotron for Windows, Linux and macOS, smoke-tests
-# each binary on its own OS, and publishes a GitHub Release on a v* tag.
+# Release workflow: builds IsyMotron for Windows, Linux, macOS, Android and iOS,
+# verifies the mobile packages, and publishes a GitHub Release on a v* tag.
 #
-#   git tag v1.1.0 && git push origin v1.1.0        # publish
-#   Actions -> release -> Run workflow, tag=v1.1.0   # publish; CI creates the tag
+#   git tag v1.2.0-rc.1 && git push origin v1.2.0-rc.1 # publish
+#   Actions -> release -> Run workflow, tag=v1.2.0-rc.1 # publish; CI creates the tag
 #                                                    # on the commit it just built
 #   Actions -> release -> Run workflow               # dry build, no publish
 #
@@ -12,7 +12,8 @@
 # Windows keeps its v1.0.0 asset name (IsyMotron.exe), so existing download
 # links keep their shape. Linux/macOS ship as tar.gz (keeps the exec bit) with
 # docs/PLATFORM_SUPPORT.md inside. Linux has a real host engine (M2); the
-# macOS binary starts on fixtures only and is NOT_DEMONSTRATED as a host.
+# macOS binary starts on fixtures only and is NOT_DEMONSTRATED as a host. The
+# Android APK is debug-signed; the IPA is unsigned and needs personal signing.
 
 name: release
 
@@ -24,7 +25,7 @@ on:
     inputs:
       tag:
         description: >-
-          Publish as this tag (e.g. v1.1.0-rc.1), created on the dispatched
+          Publish as this tag (e.g. v1.2.0-rc.1), created on the dispatched
           commit. Leave empty for a dry build that publishes nothing.
         required: false
         default: ''
@@ -111,9 +112,114 @@ jobs:
           path: release/*
           if-no-files-found: error
 
+  android-mobile:
+    name: Android GUS APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: |
+            ndk;27.0.12077973
+            cmake;3.22.1
+      - run: npm ci
+      - run: npm run build
+      - run: node tools/sync-gus-runtime.mjs --verify
+      - run: node tools/generate-gus-catalog.mjs --check
+      - run: npx cap sync android
+      - run: bash vendor/gus-runtime/scripts/prepare-llama-source.sh
+      - name: Test model store and assemble the sideload APK
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --stacktrace
+        working-directory: mobile/android
+      - name: Verify and checksum APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find android/app/build/outputs/apk/debug -name '*.apk' -print -quit)"
+          test -n "$apk"
+          unzip -l "$apk" | grep -q 'assets/public/index.html'
+          if unzip -l "$apk" | grep -Eiq '\.gguf$'; then echo 'GGUF weights must not be bundled' >&2; exit 1; fi
+          mkdir -p release
+          cp "$apk" release/IsyMotron-android-debug.apk
+          (cd release && sha256sum IsyMotron-android-debug.apk > SHA256SUMS-android.txt && sha256sum -c SHA256SUMS-android.txt)
+      - name: Attest Android APK provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: mobile/release/IsyMotron-android-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: mobile/release/*
+          if-no-files-found: error
+
+  ios-mobile:
+    name: iOS GUS IPA (unsigned)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: node tools/sync-gus-runtime.mjs --verify
+      - run: node tools/generate-gus-catalog.mjs --check
+      - run: bash ios/App/GusLocal/prepare.sh
+      - run: swift test --package-path ios/App/GusLocal
+      - run: npx cap sync ios
+      - name: Build unsigned iOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath /tmp/isy_release_dd \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build
+      - name: Package, verify and checksum unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find /tmp/isy_release_dd/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d -print -quit)"
+          test -n "$app"
+          test -f "$app/Info.plist" && test -d "$app/public"
+          if find "$app" -type f -iname '*.gguf' -print -quit | grep -q .; then echo 'GGUF weights must not be bundled' >&2; exit 1; fi
+          mkdir -p /tmp/isy_release_ipa/Payload release
+          cp -R "$app" /tmp/isy_release_ipa/Payload/IsyMotron.app
+          (cd /tmp/isy_release_ipa && zip -qry "$GITHUB_WORKSPACE/mobile/release/IsyMotron-ios-unsigned.ipa" Payload)
+          (cd release && shasum -a 256 IsyMotron-ios-unsigned.ipa > SHA256SUMS-ios.txt && shasum -a 256 -c SHA256SUMS-ios.txt)
+      - name: Attest unsigned iOS IPA provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: mobile/release/IsyMotron-ios-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-ios
+          path: mobile/release/*
+          if-no-files-found: error
+
   publish:
     name: publish
-    needs: build
+    needs: [build, android-mobile, ios-mobile]
     if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
     runs-on: ubuntu-latest
     steps:

@@ -28,10 +28,18 @@
 | **Windows 10/11** | `IsyMotron.exe` | Real host (`nt-real`), the reference platform |
 | **Linux x86_64** | `IsyMotron-linux-x86_64.tar.gz` | Real host (`linux-real`), parity with Windows [row by row](docs/PLATFORM_SUPPORT.md#parity-what-the-same-means-m2) |
 | **macOS (Apple Silicon)** | `IsyMotron-macos-arm64.tar.gz` | Real host (`mac-real`) gated in CI on `macos-latest`; scoped: no awareness clocks and no process-verification source yet |
+| **Android** | `IsyMotron-android-debug.apk` | IsyMotron Móvil with local GUS; debug-signed for sideloading |
+| **iOS** | `IsyMotron-ios-unsigned.ipa` | IsyMotron Móvil with local GUS; unsigned, requires signing with your Apple ID |
 
-All three come from [Releases](https://github.com/DannyBaanks/IsyMotron/releases)
+The three desktop builds come from [Releases](https://github.com/DannyBaanks/IsyMotron/releases)
 with `SHA256SUMS.txt`, a Sigstore attestation per asset and a smoke receipt per
 platform. No Python needed to run them; from source, only the standard library.
+
+The mobile app is a hackathon preview. GGUF files are downloaded or imported
+after installation and are not bundled in either package. GUS remote inference
+is opt-in; read [the GUS guide](docs/mobile/GUS_GUIDE.md) before configuring a
+provider. Mobile model performance on physical phones remains
+**NOT_DEMONSTRATED** until tested on-device.
 
 ```bash
 sha256sum -c SHA256SUMS.txt

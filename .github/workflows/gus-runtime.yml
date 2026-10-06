@@ -1,0 +1,87 @@
+name: GUS Runtime Integrity
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'mobile/catalog/**'
+      - 'mobile/vendor/gus-runtime/**'
+      - 'mobile/tools/generate-gus-catalog.mjs'
+      - 'mobile/android/app/src/main/cpp/**'
+      - 'mobile/android/app/src/main/java/**/Gus*.java'
+      - 'mobile/ios/App/GusLocal/**'
+      - '.github/workflows/gus-runtime.yml'
+  push:
+    paths:
+      - 'mobile/catalog/**'
+      - 'mobile/vendor/gus-runtime/**'
+      - 'mobile/tools/generate-gus-catalog.mjs'
+      - 'mobile/android/app/src/main/cpp/**'
+      - 'mobile/android/app/src/main/java/**/Gus*.java'
+      - 'mobile/ios/App/GusLocal/**'
+      - '.github/workflows/gus-runtime.yml'
+permissions:
+  contents: read
+jobs:
+  manifest-and-web-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: node tools/sync-gus-runtime.mjs --verify
+      - run: node tools/generate-gus-catalog.mjs --check
+      - run: npm test -- tests/gus-catalog.test.ts tests/gus-models.test.ts tests/gus-runtime-vendor.test.ts tests/gus-chat.test.ts tests/gus-native-boundary.test.ts tests/gus-e2e-isolation.test.ts
+      - run: npm run build
+
+  android-model-store:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: |
+            ndk;27.0.12077973
+            cmake;3.22.1
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - run: bash vendor/gus-runtime/scripts/prepare-llama-source.sh
+      - run: ./gradlew :app:testDebugUnitTest --stacktrace
+        working-directory: mobile/android
+
+  ios-model-store:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: node tools/sync-gus-runtime.mjs --verify
+      - run: bash ios/App/GusLocal/prepare.sh
+      - run: swift test --package-path ios/App/GusLocal
