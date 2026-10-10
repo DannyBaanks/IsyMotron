@@ -230,7 +230,7 @@ def test_link_modules_are_stdlib_only():
     roots = [Path(__file__).resolve().parent.parent / "core" / "isymotron" / "link"]
     allowed = {
         "__future__", "base64", "hashlib", "hmac", "http", "ipaddress", "json", "math", "os",
-        "pathlib", "platform", "socket", "threading", "time", "typing", "urllib", "uuid",
+        "pathlib", "platform", "socket", "sys", "threading", "time", "typing", "urllib", "uuid",
     }
     import ast as _ast
 
@@ -270,3 +270,31 @@ def test_replies_are_sealed_back_and_bound_to_the_request(tmp_path):
             envelope.open_envelope(ident_c, {ident_b["office_id"]: identity.public_card(ident_b)}, body["renv"], {})
     finally:
         server_b.stop()
+
+
+def test_link_http_server_swallows_client_teardown_noise(capsys, tmp_path):
+    """Regression (2026-10-08): phone clients drop requests mid-flight when
+    the network changes or the app backgrounds; that teardown must not print
+    raw tracebacks into the runner logs. Real handler bugs stay visible."""
+    from isymotron.link.server import ClientTolerantHTTPServer
+
+    server = LinkServer(tmp_path, tcp_port=0, udp_port=0)
+    try:
+        assert isinstance(server.http, ClientTolerantHTTPServer)
+        try:
+            raise BrokenPipeError(32, "Broken pipe")
+        except BrokenPipeError:
+            server.http.handle_error(None, ("127.0.0.1", 54892))
+        assert capsys.readouterr().err == ""
+        try:
+            raise ConnectionResetError(104, "Connection reset by peer")
+        except ConnectionResetError:
+            server.http.handle_error(None, ("127.0.0.1", 54893))
+        assert capsys.readouterr().err == ""
+        try:
+            raise RuntimeError("handler bug stays visible")
+        except RuntimeError:
+            server.http.handle_error(None, ("127.0.0.1", 54894))
+        assert "RuntimeError" in capsys.readouterr().err
+    finally:
+        server.http.server_close()

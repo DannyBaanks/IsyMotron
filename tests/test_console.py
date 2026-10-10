@@ -388,3 +388,32 @@ def test_provider_changes_no_bounds_or_grants(tmp_path):
     assert avatar_world["describes"] == agent_world["describes"]
     assert avatar_world["decisions"] == agent_world["decisions"]
     assert avatar_world["grants_bytes"] == agent_world["grants_bytes"]
+
+
+def test_console_server_swallows_client_teardown_noise(capsys, tmp_path):
+    """Regression (2026-10-08): a client that hangs up mid-response (closed
+    tab, 401 hang-up) printed a raw BrokenPipeError traceback to the console.
+    Teardown is routine traffic and must stay silent; real handler bugs keep
+    their traceback."""
+    from console.server import ClientTolerantHTTPServer
+
+    httpd, _ = serve(ConsoleState(LoopbackRelay(), None, str(tmp_path / "grants.json")), port=0)
+    try:
+        assert isinstance(httpd, ClientTolerantHTTPServer)
+        try:
+            raise BrokenPipeError(32, "Broken pipe")
+        except BrokenPipeError:
+            httpd.handle_error(None, ("127.0.0.1", 54892))
+        assert capsys.readouterr().err == ""
+        try:
+            raise ConnectionResetError(104, "Connection reset by peer")
+        except ConnectionResetError:
+            httpd.handle_error(None, ("127.0.0.1", 54893))
+        assert capsys.readouterr().err == ""
+        try:
+            raise RuntimeError("handler bug stays visible")
+        except RuntimeError:
+            httpd.handle_error(None, ("127.0.0.1", 54894))
+        assert "RuntimeError" in capsys.readouterr().err
+    finally:
+        httpd.server_close()

@@ -24,6 +24,7 @@ import json
 import ipaddress
 import os
 import socket
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -377,6 +378,18 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(exc.status, {"ok": False, "code": exc.code, "error": str(exc)})
 
 
+class ClientTolerantHTTPServer(ThreadingHTTPServer):
+    """Phone clients drop requests mid-flight when networks change or the app
+    backgrounds; that teardown must not print raw tracebacks into the runner
+    logs (2026-10-08: the console server showed the same spam on a 401
+    hang-up). Real handler bugs stay visible."""
+
+    def handle_error(self, request, client_address):
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
+
+
 class LinkServer:
     """HTTP + UDP discovery. start() backgrounds both; stop() ends them."""
 
@@ -390,7 +403,7 @@ class LinkServer:
     ):
         self.state = LinkState(directory, permission_host=permission_host)
         handler = type("BoundHandler", (_Handler,), {"state": self.state})
-        self.http = ThreadingHTTPServer((host, tcp_port), handler)
+        self.http = ClientTolerantHTTPServer((host, tcp_port), handler)
         self.udp_port = udp_port
         self.host = host
         self._udp_sock: socket.socket | None = None
