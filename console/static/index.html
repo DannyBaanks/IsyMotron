@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C0C0C">
 <title>IsyMotron Console</title>
 <link rel="icon" href="favicon.svg">
 <link rel="stylesheet" href="app.css">
@@ -33,11 +34,11 @@
 </header>
 
 <nav class="rail">
-  <button class="nav is-on" data-view="devices"><span>Devices</span></button>
-  <button class="nav" data-view="authority"><span>Authority</span></button>
-  <button class="nav" data-view="intent"><span>Intent</span></button>
-  <button class="nav" data-view="receipts"><span>Receipts</span></button>
-  <button class="nav" data-view="host"><span>Host</span></button>
+  <button class="nav is-on" data-view="devices" type="button" aria-current="page"><span>Devices</span></button>
+  <button class="nav" data-view="authority" type="button"><span>Authority</span></button>
+  <button class="nav" data-view="intent" type="button"><span>Intent</span></button>
+  <button class="nav" data-view="receipts" type="button"><span>Receipts</span></button>
+  <button class="nav" data-view="host" type="button"><span>Host</span></button>
 </nav>
 
 <main>
@@ -111,7 +112,7 @@
 
 </main>
 
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <!-- AVATAR (AV4): the host frame renders only from view.host_frame; inbox
      lines render only as third-party bubbles (R1-R4). -->
