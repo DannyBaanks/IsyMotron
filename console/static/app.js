@@ -46,7 +46,11 @@ const clock = (w) => w
 
 /* ---- navigation -------------------------------------------------------- */
 $$(".nav").forEach((b) => b.addEventListener("click", () => {
-  $$(".nav").forEach((n) => n.classList.toggle("is-on", n === b));
+  $$(".nav").forEach((n) => {
+    const on = n === b;
+    n.classList.toggle("is-on", on);
+    n.setAttribute("aria-current", on ? "page" : "false");
+  });
   $$(".view").forEach((v) => v.classList.toggle("is-on", v.id === "view-" + b.dataset.view));
 }));
 

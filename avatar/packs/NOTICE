@@ -4,9 +4,12 @@ IsyMotron avatar packs
 avatar/packs/malbolge-cat/
 --------------------------
 
-Copied from Companion (https://github.com/), repository
-"C:\Development\ISyCo Git\Companion", directory `packs/malbolge-cat/`,
-at source commit 0aae576 ("chore: ignore local worktrees").
+Copied from Companion, local repository
+"/home/danny/Development/ISyCo Git/Companion", directory `packs/malbolge-cat/`.
+GIF frames refreshed 2026-10-10 from source commit ffa2b13 ("docs: 1.1.0
+release notes, guide updates, matte cleanup tool"); supersedes the earlier
+copy at 0aae576 ("chore: ignore local worktrees"). History records both
+commits; the old frames remain recoverable from this repository's git history.
 
 Companion is the author's prior MIT-licensed work. The pack is copied, not
 integrated: per the repo boundary rule, this copy is now IsyMotron's own
