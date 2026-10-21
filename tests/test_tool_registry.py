@@ -146,3 +146,46 @@ def test_console_and_mobile_runner_use_the_same_dynamic_tools(tmp_path, monkeypa
     reply=json.dumps({'understood':'count','steps':[{'host':'tools-local','capability':'tools.text-count','params':{'inputs':{'text':'abc'}}}],'refused':None})
     result=run_task(LoopbackRelay(),ScriptedProvider([reply]),{'title':'count','body':'abc','from':'phone'})
     assert result['status']=='done'
+
+
+def test_replaced_ancestor_cannot_redirect_an_approved_root(tmp_path):
+    import shutil
+    files = package_files("def run(inputs):\n text=open('/inputs/in.txt').read()\n open('report.txt','w').write(text)\n return {'count':len(text)}\n")
+    manifest=json.loads(files['tool.json']);manifest['effects']={'read':['in.txt'],'write':['report.txt']};files['tool.json']=json.dumps(manifest)
+    cases=json.loads(files['cases.json']);cases[0]['files']={'in.txt':'abc'};files['cases.json']=json.dumps(cases)
+    allowed=tmp_path/'allowed';(allowed/'in').mkdir(parents=True);(allowed/'out').mkdir()
+    (allowed/'in'/'in.txt').write_text('abc')
+    outside=tmp_path/'outside';shutil.copytree(allowed,outside);(outside/'in'/'in.txt').write_text('SECRET')
+    registry=ToolRegistry(tmp_path/'registry');registry.stage(write_package(tmp_path/'p',files));registry.verify('text-count')
+    registry.approve('text-count',subject='alice',host_id='pc',read_roots={'in':str(allowed/'in')},write_roots={'out':str(allowed/'out')})
+    allowed.rename(tmp_path/'previous');allowed.symlink_to(outside,target_is_directory=True)
+    with pytest.raises(ToolError):
+        registry.run('text-count',{'text':'abc'},subject='alice',host_id='pc',files={'in.txt':'hostfs://in/in.txt'},output='hostfs://out')
+    assert not (outside/'out'/'report.txt').exists()
+
+
+def test_provider_change_invalidates_verification_and_approval(tmp_path, monkeypatch):
+    registry=approved(tmp_path)
+    provider=registry.providers['linux-python/v1'];identity=provider.identity()
+    monkeypatch.setattr(provider,'identity',lambda:{**identity,'verifier':'updated-verifier'})
+    assert registry.catalogue('alice','pc') == []
+    with pytest.raises(ToolError,match='STALE'):
+        registry.run('text-count',{'text':'abc'},subject='alice',host_id='pc')
+
+
+def test_edited_approval_record_is_not_authority(tmp_path):
+    registry=approved(tmp_path)
+    record=tmp_path/'registry'/'records'/'text-count.json'
+    data=json.loads(record.read_text());data['approval']['subject']='mallory';record.write_text(json.dumps(data))
+    with pytest.raises(ToolError,match='STALE'):
+        registry.run('text-count',{'text':'abc'},subject='mallory',host_id='pc')
+
+
+def test_expired_dynamic_lease_is_denied(tmp_path):
+    from isymotron.tool_host import ToolHost
+    from isymotron.contracts import ExecutionRequest
+    from isymotron.verdicts import Decision
+    registry=approved(tmp_path);host=ToolHost(registry,subject='alice',host_id='pc')
+    lease,_=host.request_lease('alice','tools.text-count',1)
+    req=ExecutionRequest.make('pc','alice','tools.text-count',{'inputs':{'text':'abc'}},lease.lease_id)
+    assert host.execute_capability(req,now=lease.expires_at+1).decision.decision == Decision.DENY

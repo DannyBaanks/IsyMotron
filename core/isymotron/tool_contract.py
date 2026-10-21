@@ -118,7 +118,7 @@ class ToolPackage:
                 and all(len(v) <= 524288 for v in copied.values()), 'package too large')
         try:
             contract, security, cases = (json.loads(copied[n]) for n in ('tool.json', 'security.json', 'cases.json'))
-        except (ValueError, UnicodeError) as exc:
+        except (ValueError, UnicodeError, RecursionError) as exc:
             raise ToolError('INVALID_CONTRACT', 'package metadata must be JSON') from exc
         _keys(contract, {'contract', 'tool_id', 'version', 'summary', 'entrypoint', 'provider', 'input_schema', 'output_schema', 'effects'}, 'tool')
         require(contract['contract'] == 'ToolContract/v1', 'unsupported contract')
@@ -126,9 +126,11 @@ class ToolPackage:
         require(all(isinstance(contract[k], str) and 0 < len(contract[k]) <= 256 for k in ('version', 'summary', 'provider')), 'invalid identity')
         require(relative_name(contract['entrypoint']) in copied and contract['entrypoint'].endswith('.py'), 'missing Python entrypoint')
         check_schema(contract['input_schema']); check_schema(contract['output_schema'])
+        require(contract['input_schema']['type'] == 'object', 'tool inputs must be an object')
         _keys(contract['effects'], {'read', 'write'}, 'effects')
         for names in contract['effects'].values():
-            require(isinstance(names, list) and len(names) <= 32 and len(names) == len(set(names)), 'invalid effects')
+            require(isinstance(names, list) and len(names) <= 32 and all(isinstance(n, str) for n in names)
+                    and len(names) == len(set(names)), 'invalid effects')
             for name in names: relative_name(name)
         _keys(security, {'contract', 'network', 'external_processes', 'timeout_s', 'memory_mb', 'max_input_bytes', 'max_output_bytes'}, 'security')
         require(security['contract'] == 'ToolSecurity/v1' and security['network'] is False and security['external_processes'] is False, 'unsupported security control')

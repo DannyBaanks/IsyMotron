@@ -21,3 +21,14 @@ def test_bad_model_response_does_not_publish_partial_package(tmp_path, reply):
     dest=tmp_path/'proposal'
     with pytest.raises(ToolError): ToolBuilder(ScriptedProvider([reply])).propose('Build a tool', dest)
     assert not dest.exists()
+
+
+def test_provider_failure_is_structured_and_leaves_no_package(tmp_path):
+    from agents.provider import ProviderError
+    class Unavailable:
+        def complete(self, *args, **kwargs):
+            raise ProviderError('provider unavailable')
+    dest=tmp_path/'proposal'
+    with pytest.raises(ToolError, match='PROPOSAL_FAILED'):
+        ToolBuilder(Unavailable()).propose('Count characters',dest)
+    assert not dest.exists()

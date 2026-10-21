@@ -24,13 +24,13 @@ my-tool/
   main.py
 ```
 
-`main.py` define `run(inputs)` y devuelve un valor JSON que cumple `output_schema`. Lee los archivos declarados desde `/inputs/<nombre>` y escribe los artefactos declarados bajo el directorio de trabajo. No imprime mensajes al stdout; ese canal está reservado al resultado JSON.
+`main.py` define `run(inputs)` y devuelve un valor JSON que cumple `output_schema`. Lee los archivos declarados desde `/inputs/<nombre>` y escribe los artefactos declarados bajo el directorio de trabajo. Los archivos de salida ya existen: se abren y se escriben directamente; no hay scratch, creación de directorios, `tempfile`, unlink ni renombrado atómico dentro del worker. No imprime mensajes al stdout; ese canal está reservado al resultado JSON.
 
 El contrato completo está en [el ejemplo CSV](../examples/tools/csv-cleaner/tool.json); los [controles](../examples/tools/csv-cleaner/security.json), [casos](../examples/tools/csv-cleaner/cases.json) y [código](../examples/tools/csv-cleaner/main.py) son independientes y forman parte del digest del paquete.
 
 Los esquemas admiten `type` y `enum`; objetos con `properties`, `required` y `additionalProperties: false`; arrays con `items` y `maxItems`; strings con `minLength`/`maxLength`; números con `minimum`/`maximum`. No admiten `$ref`, expresiones regulares, composición ni claves desconocidas. Las entradas al Host son objetos. El esquema se valida antes de ejecutar y después de recibir resultados.
 
-Límites de `ToolSecurity/v1`: timeout entero de 1–30 segundos, memoria virtual 32–1024 MiB, entradas hasta 16 MiB y salida combinada JSON/artefactos hasta 1 MiB. Red y procesos externos deben ser `false` en este proveedor. Los tamaños menores especificados por una tool también se aplican. El paquete tiene como máximo 64 archivos y 2 MiB, sin enlaces simbólicos ni hardlinks.
+Límites de `ToolSecurity/v1`: timeout entero de 1–30 segundos, memoria virtual 32–1024 MiB, entradas hasta 16 MiB y salida combinada JSON/artefactos hasta 1 MiB. Red y procesos externos deben ser `false` en este proveedor. El presupuesto de salida combinada se comprueba antes de publicar. Durante la ejecución, cada archivo está limitado a ese presupuesto y solo existen hasta 32 archivos de artefactos escribibles; por ello el staging vivo ocupa como máximo `número_de_artefactos × max_output_bytes`, más stdout/stderr limitados individualmente. No se pueden crear archivos ni directorios adicionales en `/work`, `/tmp` o `/dev`. Los tamaños menores especificados por una tool también se aplican. El paquete tiene como máximo 64 archivos y 2 MiB, sin enlaces simbólicos ni hardlinks.
 
 ## Proponer con Nemotron
 

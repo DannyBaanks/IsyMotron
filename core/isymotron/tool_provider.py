@@ -56,7 +56,7 @@ class LinuxPythonProvider:
         require(package.contract['provider'] == self.provider_id, 'unsupported provider', 'PROVIDER_UNAVAILABLE')
         return {'contract': 'SecurityPlan/v1', 'provider': self.identity(), 'package_digest': package.package_digest,
                 'controls': package.security, 'effects': package.contract['effects'],
-                'mounts': {'runtime': 'readonly', 'tool': 'readonly', 'inputs': 'readonly', 'work': 'staging'},
+                'mounts': {'runtime': 'readonly', 'tool': 'readonly', 'inputs': 'readonly', 'work': 'readonly-directories+declared-artifact-binds', 'scratch': 'unavailable'},
                 'network': 'isolated+seccomp', 'processes': 'seccomp', 'environment': 'empty'}
 
     def run(self, package: ToolPackage, inputs: object, files: dict[str, bytes]) -> ToolResult:
@@ -72,6 +72,18 @@ class LinuxPythonProvider:
             package.write(source); incoming.mkdir(); work.mkdir()
             for name, data in files.items():
                 p = incoming / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(data)
+            # Bound live inode/storage use before running guest code. Only
+            # declared regular artifact files are writable; guest mkdir,
+            # unlink and arbitrary scratch allocation are unavailable.
+            artifact_paths = []
+            initial_artifacts = {}
+            for name in effects['write']:
+                path = work / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+                initial_artifacts[name] = path.stat().st_mtime_ns
+                artifact_paths.append((path, '/work/' + name))
+            scratch = root / 'empty-tmp'; scratch.mkdir()
             bootstrap = root / 'worker.py'
             bootstrap.write_bytes(Path(__file__).with_name('tool_worker.py').read_bytes())
             runtime = _runtime()
@@ -88,10 +100,13 @@ class LinuxPythonProvider:
             for prefix in ('/lib', '/lib64'):
                 for loader in Path(prefix).glob('ld-linux*'):
                     if loader.is_file(): command += ['--ro-bind', str(loader), str(loader)]
-            command += ['--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp',
+            command += ['--proc', '/proc', '--remount-ro', '/proc', '--dev', '/dev', '--remount-ro', '/dev',
+                        '--ro-bind', str(scratch), '/tmp',
                         '--ro-bind', str(source), '/tool', '--ro-bind', str(incoming), '/inputs',
-                        '--bind', str(work), '/work', '--ro-bind', str(bootstrap), '/worker.py',
-                        '--chdir', '/work', '--remount-ro', '/', '--', '/usr/bin/python3', '-I', '-S', '-B', '/worker.py']
+                        '--ro-bind', str(work), '/work', '--ro-bind', str(bootstrap), '/worker.py']
+            for source_path, target_path in artifact_paths:
+                command += ['--bind', str(source_path), target_path]
+            command += ['--chdir', '/work', '--remount-ro', '/', '--', '/usr/bin/python3', '-I', '-S', '-B', '/worker.py']
             with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
                 proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=stdout, stderr=stderr,
                                         start_new_session=True, env={'PATH': '/usr/bin:/bin'})
@@ -104,7 +119,7 @@ class LinuxPythonProvider:
                 require(proc.returncode == 0, f'worker stopped ({proc.returncode})', 'EXECUTION_FAILED')
                 require(len(output) <= policy['max_output_bytes'], 'output budget exceeded', 'LIMIT_EXCEEDED')
             try: result = json.loads(output)
-            except (ValueError, UnicodeError) as exc: raise ToolError('INVALID_OUTPUT', 'worker must return one JSON result') from exc
+            except (ValueError, UnicodeError, RecursionError) as exc: raise ToolError('INVALID_OUTPUT', 'worker must return one JSON result') from exc
             validate(package.contract['output_schema'], result)
             artifacts = {}
             total = len(output)
@@ -114,6 +129,7 @@ class LinuxPythonProvider:
                 name = path.relative_to(work).as_posix()
                 require(name in effects['write'] and stat.S_ISREG(path.stat().st_mode) and path.stat().st_nlink == 1,
                         'undeclared or non-regular artifact', 'INVALID_OUTPUT')
+                require(path.stat().st_mtime_ns != initial_artifacts[name], 'missing artifact write', 'INVALID_OUTPUT')
                 total += path.stat().st_size
                 require(total <= policy['max_output_bytes'], 'artifact budget exceeded', 'LIMIT_EXCEEDED')
                 artifacts[name] = path.read_bytes()

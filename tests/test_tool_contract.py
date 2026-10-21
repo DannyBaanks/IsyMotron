@@ -75,3 +75,20 @@ def test_schema_refuses_extra_parameters_wrong_types_and_unknown_keywords(tmp_pa
 
 def test_boolean_is_not_an_integer():
     with pytest.raises(tc.ToolError): tc.validate({'type': 'integer'}, True)
+
+
+@pytest.mark.parametrize('mutation', ['non_string_effect', 'scalar_input', 'deep_metadata'])
+def test_malformed_metadata_fails_with_a_contract_error(mutation):
+    files = package_files()
+    manifest = json.loads(files['tool.json'])
+    if mutation == 'non_string_effect':
+        manifest['effects']['read'] = [{}]
+    elif mutation == 'scalar_input':
+        manifest['input_schema'] = {'type': 'string'}
+        cases = json.loads(files['cases.json']); cases[0]['inputs'] = 'abc'
+        files['cases.json'] = json.dumps(cases)
+    else:
+        files['cases.json'] = '[' * 16000 + '0' + ']' * 16000
+    files['tool.json'] = json.dumps(manifest)
+    with pytest.raises(tc.ToolError):
+        tc.ToolPackage.from_files(files)

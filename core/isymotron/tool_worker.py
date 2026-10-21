@@ -29,9 +29,13 @@ def main():
         for name in ('socket', 'connect', 'bind', 'listen', 'accept', 'accept4',
                      'clone', 'clone3', 'fork', 'vfork', 'execve', 'execveat',
                      'ptrace', 'mount', 'umount2', 'unshare', 'setns', 'bpf',
-                     'process_vm_writev', 'kill', 'tkill', 'tgkill'):
+                     'process_vm_writev', 'kill', 'tkill', 'tgkill',
+                     'fallocate', 'ioctl'):
             number = lib.seccomp_syscall_resolve_name(name.encode())
-            if number >= 0 and lib.seccomp_rule_add(ctx, 0x00030000, number, 0) != 0:
+            # Python probes text streams with TCGETS; refuse ioctl with
+            # EPERM so a normal isatty probe can fall back to a plain file.
+            action = 0x00050001 if name == 'ioctl' else 0x00030000
+            if number >= 0 and lib.seccomp_rule_add(ctx, action, number, 0) != 0:
                 raise RuntimeError('cannot install required control')  # TRAP
         if lib.seccomp_load(ctx) != 0: raise RuntimeError('cannot load controls')
     finally:

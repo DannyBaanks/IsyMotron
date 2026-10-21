@@ -61,3 +61,48 @@ def test_guest_sees_only_runtime_not_all_host_commands_or_environment(monkeypatc
     monkeypatch.setenv('TOOL_HOST_SECRET','never-inherit-this')
     p=tool("def run(inputs):\n import os\n return {'count':int(os.path.exists('/usr/bin/cat'))+int('TOOL_HOST_SECRET' in os.environ)}\n")
     assert LinuxPythonProvider().run(p,{'text':'a'},{}).result=={'count':0}
+
+
+def test_deep_guest_json_is_a_controlled_invalid_output():
+    p = tool("def run(inputs):\n import os\n print('['*16000+'0'+']'*16000, flush=True)\n os._exit(0)\n")
+    with pytest.raises(ToolError, match='INVALID_OUTPUT'):
+        LinuxPythonProvider().run(p, {'text': 'abc'}, {})
+
+
+def test_guest_cannot_allocate_undeclared_files_or_directories():
+    code = '''def run(inputs):
+ import os
+ successful = 0
+ for base in ('/work', '/tmp', '/dev'):
+  for index in range(128):
+   try:
+    with open(base+'/extra-'+str(index), 'w') as stream: stream.write('x'*60000)
+    successful += 1
+   except OSError: pass
+  try:
+   os.mkdir(base+'/extra-dir')
+   successful += 1
+  except OSError: pass
+ open('report.txt','w').write('abc')
+ return {'count': successful}
+'''
+    files=package_files(code)
+    manifest=json.loads(files['tool.json']);manifest['effects']['write']=['report.txt'];files['tool.json']=json.dumps(manifest)
+    result=LinuxPythonProvider().run(ToolPackage.from_files(files),{'text':'abc'},{})
+    assert result.result == {'count':0}
+    assert result.artifacts == {'report.txt':b'abc'}
+
+
+def test_preallocation_cannot_exceed_live_artifact_budget():
+    code = '''def run(inputs):
+ import ctypes
+ with open('report.txt','w') as stream:
+  stream.write('abc'); stream.flush()
+  libc=ctypes.CDLL(None)
+  libc.fallocate(stream.fileno(), 1, 0, 8*1024*1024)
+ return {'count':3}
+'''
+    files=package_files(code)
+    manifest=json.loads(files['tool.json']);manifest['effects']['write']=['report.txt'];files['tool.json']=json.dumps(manifest)
+    with pytest.raises(ToolError):
+        LinuxPythonProvider().run(ToolPackage.from_files(files),{'text':'abc'},{})

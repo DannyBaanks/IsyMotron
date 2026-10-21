@@ -200,11 +200,14 @@ class ToolRegistry:
 
     @contextlib.contextmanager
     def _directory(self, root: str, parts: list[str], *, create: bool = False):
-        fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        # Walk the approved absolute root too: O_NOFOLLOW on only its final
+        # component would still follow an ancestor replaced after approval.
+        fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
-            for part in parts:
+            root_parts = Path(root).parts[1:]
+            for index, part in enumerate([*root_parts, *parts]):
                 relative_name(part)
-                if create:
+                if create and index >= len(root_parts):
                     try: os.mkdir(part, mode=0o700, dir_fd=fd)
                     except FileExistsError: pass
                 new = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
