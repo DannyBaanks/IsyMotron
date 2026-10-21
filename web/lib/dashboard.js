@@ -19,6 +19,11 @@ export function buildDashboardSnapshot(state = {}) {
       id: receipt.receipt_id ?? "pending",
       decision: receipt.decision?.decision ?? "UNKNOWN",
       capability: receipt.capability ?? "capability",
+      action: receipt.action ?? null,
+      owner: receipt.owner ?? receipt.execution_owner ?? null,
+      observedAt: receipt.observed_at ?? receipt.created_at ?? null,
+      source: receipt.source ?? null,
+      freshness: receipt.freshness ?? null,
       seal: receipt.seal_ok === true ? "SEALED" : "PENDING",
     })).reverse(),
   };

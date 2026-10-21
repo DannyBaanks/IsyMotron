@@ -29,3 +29,14 @@ test("buildDashboardSnapshot keeps an empty backend visibly disconnected", () =>
   assert.equal(snapshot.connected, false);
   assert.deepEqual(snapshot.receipts, []);
 });
+
+test("buildDashboardSnapshot preserves optional receipt audit metadata", () => {
+  const snapshot = buildDashboardSnapshot({
+    hosts: [{ identity: { display_name: "Host local" }, granted: [], capabilities: [] }],
+    receipts: [{ receipt_id: "rcpt_meta", capability: "filesystem.read", decision: { decision: "ALLOW" }, seal_ok: true, owner: "local-host", observed_at: "2026-10-20T18:00:00Z", source: "local-host", freshness: "fresh" }],
+  });
+
+  assert.equal(snapshot.receipts[0].owner, "local-host");
+  assert.equal(snapshot.receipts[0].observedAt, "2026-10-20T18:00:00Z");
+  assert.equal(snapshot.receipts[0].freshness, "fresh");
+});
