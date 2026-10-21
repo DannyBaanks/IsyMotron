@@ -1,543 +1,202 @@
 <div align="center">
+  <img src="docs/assets/hero.png" alt="ISyMotron: a calm control room for AI actions" width="100%" />
 
-<img src="docs/assets/hero.png" alt="ISyMotron capability fabric hero" width="100%" />
+  # ISyMotron
 
-# ISyMotron
+  ### Give AI useful hands — without giving it the keys.
 
-### One AI. Many hosts. One capability fabric.
+  **A local-first control room where AI proposes, your host decides, and every action leaves evidence.**
 
-**Plan with Nemotron. Execute through explicit capabilities. Keep authority local. Verify every action with receipts.**
+  [![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-76B900.svg)](LICENSE)
+  [![Releases](https://img.shields.io/github/v/release/DannyBaanks/IsyMotron?include_prereleases&label=releases&color=76B900)](https://github.com/DannyBaanks/IsyMotron/releases)
+  [![Track: Best Apps and Agents](https://img.shields.io/badge/track-Best%20Apps%20%26%20Agents-76B900.svg)](https://nebiusglobalaihackathon.devpost.com/)
 
-[![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-76B900.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/DannyBaanks/IsyMotron?include_prereleases&label=release&color=76B900)](https://github.com/DannyBaanks/IsyMotron/releases)
-[![Real host: Windows 11 · Linux](https://img.shields.io/badge/real%20host-Windows%2011%20%C2%B7%20Linux-202124.svg)](docs/PLATFORM_SUPPORT.md)
-[![Builds: Windows · Linux · macOS](https://img.shields.io/badge/builds-Windows%20%C2%B7%20Linux%20%C2%B7%20macOS-202124.svg)](docs/PLATFORM_SUPPORT.md)
-[![Track: Best Apps and Agents](https://img.shields.io/badge/track-Best%20Apps%20%26%20Agents-76B900.svg)](#what-is-demonstrated)
-
-<sub>Hackathon project for the Nebius × NVIDIA / Devpost challenge. `docs/GUIA.es.md` is supplementary Spanish documentation; all submission materials are in English.</sub>
-
+  <sub>Built for the <a href="https://nebiusglobalaihackathon.devpost.com/">Nebius × NVIDIA Global AI Hackathon</a>.</sub>
 </div>
 
-> The model proposes. The local host decides. Execution produces evidence.
+## The product
 
-## Get it
+AI can reason about what you want. It should not silently become the owner of your computer.
 
-| Platform | Download | What it is today |
-|---|---|---|
-| **Windows 10/11** | `IsyMotron.exe` | Real host (`nt-real`), the reference platform |
-| **Linux x86_64** | `IsyMotron-linux-x86_64.tar.gz` | Real host (`linux-real`), parity with Windows [row by row](docs/PLATFORM_SUPPORT.md#parity-what-the-same-means-m2) |
-| **macOS (Apple Silicon)** | `IsyMotron-macos-arm64.tar.gz` | Real host (`mac-real`) gated in CI on `macos-latest`; scoped: no awareness clocks and no process-verification source yet |
-| **Android** | `IsyMotron-android-debug.apk` | IsyMotron Móvil with local GUS; debug-signed for sideloading |
-| **iOS** | `IsyMotron-ios-unsigned.ipa` | IsyMotron Móvil with local GUS; unsigned, requires signing with your Apple ID |
+ISyMotron is a control layer for AI agents that need to work with real devices. It turns a vague request into a clear proposal, checks that proposal against permissions held by a local host, and records what actually happened. The model can suggest. The host decides. The evidence stays inspectable.
 
-The three desktop builds come from [Releases](https://github.com/DannyBaanks/IsyMotron/releases)
-with `SHA256SUMS.txt`, a Sigstore attestation per asset and a smoke receipt per
-platform. No Python needed to run them; from source, only the standard library.
+That makes the experience feel less like handing an AI a terminal and more like giving it a carefully bounded set of tools with a visible approval trail.
 
-The mobile app is a hackathon preview. GGUF files are downloaded or imported
-after installation and are not bundled in either package. GUS remote inference
-is opt-in; read [the GUS guide](docs/mobile/GUS_GUIDE.md) before configuring a
-provider. Mobile model performance on physical phones remains
-**NOT_DEMONSTRATED** until tested on-device.
+## See the idea in one minute
 
-```bash
-sha256sum -c SHA256SUMS.txt
-gh attestation verify IsyMotron-linux-x86_64.tar.gz --repo DannyBaanks/IsyMotron
+```text
+You ask for something useful
+            ↓
+AI creates a typed proposal
+            ↓
+Your local host checks capability + scope + policy
+            ↓
+The action is allowed or denied locally
+            ↓
+A verifiable receipt records the outcome
 ```
+
+The important part is the boundary in the middle: the model never gets to invent a capability, widen a scope, or turn a suggestion into authority.
 
 ## Why this matters
 
-AI should not gain authority merely because it can reason.
+Most agent demos make the happy path look effortless. The harder product question is: **what happens when the agent asks for too much?**
 
-ISyMotron gives an agent a typed capability fabric instead of raw host access:
-filesystem roots, process inspection, allowlisted applications and system
-facts. Every request is checked locally, every refusal is explicit, and every
-execution ends in a tamper-evident receipt.
+ISyMotron makes that moment part of the user experience. A request outside the allowed scope is denied, the protected payload is not returned, and the refusal is still recorded. Users do not have to trust a green checkmark or a model-generated sentence; they can inspect the decision and reproduce the evidence.
 
-```text
-model proposes  →  local authority decides  →  receipt records
-```
+## Built for real devices, not just a chat window
 
-## Architecture
+ISyMotron connects an agent to a small, explicit capability fabric:
 
-<img src="docs/assets/architecture.svg" alt="ISyMotron architecture: model proposal through planner, resolver, relay, hosts and sealed receipt" width="100%" />
+- Read or write only inside granted filesystem roots.
+- Inspect processes without granting process control.
+- Launch only allowlisted applications.
+- Read bounded system facts.
+- Keep the decision boundary on the host that owns the data.
 
-ISyMotron separates interpretation from authority:
-
-- Nemotron and the provider live in the planning plane.
-- The contract, leases, scopes and enforcer live at the host boundary.
-- The relay transports requests; it does not grant permission.
-- The host executes only after local policy accepts the request.
-- The receipt carries the decision, result, observed effects and seal.
-
-## Authority never comes from the model
-
-<img src="docs/assets/authority-flow.svg" alt="Authority flow: missing capability, invalid scope and policy refusal deny; only the final branch executes" width="100%" />
-
-The model cannot mint a capability, widen a lease, create a grant or seal a
-receipt. An ungranted capability is absent from the agent's catalogue. A
-malformed request, expired lease, invalid scope or host-level escape is denied
-without returning the protected payload.
-
-## See it in 60 seconds
-
-```text
-1. Grant a narrow capability        →  filesystem.read on one root
-2. Let Nemotron plan                →  typed capability request
-3. Execute an in-scope action       →  ALLOW + observed result
-4. Try an out-of-scope action       →  DENY + no payload
-5. Inspect the receipt              →  seal verified
-```
-
-### Real project evidence
-
-The video below is a real capture of the console running a live plan: NVIDIA
-Nemotron on Nebius Token Factory proposes the steps, the host judges and
-executes them, and every action ends in a sealed receipt.
-
-**YouTube: <https://youtu.be/CXpOxUFJMrI>**
+The same product idea is carried across Windows, Linux and macOS host engines, with platform differences recorded instead of hidden behind a generic “works everywhere” claim.
 
 <div align="center">
-<video controls width="720" poster="docs/assets/hero.png">
-  <source src="isymotron-demo-final.mp4" type="video/mp4" />
-  <a href="isymotron-demo-final.mp4">Watch the ISyMotron demo video</a>
-</video>
-<br /><sub>Live plan: Nemotron proposes, the host decides, receipts record.</sub>
+  <img src="docs/assets/architecture.svg" alt="ISyMotron product architecture: model proposal, local host decision, execution and receipt" width="92%" />
 </div>
 
-## What is demonstrated
+## What makes the infrastructure different
 
-The project uses the evidence vocabulary from [`docs/EVIDENCE.md`](docs/EVIDENCE.md).
-The labels below are deliberately narrower than marketing claims.
+### Nebius Token Factory + NVIDIA Nemotron
 
-| Claim | Status | Evidence |
-|---|---|---|
-| Deny-by-default contract with leases, scopes and sealed receipts | **DEMONSTRATED** | [`tests/test_m0_gate.py`](tests/test_m0_gate.py) |
-| Real filesystem and process surface on a Windows host | **DEMONSTRATED** | [`tests/test_win11_real.py`](tests/test_win11_real.py), [`evidence/M1/`](evidence/M1/) |
-| Real Linux host with the same contract (`linux-real`) | **DEMONSTRATED** | [`tests/test_linux_real.py`](tests/test_linux_real.py), CI on `ubuntu-latest` |
-| Windows ↔ Linux host parity, one scenario table on both CIs | **DEMONSTRATED, scoped** (the case-folding row differs by design) | [`tests/test_host_parity.py`](tests/test_host_parity.py), [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md) |
-| Binaries for Windows, Linux and macOS, smoke-tested per OS, hashed and attested | **DEMONSTRATED** | [`build_exe.py`](build_exe.py), [`.github/workflows/release.yml`](.github/workflows/release.yml) |
-| Runtime is Python standard library only | **DEMONSTRATED** | [`tests/test_png_codec.py`](tests/test_png_codec.py) imports the runtime with site-packages hidden |
-| Planner refuses hallucinated or ungranted capabilities | **DEMONSTRATED** | [`tests/test_planner.py`](tests/test_planner.py) |
-| Live Nemotron planning path (Nebius Token Factory) | **DEMONSTRATED, scoped** | [`tests/test_live_model.py`](tests/test_live_model.py), [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
-| Host-awareness attribution: suspend is not provider failure | **DEMONSTRATED** | [`tests/test_awareness.py`](tests/test_awareness.py), [`docs/HOST_AWARENESS.md`](docs/HOST_AWARENESS.md) |
-| Console and read-only avatar authority channel | **DEMONSTRATED** | [`tests/test_console.py`](tests/test_console.py), [`tests/test_avatar_adversarial.py`](tests/test_avatar_adversarial.py), [`evidence/AV9/`](evidence/AV9/) |
-| Malbolge lesson with machine verdicts and sealed receipts | **DEMONSTRATED, scoped** | [`learning/`](learning/), [`evidence/MALBOLGE_V0/`](evidence/MALBOLGE_V0/) |
-| Nebius Token Factory provider execution | **DEMONSTRATED** | Sealed keyed run 2026-09-22: round trip, plan and adversarial refusal all pass. [`evidence/M3/RUN.md`](evidence/M3/RUN.md), [`evidence/M3/hashes.json`](evidence/M3/hashes.json) |
-| Receipts verifiable by re-derivation (Quine Gate) | **DEMONSTRATED, scoped** | [`tests/test_quine_gate_rederivation.py`](tests/test_quine_gate_rederivation.py), [`evidence/QUINE_GATE/RUN.md`](evidence/QUINE_GATE/RUN.md) |
-| Local model providers (Ollama, llama.cpp) through the same planner seam | **DEMONSTRATED, scoped** (protocol and config against a stub server; live model measured per CI run, not promised) | [`tests/test_local_provider.py`](tests/test_local_provider.py), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`.github/workflows/local-model.yml`](.github/workflows/local-model.yml) |
-| Git-backed activity registry: known activity with undeclared effects still denied; verified activity reuses a sealed fast path | **DEMONSTRATED, scoped** (registry is local Git, not a hosted service) | [`tests/test_marketplace.py`](tests/test_marketplace.py), [`docs/MARKETPLACE_V0.md`](docs/MARKETPLACE_V0.md) |
-| Process identity: instance + artifact drift, with sealed baselines | **DEMONSTRATED, scoped (Linux full; Windows launch-time identity)** | [`tests/test_process_identity.py`](tests/test_process_identity.py), [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md) |
-| A real Windows 10 host | **OUT_OF_SCOPE** (retired 2026-09-26) | No Windows 10 licence or hardware available to the project; claim F was retired and is recorded as such in [`docs/EVIDENCE.md`](docs/EVIDENCE.md). Windows 11 is the demonstrated real host |
-| A real macOS host | **DEMONSTRATED, scoped** | `MacHost` (`mac-real/0.1`) re-checks resolved paths through `/dev/fd` and is gated on a real `macos-latest` CI runner ([`tests/test_macos_real.py`](tests/test_macos_real.py)); no power-awareness mechanism and no process-verification source on this platform yet |
-| Universal security or production safety on arbitrary hosts | **NOT_DEMONSTRATED** | Explicitly outside the evidence scope |
+The planning layer uses NVIDIA Nemotron served through Nebius Token Factory. The model handles intent and planning; it does not own the grants or the enforcement boundary. A live, sealed run is preserved in [`evidence/M3/RUN.md`](evidence/M3/RUN.md), including a successful plan and an adversarial refusal.
 
-## Learn Malbolge with Malbolgato
+### Local authority, transport-only relay
+
+The relay moves requests. It does not grant access. The host checks the request locally against capability, scope, leases and policy before anything runs.
+
+### Receipts that are more than a badge
+
+A receipt records the decision, result and anchored inputs. The verification path re-derives the decision instead of trusting a self-asserted “verified” label. Both `ALLOW` and `DENY` outcomes are part of the evidence trail.
+
+### Cross-platform engineering
+
+The project has real host engines and CI coverage for Windows, Linux and macOS. The reference host exercises Windows filesystem semantics and process state; Linux and macOS prove portability within their documented scope. Packaged builds are smoke-tested, hashed and attested in the release workflow.
+
+<div align="center">
+  <img src="docs/assets/authority-flow.svg" alt="Authority flow: invalid capability or scope is denied before execution" width="92%" />
+</div>
+
+## A product experience, not a security lecture
+
+The new web control room is designed for people who should not need to understand every internal term before they can use the product. It gives them:
+
+- A calm overview of connection, local authority, data freshness and evidence.
+- A human-readable capability catalog with technical identifiers available when needed.
+- A clear path from proposal to decision to receipt.
+- Explicit demo, disconnected, empty and error states.
+- Progressive disclosure for technical details instead of forcing everyone into a console.
+- Malbolgato as a read-only companion that represents the system without pretending to authorize it.
 
 <p align="center">
-  <img src="docs/assets/malbolgato-clean.gif" alt="Malbolgato, the read-only avatar, teaching Malbolge" width="150" />
+  <img src="docs/assets/screenshots/05-desktop-avatar.png" alt="Real ISyMotron desktop avatar and control surface" width="48%" />
+  <img src="evidence/AV4/web_avatar.png" alt="Real ISyMotron web avatar evidence" width="48%" />
 </p>
 
-Malbolge is named after the eighth circle of Dante's Inferno. Published in 1998
-with nothing but a reference interpreter, it became the language where the first
-"Hello World" was **not written by a human — it was found by an automated beam
-search** (Lou Scheffer). It is widely described as the hardest programming
-language ever put on a machine.
+### Malbolgato: the companion with a hard boundary
 
-**IsyMotron teaches it anyway — and grades you with machinery, not opinions.**
+Malbolgato makes the system more approachable, but it is deliberately not a trust shortcut. It can open the companion surface and reflect state from the authorized channel. It cannot grant permissions, execute actions, mint receipts or turn chat text into evidence.
 
-The first lesson is source encoding: every printable character in a Malbolge
-program decodes to an instruction *depending on where it sits*:
+<p align="center">
+  <img src="docs/assets/malbolgato-clean.gif" alt="Malbolgato, the read-only ISyMotron companion" width="160" />
+</p>
 
-```text
-    op    = (ASCII(char) + c) mod 94       the decode, at position c
+## A real demo path
 
-    r     = (op - c) mod 94                the inverse: you choose the
-    ASCII = r        if 33 <= r <= 93        instruction, you derive the
-    ASCII = r + 94   if 0  <= r <= 32        character
-    char  = chr(ASCII)
-```
+The demo is intentionally short and testable:
 
-The cat asks, you answer. Then three real machines take your answer — none of
-them is a model:
+1. Grant a narrow capability, such as reading one logical host root.
+2. Let Nemotron propose a typed request through Nebius Token Factory.
+3. Execute an in-scope action and receive `ALLOW` plus observed output.
+4. Try an out-of-scope action and receive `DENY` without the protected payload.
+5. Inspect the receipt and verify the anchored evidence.
 
-```text
-      your '3'
-         |
-         +-- classic_codec.decode ....... opcode 68 (nop)
-         |      the positional codec, vendored byte-for-byte (sha256 recorded)
-         |
-         +-- malbolge-oracle XLAT1 ...... reference instruction 'o'
-         |      reference semantics transcribed from the 1998 interpreter
-         |      without consulting any other implementation
-         |
-         +-- Oracle.run ................. a 19-cell program with YOUR
-                character at position 17 runs on the reference machine:
-                halted, reason=halt_opcode, 19 steps
-         |
-         v
-  VERDICT: PASS   (verdict_source: machine; receipt rcpt_091a3441c935452f; seal ok)
-```
+The public demonstration video is available here:
 
-That last line is real output, captured on this repository. The receipt id is
-generated fresh on every run; the sealed verdict is what matters. Every outcome
-is a tamper-evident `learning-receipt-v1`:
+**[Watch the real ISyMotron demo on YouTube](https://youtu.be/CXpOxUFJMrI)**
 
-| your answer | the machines say | verdict |
-|---|---|---|
-| `3` | opcode 68 (nop) — reference `'o'`, clean 19-step halt | **PASS** |
-| `4` | opcode 69 — not nop | **FAIL** |
-| `zz` | out of contract | **INVALID** |
-| *(tooling unloaded)* | no tooling, no verdict | **UNAVAILABLE** |
-
-**CAT SPEAKS. TOOLING PROVES.**
-
-- No model is anywhere in the verification path. The lesson passes with no API
-  key at all — a lesson that needed a paid opinion to grade you would be
-  architecturally wrong.
-- No tooling, no verdict: an unloaded verifier answers `UNAVAILABLE`, never
-  "the model said it was right".
-- A receipt whose verdict is edited breaks its own seal. That is a test.
-- The cat announces the machine's verdict live through the open channel — a
-  bubble it can speak but never forge.
-
-```powershell
-isymotron learn malbolge                     # the whole lesson, interactive
-isymotron learn malbolge --exercise 1 --answer 3
-isymotron learn malbolge --all               # every exercise, interactive
-isymotron learn malbolge-advanced --all      # L3-L13, interactive
-```
-
-Verdicts, provenance and the capability roadmap (L0–L13, each mapped to the
-discovered tooling behind it): full write-up in
-[`docs/MALBOLGE.md`](docs/MALBOLGE.md), the executed runs in
-[`evidence/MALBOLGE_V0/RUN.md`](evidence/MALBOLGE_V0/RUN.md) and the discovery
-inventory in
-[`evidence/MALBOLGE_V0/capability_map.md`](evidence/MALBOLGE_V0/capability_map.md).
-The vendored tooling is recorded byte-for-byte in
-[`learning/packs/malbolge/vendor/PROVENANCE.md`](learning/packs/malbolge/vendor/PROVENANCE.md).
-
-What V0 claims is exactly what was demonstrated: **learn → build → execute →
-verify → receipt**, on a real lesson, with machine verdicts — not "IsyMotron
-masters Malbolge". The rest of the curriculum is earned one milestone at a time.
-
-## The capability fabric
-
-<img src="docs/assets/capability-fabric.svg" alt="ISyMotron capability fabric showing filesystem, process, apps and system capabilities" width="100%" />
-
-The current Windows host exposes a small, inspectable contract:
-
-| Capability | Bounds |
-|---|---|
-| `filesystem.read` | Granted roots; files and directory metadata |
-| `filesystem.write` | Granted roots; explicit create/overwrite |
-| `apps.launch` | Case-insensitive executable allowlist |
-| `process.inspect` | Read-only process names |
-| `system.info` | Non-identifying machine facts |
-
-The contract is intentionally small. Adding a ninth operation is a contract
-version change, not an invisible feature.
-
-## Built with Nebius + NVIDIA
-
-ISyMotron's default inference provider is **Nebius Token Factory**, serving the
-NVIDIA open-source model `nvidia/nemotron-3-super-120b-a12b`. Set two
-environment variables and every plan in the system is proposed on Nebius:
-
-```bash
-export ISYMOTRON_PROVIDER=nebius        # the default; set explicitly for clarity
-export NEBIUS_API_KEY=...                # from the Nebius Builder Program
-python3 -m console                      # plans via Token Factory from here on
-```
-
-NVIDIA NIM and local models (Ollama, llama.cpp) ride the same provider seam —
-see [`docs/PROVIDERS.md`](docs/PROVIDERS.md):
-
-```text
-Nebius Token Factory (default) or NVIDIA NIM
-                    ↓
-              Nemotron
-                    ↓
-                Planner
-                    ↓
-             Host policy
-                    ↓
-                Receipt
-```
-
-The provider changes how a plan is proposed; it does not change the grants,
-scope bounds or authority held by a host. Nebius Token Factory is demonstrated
-live and sealed: [`evidence/M3/RUN.md`](evidence/M3/RUN.md) (2026-09-22) records
-a real round trip, a real plan and a real adversarial refusal, with
-[`evidence/M3/hashes.json`](evidence/M3/hashes.json) sealing the artifacts. The
-same seam also reaches NVIDIA NIM (`evidence/M3/probe_nvidia.json`); its earlier
-`HTTP 503` is kept as a historical negative result.
+It shows a live plan where Nemotron proposes, the host decides, and receipts record the outcome.
 
 ### Hosted demo
 
-A live console is deployed on Railway (zero local state, simulated fixture
-host, every plan proposed on Nebius Token Factory by default):
+**[Open the hosted ISyMotron console](https://isymotron-production.up.railway.app)**
 
-**<https://isymotron-production.up.railway.app>**
+The hosted version is a zero-local-state demonstration with a simulated fixture host. It is designed for quick evaluation: you can follow the proposal, decision and receipt flow without connecting a personal computer.
 
-The service has `NEBIUS_API_KEY` set as a Railway variable, so the hosted
-console plans live on Nebius Token Factory out of the box.
+## What is demonstrated today
 
-```bash
-# redeploy after changes (builder is pinned to Dockerfile.deploy via IaC)
-railway up
-```
+The repository contains runnable evidence for the following claims:
 
-### Local models: Ollama and llama.cpp
+- Deny-by-default capabilities with scopes, leases and sealed receipts.
+- Real filesystem and process surfaces on a Windows host.
+- A real Linux host with the same contract, plus platform-specific hardening.
+- A scoped macOS host engine gated in CI.
+- Planner refusal of hallucinated or ungranted capabilities.
+- Live Nemotron planning through Nebius Token Factory.
+- A read-only avatar authority channel with adversarial tests.
+- Receipt re-derivation through the Quine Gate.
+- Packaged builds, checksums, attestations and smoke tests.
 
-The same seam plans with a model on your own machine — Llama, Qwen, or anything
-[Ollama](https://ollama.com) or llama.cpp's `llama-server` serves. No key, and
-the prompt never leaves the computer (physical paths never left it anyway: the
-catalogue names only `hostfs://` resources).
+The full evidence vocabulary is intentionally more precise than marketing language. Read [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for the claim-by-claim record and its limits.
 
-```bash
-ollama serve & ollama pull llama3.1:8b
-ISYMOTRON_PROVIDER=ollama python3 -m console          # or: isymotron keys set ISYMOTRON_PROVIDER
-```
+## Try it
 
-A smaller model plans worse; it never reaches further. Invented capabilities
-are refused by the planner and anything out of scope by the host — the
-[`local-model`](.github/workflows/local-model.yml) workflow runs a real
-`llama3.2:1b` against exactly that. Details: [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
-
-## Verification
-
-The CI workflow runs the suite on Windows, Linux and macOS. Windows is the
-reference, because the real host gate exercises Windows filesystem semantics,
-NTFS junctions and process state; Linux and macOS prove the core is portable.
-Each OS also builds the packaged binary and runs its smoke test. A binary that
-starts is not a host: Windows, Linux and macOS have real host engines (Linux since M2,
-with a shared parity suite; macOS since 2026-09-26, scoped in
-[`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md)).
-
-The runtime is standard-library only. Tests need `requirements-dev.txt`
-(pytest, and Pillow as the PNG test oracle).
-
-```powershell
-# From the repository root on Windows
-py -m pip install -r requirements-dev.txt
-py -m pytest -q
-py tests/test_m0_gate.py -q
-py tests/test_win11_real.py -q
-py tests/test_planner.py -q
-py tests/test_console.py -q
-```
+### Fastest path: run the local demo
 
 ```bash
-# Linux (or macOS for everything but the host gates)
-python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q
-python3 -m pytest -q tests/test_host_parity.py tests/test_linux_real.py
-```
-
-The live provider tests run only when a provider key is present; otherwise they
-skip without making the offline contract suite depend on an external service.
-The exact current count belongs to the CI run, not to a hand-maintained badge.
-
-## Command line
-
-Every action in this repository is reachable from one command, and its verb
-table is the single source of truth — a test fails if an entrypoint is left
-unreachable:
-
-```bash
-isymotron                      # menu when a terminal is attached; help otherwise
-isymotron host status          # what this machine is and grants
-isymotron keys set NEBIUS_API_KEY
-isymotron evidence verify evidence/M3/hashes.json
-isymotron quine demo           # the live Quine Gate sequence
-isymotron process verify <pid> --baseline proc.baseline.json
-```
-
-Keys are stored outside the repository and never echoed. The CLI holds no
-authority of its own: granting still goes through `isymotron host grant` or the
-console. Full table, exit codes and the key model:
-[`docs/CLI.md`](docs/CLI.md).
-
-## Quine Gate: evidence that reproduces itself
-
-A receipt is an *affirmation*; the authority is the reproduction. An
-execution receipt carries the digests of what produced it — request, policy
-state, capability, result — and points at its *claim bundle*. The verifier
-re-runs the real `Enforcer` over that claim and compares: a `DENY` edited into
-`ALLOW` and re-sealed is rejected even though its own seal is self-consistent.
-
-The full live sequence (legit → PASS, mutate → REJECT, fork → CONFLICT,
-rollback → CONFLICT, reproduce → PASS) runs with one command and leaves a
-sealed package behind:
-
-```bash
-python3 tools/quine_gate_demo.py        # writes + verifies evidence/QUINE_GATE/
-python3 tools/quine_gate_verify.py evidence/QUINE_GATE \
-    --genesis <from evidence/QUINE_GATE/RUN.md> --head <from RUN.md>
-```
-
-The report never says "secure". Each property is stated on its own —
-`reproducibility: PASS`, `anchor: PASS`, and, honestly,
-`occurrence: NOT_DEMONSTRATED`, `host_attestation: ABSENT`. Reproduction
-proves the decision is a function of the anchored inputs; it does not prove
-the run happened. Architecture and threat matrix:
-[`docs/QUINE_GATE.md`](docs/QUINE_GATE.md).
-
-## Process Verifier: is this the process I authorized?
-
-The same volume-verifier pattern — observations → fingerprint → strength tier
-→ verdict — applied to a running process. It answers two questions a pid alone
-cannot: *is this the same instance* (pid reuse is caught), and *is it still the
-same artifact* (a binary deleted or replaced under a live process is caught).
-
-```bash
-python3 tools/process_verify.py store  <pid> --baseline proc.baseline.json
-python3 tools/process_verify.py verify <pid> --baseline proc.baseline.json
-```
-
-Honest boundaries, measured: the executable hash is the **file**, not the
-memory image; a malicious process has a perfectly verifiable identity; and
-`ps` and `/proc` are one kernel layer, so corroboration is single-layer and
-there is no `STRONG` tier. Linux is `DEMONSTRATED` in full; Windows is
-`DEMONSTRATED` scoped to launch-time identity (`WindowsProcessSource` plus the
-`apps.launch` seal: same single layer, `exe_deleted` always `False`). See [`docs/PROCESS_VERIFIER.md`](docs/PROCESS_VERIFIER.md).
-
-## Quickstart
-
-### Windows 10/11
-
-**Prebuilt:** `IsyMotron.exe` from [Releases](https://github.com/DannyBaanks/IsyMotron/releases)
-(Windows 10/11, no Python required) — the stable
-[v1.0.0](https://github.com/DannyBaanks/IsyMotron/releases/tag/v1.0.0), or the
-[v1.1.0-rc.1](https://github.com/DannyBaanks/IsyMotron/releases/tag/v1.1.0-rc.1)
-candidate. It is the same binary the CI builds and smoke-tests on every run.
-
-Or build from source:
-
-```powershell
 git clone https://github.com/DannyBaanks/IsyMotron.git
 cd IsyMotron
-
-.\isymotron.ps1 help
-.\isymotron.ps1 start --demo-host
+python3 -m console --demo-host
 ```
 
-Make a real Windows machine inert until a human grants a scope:
+The demo host keeps the flow reproducible. It lets you see the proposal, local decision, execution result and receipt without giving the model unrestricted access to your computer.
 
-```powershell
-.\isymotron.ps1 host status
-.\isymotron.ps1 host grant filesystem.read --root "C:/Users/you/Pictures"
-.\isymotron.ps1 host do filesystem.read --path "C:/Users/you/Pictures"
-.\isymotron.ps1 host do filesystem.read --path "C:/Users/you/Documents" # DENY
-```
+### Optional Nebius + Nemotron planning
 
-Optional model planning (Nebius Token Factory is the hackathon path):
-
-```powershell
-$env:NEBIUS_API_KEY = "..."
-$env:ISYMOTRON_PROVIDER = "nebius"
-py tools/nemotron_check.py
-# NVIDIA NIM is the same seam: $env:NVIDIA_NIM_API_KEY + ISYMOTRON_PROVIDER = "nvidia"
-```
-
-### Linux
-
-A real host since M2 (`linux-real`): same contract, same capabilities, same
-two scope checks as Windows, plus Linux-only hardening (case-sensitive
-resolved paths, descriptor re-check, `O_NOFOLLOW` writes, no FIFOs, no
-overwrite of hard-linked files).
-
-Prebuilt:
+Set your Nebius Token Factory key and choose the provider:
 
 ```bash
-tar -xzf IsyMotron-linux-x86_64.tar.gz
-./IsyMotron-linux-x86_64/IsyMotron              # console on 127.0.0.1, real host attached
+export ISYMOTRON_PROVIDER=nebius
+export NEBIUS_API_KEY="..."
+python3 -m console
 ```
 
-From source (Python 3.10+, nothing to install):
+The default hackathon path uses NVIDIA Nemotron through Nebius Token Factory. NVIDIA NIM and local providers such as Ollama and llama.cpp use the same planner seam; the provider changes how a proposal is produced, not what the host is allowed to do.
 
-```bash
-python3 tools/isymotron_cli.py host status
-python3 tools/isymotron_cli.py host grant filesystem.read --root "$HOME/Pictures"
-python3 tools/isymotron_cli.py host do filesystem.read --path "$HOME/Pictures"
-python3 tools/isymotron_cli.py host do filesystem.read --path "$HOME/pictures" # DENY: a different directory on Linux
-```
+### Desktop builds
 
-Grants live in `$XDG_CONFIG_HOME/isymotron/grants.json`. What "parity with
-Windows" means, row by row: [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md).
+Prebuilt Windows, Linux and macOS packages are published in [GitHub Releases](https://github.com/DannyBaanks/IsyMotron/releases). The release artifacts include checksums and attestations. From source, the runtime uses the Python standard library; development checks are documented in [`requirements-dev.txt`](requirements-dev.txt).
 
-### macOS
+## Repository guide
 
-`IsyMotron-macos-arm64.tar.gz` builds, starts and attaches the real `mac-real/0.1`
-engine (`hosts/mac/host.py`): the POSIX checks are the Linux engine's; the
-platform seams are `/dev/fd` descriptor verification and an explicit
-unsupported process source. Gated on `macos-latest` in CI by
-[`tests/test_macos_real.py`](tests/test_macos_real.py).
+The product surface is intentionally easy to enter. The deeper guarantees live in focused documents:
 
-```bash
-tar -xzf IsyMotron-macos-arm64.tar.gz
-xattr -d com.apple.quarantine IsyMotron-macos-arm64/IsyMotron   # after verifying the checksum
-./IsyMotron-macos-arm64/IsyMotron --demo-host
-```
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the system fits together.
+- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — what is demonstrated and what is not.
+- [`docs/AVATAR_CONTRACT.md`](docs/AVATAR_CONTRACT.md) — why Malbolgato is representation, never authority.
+- [`docs/GUS_WEB_ENDPOINT.md`](docs/GUS_WEB_ENDPOINT.md) — safe design for a future GUS web endpoint.
+- [`docs/QUINE_GATE.md`](docs/QUINE_GATE.md) — how receipt verification is reproduced.
+- [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md) — platform scope and parity.
+- [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — provider seams and local model options.
+- [`web/`](web/) — the optional Next.js control-room frontend.
+- [`tests/`](tests/) — contract, host, planner, console and adversarial gates.
+- [`evidence/`](evidence/) — sealed runs and screenshots.
 
-Linux host awareness covers retrospective suspend timing and local interface
-state; it does not claim pre-suspend notifications, or a desktop avatar where
-Tk is missing.
+The README is the product story. Security contracts, threat boundaries and platform limitations remain explicit in the linked documents rather than being hidden or flattened into a marketing claim.
 
-## Repository map
+## Hackathon alignment
 
-```text
-core/isymotron/     contract, policy, leases, receipts, awareness, Doctor,
-                    Quine Gate: seal, claim bundle, chain, genealogy, bundle,
-                    process identity
-hosts/native.py     the one place that picks this OS's real engine
-hosts/windows/      real Windows host, grant file format and power provider
-hosts/linux/        real Linux host and power provider
-hosts/simulator/    deterministic fixture engines
-agents/             provider, planner and executor roles
-relay/              transport-only loopback relay
-console/            local web console and avatar API
-avatar/             trust-separated web/desktop avatar
-web/                Next.js surface (optional, requires console backend)
-learning/           Malbolge lesson packs and verifiers
-evidence/           sealed run artifacts and screenshots
-tests/              contract, host, planner, console and adversarial gates
-docs/               architecture, findings and operational guides
-```
+ISyMotron is submitted to the **Best Apps and Agents** track of the [Nebius × NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). The project is built around the challenge requirements: a working application using an NVIDIA open model through Nebius infrastructure, a public repository, a runnable demo path and a short public demonstration video.
 
-## Security and authority model
+The project uses Nebius Token Factory for live Nemotron planning. Our feedback is grounded in a real application rather than a benchmark: Token Factory gives the planning layer a fast path to an open NVIDIA model, while the host contract keeps the resulting system bounded and inspectable.
 
-- Missing or unreadable grants produce an inert host, not an unrestricted one.
-- A remote console may use granted authority but cannot widen it.
-- The avatar has a separate read-only token and cannot POST authority actions.
-- Receipts are produced for both `ALLOW` and `DENY` outcomes.
-- A receipt's authority is reproduction, not its seal: the verifier re-runs the
-  policy over the anchored claim, so a re-sealed `DENY→ALLOW` is rejected
-  ([`docs/QUINE_GATE.md`](docs/QUINE_GATE.md)).
-- A denied receipt has no protected result payload.
-- The Python sandbox/Doctor is a scoped verification provider, not a universal
-  OS security boundary; see [`docs/SANDBOX_V0.md`](docs/SANDBOX_V0.md).
-- The engine re-checks every path after the OS resolves it, and a scope check
-  follows its filesystem's idea of identity: case-insensitive on NTFS,
-  case-sensitive on Linux ([Finding 10](docs/FINDINGS.md)).
-- On Linux the opened descriptor itself is re-checked, closing the window
-  between resolving a name and opening it. On Windows, network paths, device
-  paths, NTFS alternate data streams and that same race remain explicitly
-  unverified; see [`docs/FINDINGS.md`](docs/FINDINGS.md).
-
-## Roadmap
-
-| Milestone | Status |
-|---|---|
-| M1 — three-platform build, release, checksums, attestations; stdlib-only runtime | **done** (v1.1.0-rc.1) |
-| M2 — real Linux host with demonstrated parity | **done** (v1.1.0-rc.1) |
-| M3 — real macOS host (`mac-real/0.1`, CI-gated on `macos-latest`; APFS case answer: case-sensitive re-check, false denies only) | **done** (scoped: no awareness clocks, no process verification source) |
-| M4 — network relay with secure pairing, replacing the loopback relay | planned |
-| M5 — IsyMotron Móvil: secure Link pairing, tasks/receipts and bounded human lease approval; the phone never becomes host authority | **done, scoped** (real iPhone + Linux pairing/task/approval demonstrated; Android physical flow and on-device inference remain NOT_DEMONSTRATED) |
-| M6 — **ISyCode**: minimalist TUI agent on the IsyMotron fabric (provider → planner → enforcer → receipts in-terminal) | planned — [`../ISyCode/ROADMAP.md`](../ISyCode/ROADMAP.md) |
-| ~~Real Windows 10 verification~~ | retired 2026-09-26 (no licence/hardware; claim F is OUT_OF_SCOPE) |
+The hackathon judges evaluate technological implementation, design, potential impact and quality of the idea. ISyMotron is designed to be legible on all four dimensions: a real cross-platform system, a calmer product surface, a concrete problem for agent safety and a non-obvious answer to the question of how AI should act on real devices.
 
 ## License
 
@@ -545,6 +204,4 @@ ISyMotron is released under the [MIT License](LICENSE).
 
 ## Asset provenance
 
-The README artwork and evidence screenshots are catalogued in
-[`docs/assets/PROVENANCE.md`](docs/assets/PROVENANCE.md). The hero is generated
-illustration only; it is not a screenshot, benchmark or proof of execution.
+README artwork and evidence screenshots are catalogued in [`docs/assets/PROVENANCE.md`](docs/assets/PROVENANCE.md). The hero is a product illustration, not a screenshot, benchmark or proof of execution. The screenshots and GIFs in this README come from the repository's real console/avatar evidence.
