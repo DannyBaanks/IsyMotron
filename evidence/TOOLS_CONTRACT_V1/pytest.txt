@@ -1,0 +1,26 @@
+...............................s........................................ [ 11%]
+........................................................................ [ 22%]
+........................................................................ [ 34%]
+..s..................................................................... [ 45%]
+..................sssss................................................. [ 57%]
+.........................................................sssss.......... [ 68%]
+........................................................................ [ 80%]
+........................................................................ [ 91%]
+......................................................                   [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_live_local_model.py:21: live local model: set ISYMOTRON_LIVE_LOCAL=1 with Ollama running
+SKIPPED [1] tests/test_macos_real.py:36: real macOS engine (runs in CI on macos-latest)
+SKIPPED [1] tests/test_win11_real.py:16: real Windows engine
+SKIPPED [1] tests/test_avatar_surface.py:75: ISYCO_ROOT unset: cross-repo check stays out of the suite by default
+SKIPPED [1] tests/test_learning_malbolge.py:245: sibling repositories not present (this check is dev-machine only)
+SKIPPED [1] tests/test_live_model.py:66: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:74: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:83: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:97: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:110: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_process_identity.py:341: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:356: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:371: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:395: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:407: Windows process source needs sys.platform == 'win32'
+618 passed, 15 skipped in 82.08s (0:01:22)
