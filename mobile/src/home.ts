@@ -83,6 +83,50 @@ function button(label: string, className: string, onClick: () => void | Promise<
   return b;
 }
 
+function connectionStatus(state: "linked" | "checking" | "offline" | "verified", label: string, detail: string): HTMLElement {
+  const status = el("span", `connection-status ${state}`);
+  status.setAttribute("role", "status");
+  status.title = detail;
+  status.append(el("i"), el("span", undefined, label));
+  return status;
+}
+
+function protocolSteps(active: "discovering" | "verifying" | "linked"): HTMLElement {
+  const steps = el("div", "protocol-steps");
+  const labels = [["discovering", "buscar"], ["verifying", "verificar"], ["linked", "enlazar"]] as const;
+  for (const [id, label] of labels) {
+    const item = el("span", id === active ? "active" : labels.findIndex(([key]) => key === id) < labels.findIndex(([key]) => key === active) ? "done" : "");
+    item.append(el("i"), el("span", undefined, label));
+    steps.append(item);
+  }
+  return steps;
+}
+
+function enablePullToRefresh(screen: HTMLElement, refresh: () => void | Promise<void>): void {
+  const indicator = el("div", "pull-refresh", "Suelta para actualizar");
+  indicator.setAttribute("aria-live", "polite");
+  screen.prepend(indicator);
+  let startY = 0;
+  let pulling = false;
+  screen.addEventListener("touchstart", (event) => {
+    if (screen.scrollTop === 0) startY = event.touches[0]?.clientY ?? 0;
+  }, { passive: true });
+  screen.addEventListener("touchmove", (event) => {
+    if (!startY || screen.scrollTop > 0) return;
+    const distance = Math.min(80, Math.max(0, (event.touches[0]?.clientY ?? 0) - startY));
+    pulling = distance > 12;
+    indicator.style.setProperty("--pull-distance", `${distance}px`);
+    indicator.classList.toggle("ready", distance > 64);
+  }, { passive: true });
+  screen.addEventListener("touchend", () => {
+    const shouldRefresh = pulling && indicator.classList.contains("ready");
+    startY = 0; pulling = false;
+    indicator.style.setProperty("--pull-distance", "0px");
+    indicator.classList.remove("ready");
+    if (shouldRefresh) { indicator.textContent = "Actualizando…"; void refresh(); }
+  }, { passive: true });
+}
+
 interface ChatLauncher {
   button: HTMLButtonElement;
   setState(state: PetState): void;
@@ -233,6 +277,7 @@ export function startApp(deps: AppDeps): void {
     frameEl = null;
     const app = el("div", "app");
     const screen = el("main", "screen");
+    screen.classList.add("screen-enter");
     screen.append(...content);
     app.append(screen);
     if (tab) {
@@ -254,6 +299,7 @@ export function startApp(deps: AppDeps): void {
       app.append(launcher.button);
     }
     root.replaceChildren(app);
+    requestAnimationFrame(() => screen.classList.add("entered"));
   }
 
   function go(tab: Tab): void {
@@ -309,7 +355,7 @@ export function startApp(deps: AppDeps): void {
       ico.innerHTML = ICON.pc;
       const open = el("button", "row-btn");
       open.type = "button";
-      open.append(el("b", undefined, peer.name), el("small", undefined, `${prettyFingerprint(peer.office_id).slice(0, 9)} · ${peer.addresses[0] ?? ""}`));
+      open.append(el("b", undefined, peer.name), el("small", undefined, `${prettyFingerprint(peer.office_id).slice(0, 9)} · ${peer.addresses[0] ?? ""}`), connectionStatus("linked", "enlazada", "Identidad fijada localmente; la PC conserva la autoridad."));
       open.addEventListener("click", () => peerScreen(peer));
       row.append(ico, open, button("ping", "ping", async () => void (await doPing(peer))));
       pcs.append(row);
@@ -355,6 +401,8 @@ export function startApp(deps: AppDeps): void {
     const localMode = button("En este teléfono", "btn small", () => gus.selectMode("local"));
     const remoteMode = button("Proveedor remoto", "btn small", () => gus.selectMode("remote"));
     const modeHint = el("p", "hint small");
+    const flow = el("div", "gus-trust-flow");
+    flow.append(el("span", "active", "GUS propone"), el("i"), el("span", undefined, "tú revisas"), el("i"), el("span", undefined, "la PC decide"));
     const modelList = el("div", "gus-models");
     const status = el("p", "gus-status"); status.setAttribute("aria-live", "polite");
     const transcript = el("div", "gus-transcript"); transcript.setAttribute("aria-label", "Conversación con GUS");
@@ -412,6 +460,7 @@ export function startApp(deps: AppDeps): void {
     }
 
     function renderState(next: ReturnType<GusChatController["getState"]>): void {
+      const stickToBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 48;
       localMode.classList.toggle("selected", next.mode === "local"); remoteMode.classList.toggle("selected", next.mode === "remote");
       localMode.setAttribute("aria-pressed", String(next.mode === "local")); remoteMode.setAttribute("aria-pressed", String(next.mode === "remote"));
       modeHint.textContent = next.mode === "local"
@@ -419,13 +468,16 @@ export function startApp(deps: AppDeps): void {
         : "Modo remoto seleccionado. Solo se enviarán mensajes cuando pulses Enviar.";
       status.textContent = next.error || next.notice || (next.loading ? "GUS está respondiendo…" : "");
       status.className = next.error ? "gus-status error" : "gus-status";
+      flow.dataset.state = next.loading ? "processing" : "idle";
       send.disabled = next.loading;
       stop.disabled = !next.loading;
       transcript.replaceChildren();
       for (const message of next.messages) {
         const bubble = el("p", `gus-message ${message.role}`, message.content);
+        bubble.dataset.role = message.role;
         transcript.append(bubble);
       }
+      if (stickToBottom) transcript.scrollTop = transcript.scrollHeight;
       if (next.progress) {
         const mb = (next.progress.receivedBytes / 1_000_000).toFixed(0);
         const total = next.progress.totalBytes ? ` / ${(next.progress.totalBytes / 1_000_000).toFixed(0)} MB` : "";
@@ -443,6 +495,7 @@ export function startApp(deps: AppDeps): void {
       top, el("div", "eyebrow", "Orientación · sin acceso a Link"), el("h1", undefined, "GUS"),
       el("p", "hint small", "GUS solo conversa. No puede usar tus permisos, leer archivos ni mandar tareas a tus PCs."),
       modeRow, modeHint,
+      flow,
       el("h2", undefined, "Modelos locales verificados"), modelList,
       ...(deps.gus?.models ? [button("Importar copia guardada con iSyCode", "btn small", () => void gus.importModels())] : []),
       remotePanel, transcript, status, composer, stop, clear,
@@ -460,7 +513,9 @@ export function startApp(deps: AppDeps): void {
     const sheet = el("div", "sheet");
     sheet.setAttribute("role", "dialog");
     sheet.setAttribute("aria-label", "Controles de Malbolgato");
-    const close = () => scrim.remove();
+    sheet.setAttribute("aria-modal", "true");
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const close = () => { scrim.remove(); previousFocus?.focus(); };
     const item = (label: string, hint: string, act: () => void) => {
       const b = el("button");
       b.type = "button";
@@ -479,7 +534,15 @@ export function startApp(deps: AppDeps): void {
     sheet.append(item("Cerrar", "", () => {}));
     scrim.append(sheet);
     scrim.addEventListener("click", (e) => { if (e.target === scrim) close(); });
-    scrim.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+    scrim.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (e.key !== "Tab") return;
+      const focusable = [...sheet.querySelectorAll<HTMLElement>("button, [href], input, textarea, [tabindex]:not([tabindex='-1'])")];
+      if (!focusable.length) return;
+      const first = focusable[0]!; const last = focusable[focusable.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
     root.querySelector(".app")?.append(scrim);
     (sheet.querySelector("button") as HTMLButtonElement | null)?.focus();
   }
@@ -507,6 +570,7 @@ export function startApp(deps: AppDeps): void {
     layout([
       button("‹ Inicio", "back", () => home()),
       steps(2),
+      protocolSteps("discovering"),
       el("div", "eyebrow", "Enlazar con mi PC"),
       el("h1", undefined, "¿Dónde está tu PC?"),
       one,
@@ -547,6 +611,7 @@ export function startApp(deps: AppDeps): void {
     layout([
       button("‹ Dirección", "back", () => pairScreen()),
       steps(3),
+      protocolSteps("verifying"),
       pc,
       el("div", "eyebrow", "Escribe este código en tu PC"),
       code,
@@ -581,25 +646,34 @@ export function startApp(deps: AppDeps): void {
     for (const r of mine) {
       const peer = peers[r.office_id];
       const row = el("div", "task");
-      const status = el("span", "hint small", "");
+      const status = el("span", "status-pill pending", "pendiente");
       row.append(el("strong", undefined, r.title ?? r.task_id ?? "tarea"), el("span", "hint small", `${r.name} · ${clock(r.at)}`), status);
       if (peer) {
         row.append(
           button("Ver estado", "btn small", async () => {
+            status.className = "status-pill loading";
+            status.textContent = "consultando…";
             try {
               const reply = await task(await deps.identity(), peer, String(r.task_id), deps.fetch);
-              status.textContent = ` · ${String((reply.task as { status?: string } | undefined)?.status ?? "?")}`;
+              const state = String((reply.task as { status?: string } | undefined)?.status ?? "?");
+              status.className = `status-pill ${state === "completed" ? "success" : state === "cancelled" ? "denied" : "pending"}`;
+              status.textContent = `· ${state}`;
             } catch (error) {
-              status.textContent = ` · ${explain(error)}`;
+              status.className = "status-pill denied";
+              status.textContent = "· sin respuesta";
             }
           }),
           button("Cancelar", "btn small", async () => {
+            status.className = "status-pill loading";
+            status.textContent = "cancelando…";
             try {
               await cancel(await deps.identity(), peer, String(r.task_id), deps.fetch);
               addReceipt(kv, { kind: "link_cancelled", office_id: peer.office_id, name: peer.name, task_id: r.task_id });
-              status.textContent = " · cancelled";
+              status.className = "status-pill denied";
+              status.textContent = "· cancelled";
             } catch (error) {
-              status.textContent = ` · ${explain(error)}`;
+              status.className = "status-pill denied";
+              status.textContent = "· no cancelada";
             }
           }),
         );
@@ -654,6 +728,7 @@ export function startApp(deps: AppDeps): void {
       button("‹ Mis PCs", "back", () => home()),
       el("h1", undefined, peer.name),
       el("p", "hint small", `Huella ${prettyFingerprint(peer.office_id)} · ${peer.addresses.join(", ")}`),
+      connectionStatus("linked", "Identidad enlazada", "La respuesta solo se acepta con una firma válida de esta PC."),
       button("Probar conexión", "btn", async () => {
         out.textContent = "Llamando…";
         out.textContent = (await doPing(peer)) ? `✓ ${peer.name} contestó, con su firma.` : "No contestó. Revisa la Wi-Fi y que corra «isymotron link servir --red».";
@@ -679,12 +754,20 @@ export function startApp(deps: AppDeps): void {
 
   function permissionCard(peer: Peer, request: PermissionRequest, notice: HTMLElement, refresh: () => Promise<void>): HTMLElement {
     const card = el("section", "card permission-card");
+    const meta = el("div", "permission-meta");
+    meta.append(el("span", "pill warn", `riesgo · ${request.capability}`), el("span", "pill", `TTL · ${request.ttl_s}s`));
+    const scope = el("details", "permission-scope");
+    scope.append(el("summary", undefined, "Ver alcance solicitado"), el("code", undefined, JSON.stringify(request.scope)));
+    const timeline = el("div", "decision-timeline");
+    timeline.append(el("span", "active", "solicitado"), el("i"), el("span", undefined, "pendiente"));
     card.append(
       el("div", "eyebrow", peer.name),
       el("h2", undefined, request.capability),
+      meta,
       el("p", "hint small", `Solicitado por ${request.subject} · hasta ${request.ttl_s} s`),
-      el("p", "hint small", `Alcance solicitado: ${JSON.stringify(request.scope)}`),
+      scope,
       el("p", "hint", request.reason || "Esta solicitud no incluyó un motivo."),
+      timeline,
     );
     const actions = el("div", "sec");
     for (const choice of ["approve", "deny"] as const) {
@@ -707,6 +790,7 @@ export function startApp(deps: AppDeps): void {
             });
             setMood(approved ? "success" : "waiting", 1800);
             showSigned(peer.name, approved ? "permiso aprobado" : "permiso rechazado", `${request.capability} · ${request.request_id}`);
+            timeline.replaceChildren(el("span", "done", "solicitado"), el("i", "done"), el("span", approved ? "approved" : "denied", approved ? "aprobado" : result.status === "expired" ? "vencido" : "rechazado"));
             const outcome = approved
               ? `Permiso aprobado por ${peer.name}. La PC emitió el lease dentro de sus límites.`
               : result.status === "expired"
@@ -740,7 +824,7 @@ export function startApp(deps: AppDeps): void {
     ], "permissions");
 
     async function refresh(): Promise<void> {
-      rows.replaceChildren();
+      rows.replaceChildren(...Array.from({ length: 2 }, () => el("div", "skeleton-card")));
       if (!peers.length) {
         notice.textContent = "Enlaza una PC para revisar sus permisos pendientes.";
         return;
@@ -764,19 +848,29 @@ export function startApp(deps: AppDeps): void {
       else if (!pendingCount) notice.textContent = "No hay permisos pendientes.";
       else notice.textContent = `${pendingCount} solicitud${pendingCount === 1 ? "" : "es"} esperando tu decisión.`;
     }
+    enablePullToRefresh(root.querySelector(".screen")!, refresh);
     void refresh().catch((error) => { notice.textContent = explain(error); });
   }
 
   function receiptsScreen(): void {
-    const feed = el("div", "feed");
+    const feed = el("div", "receipt-timeline");
     const all = loadReceipts(kv).slice().reverse();
     if (!all.length) feed.append(el("p", "hint", "Todavía no hay recibos. Se crean al enlazar una PC y al mandarle tareas."));
     for (const r of all) {
-      const row = el("div");
-      row.append(el("time", undefined, `${r.at.slice(5, 10)} ${clock(r.at)}`), el("span", undefined, describeReceipt(r)));
+      const row = el("article", "receipt-item");
+      const kind = r.kind.includes("approved") || r.kind === "link_paired" ? "verified" : r.kind.includes("denied") || r.kind.includes("expired") ? "denied" : "received";
+      row.dataset.state = kind;
+      const marker = el("span", "receipt-marker", kind === "verified" ? "✓" : kind === "denied" ? "!" : "·");
+      const body = el("div", "receipt-body");
+      body.append(el("strong", undefined, describeReceipt(r)), el("time", undefined, `${r.at.slice(5, 10)} ${clock(r.at)}`));
+      const details = el("details", "receipt-details");
+      details.append(el("summary", undefined, kind === "verified" ? "Verificado" : kind === "denied" ? "No concedido" : "Ver detalle"), el("code", undefined, JSON.stringify(r, null, 2)));
+      body.append(details);
+      row.append(marker, body);
       feed.append(row);
     }
-    layout([el("div", "eyebrow", "Historial de este teléfono"), el("h1", undefined, "Recibos"), el("p", "hint small", "Lo que este teléfono hizo. Lo que decidió cada PC queda en los recibos de esa PC."), feed], "receipts");
+    layout([el("div", "eyebrow", "Historial de este teléfono"), el("h1", undefined, "Recibos"), el("p", "hint small", "Evidencia local del teléfono. Solo marcamos como verificado lo que llegó con una respuesta sellada."), feed], "receipts");
+    enablePullToRefresh(root.querySelector(".screen")!, () => receiptsScreen());
   }
 
   function phoneScreen(): void {
