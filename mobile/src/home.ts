@@ -83,6 +83,76 @@ function button(label: string, className: string, onClick: () => void | Promise<
   return b;
 }
 
+interface ChatLauncher {
+  button: HTMLButtonElement;
+  setState(state: PetState): void;
+  cleanup(): void;
+}
+
+const LAUNCHER_BADGE: Partial<Record<PetState, string>> = {
+  thinking: "GUS pensando",
+  working: "PC trabajando",
+  waiting: "Solicitud pendiente",
+  success: "Receipt recibido",
+  error: "Atención requerida",
+};
+
+function makeChatLauncher(openChat: () => void, app: HTMLElement): ChatLauncher {
+  const launcher = el("button", "malbo-launcher");
+  launcher.type = "button";
+  launcher.setAttribute("aria-label", "Abrir chat con ISyMotron");
+  launcher.title = "Abrir chat con ISyMotron";
+  const image = el("img", "malbo-launcher-image") as HTMLImageElement;
+  const badge = el("span", "malbo-launcher-badge");
+  badge.setAttribute("aria-live", "polite");
+  badge.hidden = true;
+  image.alt = "";
+  image.draggable = false;
+  const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  image.src = reduced ? "malbolgato/idle-static.png" : "malbolgato/idle-slow.gif";
+  launcher.append(image, badge);
+
+  const setState = (state: PetState): void => {
+    launcher.dataset.state = state;
+    const label = LAUNCHER_BADGE[state] ?? "";
+    badge.textContent = label;
+    badge.hidden = !label;
+    if (state === "success") {
+      launcher.classList.remove("flash");
+      void launcher.offsetWidth;
+      launcher.classList.add("flash");
+    }
+  };
+  const open = (): void => {
+    launcher.classList.add("opening");
+    window.setTimeout(() => { launcher.classList.remove("opening"); openChat(); }, 150);
+  };
+  launcher.addEventListener("click", open);
+
+  const updateVisibility = (): void => {
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const keyboardOpen = window.innerHeight - viewportHeight > 120;
+    const modalOpen = Boolean(launcher.closest(".app")?.querySelector(".scrim"));
+    launcher.hidden = keyboardOpen || modalOpen;
+  };
+  const viewport = window.visualViewport;
+  viewport?.addEventListener("resize", updateVisibility);
+  window.addEventListener("resize", updateVisibility);
+  const observer = new MutationObserver(updateVisibility);
+  observer.observe(app, { childList: true, subtree: true });
+  updateVisibility();
+
+  return {
+    button: launcher,
+    setState,
+    cleanup: () => {
+      viewport?.removeEventListener("resize", updateVisibility);
+      window.removeEventListener("resize", updateVisibility);
+      observer.disconnect();
+    },
+  };
+}
+
 const clock = (iso: string) => new Date(iso).toTimeString().slice(0, 5);
 
 export interface AppDeps {
@@ -104,6 +174,7 @@ export function startApp(deps: AppDeps): void {
   let moodTimer = 0;
   let signed: Signed | null = null;
   let pet: ReturnType<typeof createPet> | null = null;
+  let launcher: ChatLauncher | null = null;
   let chip: { dot: HTMLElement; label: HTMLElement } | null = null;
   let frameEl: HTMLElement | null = null;
   let gusUnsubscribe: (() => void) | null = null;
@@ -122,6 +193,7 @@ export function startApp(deps: AppDeps): void {
   function setMood(state: PetState, ms = 0, then: PetState = "idle"): void {
     mood = state;
     pet?.setState(state);
+    launcher?.setState(state);
     if (chip) {
       chip.label.textContent = STATE_LABEL[state];
       chip.dot.style.background = STATE_COLOR[state];
@@ -155,6 +227,8 @@ export function startApp(deps: AppDeps): void {
     gusUnsubscribe?.(); gusUnsubscribe = null;
     pet?.destroy();
     pet = null;
+    launcher?.cleanup();
+    launcher = null;
     chip = null;
     frameEl = null;
     const app = el("div", "app");
@@ -162,6 +236,7 @@ export function startApp(deps: AppDeps): void {
     screen.append(...content);
     app.append(screen);
     if (tab) {
+      app.classList.add("has-launcher");
       const bar = el("nav", "tabbar");
       bar.setAttribute("aria-label", "Secciones");
       const tabs: Array<[Tab, string, string]> = [["home", "Inicio", ICON.home], ["tasks", "Tareas", ICON.tasks], ["permissions", "Permisos", ICON.permissions], ["receipts", "Recibos", ICON.receipts], ["phone", "Teléfono", ICON.phone]];
@@ -174,6 +249,9 @@ export function startApp(deps: AppDeps): void {
         bar.append(b);
       }
       app.append(bar);
+      launcher = makeChatLauncher(gusScreen, app);
+      launcher.setState(mood);
+      app.append(launcher.button);
     }
     root.replaceChildren(app);
   }
