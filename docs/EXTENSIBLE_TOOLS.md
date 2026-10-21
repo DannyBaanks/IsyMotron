@@ -98,3 +98,10 @@ python -m pytest -q -rs
 ```
 
 Las pruebas de worker real necesitan Linux/bubblewrap; otras plataformas las omiten explícitamente. El constructor se prueba también con una respuesta determinista del proveedor para separar el protocolo de generación del acceso a un servicio real.
+
+
+## Pruebas reales con NVIDIA (21 de octubre)
+
+La clave NIM existente permite llamar al servicio sin cambiar el proveedor guardado. `nemotron-3.5-embed-1b` se probó para recuperar descripciones de tools: es un modelo de embeddings y no sirve como constructor de código. La prueba exploratoria y sus límites están en `evidence/NVIDIA_NEMOTRON_1B/`.
+
+La generación de paquetes con `nvidia/nemotron-3.5-lightning-30b-a3b` sigue pendiente: las respuestas probadas fueron rechazadas. El constructor aporta un ejemplo completo y reserva espacio para la respuesta limitando el razonamiento a 1024 tokens en ese modelo. No habilita tools automáticamente. Ver `evidence/NVIDIA_NEMOTRON_GENERATION/RUN.md` para el resultado y el trabajo pendiente.

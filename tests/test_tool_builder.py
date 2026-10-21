@@ -32,3 +32,30 @@ def test_provider_failure_is_structured_and_leaves_no_package(tmp_path):
     with pytest.raises(ToolError, match='PROPOSAL_FAILED'):
         ToolBuilder(Unavailable()).propose('Count characters',dest)
     assert not dest.exists()
+
+
+def test_truncated_package_is_never_published(tmp_path):
+    dest = tmp_path/'proposal'
+    reply = '<TRUNCATED>' + json.dumps({'files': package_files()})
+    with pytest.raises(ToolError, match='truncated'):
+        ToolBuilder(ScriptedProvider([reply])).propose('Count characters', dest)
+    assert not dest.exists()
+
+
+def test_lightning_has_room_for_answer_and_receives_a_valid_example(tmp_path):
+    class Capture(ScriptedProvider):
+        def complete(self, messages, **options):
+            self.options = dict(options)
+            # The scripted response doesn't need a real model's reasoning budget.
+            options.pop('reasoning_budget', None)
+            return super().complete(messages, **options)
+    provider = Capture([json.dumps({'files': package_files()})])
+    provider.name = 'nvidia'
+    provider.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'
+    ToolBuilder(provider).propose('Count characters', tmp_path/'proposal')
+    assert provider.options['max_tokens'] == 8192
+    assert provider.options['json_object'] is True
+    assert provider.options['reasoning_budget'] == 1024
+    messages = provider.calls[0]
+    example = ToolPackage.from_files(json.loads(messages[2]['content'])['files'])
+    assert example.tool_id == 'text-length'

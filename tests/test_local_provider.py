@@ -146,6 +146,17 @@ def test_json_mode_only_where_the_preset_declares_it(stub):
         "hosted presets are unchanged: the prompt alone asks for JSON"
 
 
+def test_nvidia_reasoning_budget_is_explicit_and_bounded(stub):
+    p = Provider(name='nvidia', base_url=stub + '/v1', api_key='k')
+    p.complete([{'role': 'user', 'content': 'x'}], max_tokens=8192, reasoning_budget=1024)
+    assert _Stub.requests[-1]['body']['reasoning_budget'] == 1024
+    before = len(_Stub.requests)
+    for budget in (True, -1, 8192):
+        with pytest.raises(ProviderError, match='reasoning_budget'):
+            p.complete([{'role': 'user', 'content': 'x'}], max_tokens=8192, reasoning_budget=budget)
+    assert len(_Stub.requests) == before
+
+
 def test_a_stopped_local_server_says_how_to_start_it(stub):
     import socket
     s = socket.socket()

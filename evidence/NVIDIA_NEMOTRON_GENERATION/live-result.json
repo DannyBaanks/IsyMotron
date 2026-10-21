@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-21",
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "reasoning_budget": 1024,
+  "max_tokens": 8192,
+  "approved": false,
+  "host_files_used": false,
+  "outcome": "REJECTED",
+  "code": "INVALID_PROPOSAL",
+  "detail": "model did not produce a supported package",
+  "seconds": 10.171
+}

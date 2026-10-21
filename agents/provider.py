@@ -271,7 +271,8 @@ class Provider:
     def complete(self, messages: Sequence[Mapping[str, str]], *,
                  max_tokens: int = 1024, temperature: float = 0.2,
                  stop: Sequence[str] | None = None,
-                 json_object: bool = False) -> Completion:
+                 json_object: bool = False,
+                 reasoning_budget: int | None = None) -> Completion:
         """`json_object=True` asks for one JSON object. Honoured only where the
         preset declares JSON mode; elsewhere the prompt alone asks for it, and
         the planner still parses (and refuses) the same way."""
@@ -288,6 +289,10 @@ class Provider:
             body["stop"] = list(stop)
         if json_object and self.json_mode:
             body["response_format"] = {"type": "json_object"}
+        if reasoning_budget is not None:
+            if self.name != "nvidia" or type(reasoning_budget) is not int or not 0 <= reasoning_budget < max_tokens:
+                raise ProviderError("reasoning_budget requires NVIDIA and 0 <= budget < max_tokens")
+            body["reasoning_budget"] = reasoning_budget
 
         before = self.awareness.snapshot() if self.awareness else None
         t0 = time.time()
