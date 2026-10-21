@@ -10,9 +10,12 @@ import { prettyFingerprint, type LinkIdentity } from "./link/identity";
 import { createPet, ROW, type PetState } from "./pet";
 import { addReceipt, forgetPeer, loadPeers, loadReceipts, spacedCode, trustPeer, type KeyValue, type PhoneReceipt } from "./store";
 import { canPair, type CryptoSupport } from "./support";
-import { createGusChat, type GusAppDeps, type GusChatController } from "./gus/chat";
-import { GUS_MODELS } from "./gus/catalog.generated";
-import { NVIDIA_NIM_PRESET } from "./gus/remote";
+import type { GusAppDeps, GusChatController } from "./gus/chat";
+import type { GusModelManifest } from "./gus/catalog.generated";
+type NvidiaPreset = typeof import("./gus/remote").NVIDIA_NIM_PRESET;
+
+let GUS_MODELS: readonly GusModelManifest[] = [];
+let NVIDIA_NIM_PRESET = null as unknown as NvidiaPreset;
 
 export function supportLines(s: CryptoSupport): string[] {
   const mark = (ok: boolean) => (ok ? "✓" : "✗");
@@ -102,29 +105,37 @@ function protocolSteps(active: "discovering" | "verifying" | "linked"): HTMLElem
   return steps;
 }
 
-function enablePullToRefresh(screen: HTMLElement, refresh: () => void | Promise<void>): void {
+function enablePullToRefresh(screen: HTMLElement, refresh: () => void | Promise<void>): () => void {
   const indicator = el("div", "pull-refresh", "Suelta para actualizar");
   indicator.setAttribute("aria-live", "polite");
   screen.prepend(indicator);
   let startY = 0;
   let pulling = false;
-  screen.addEventListener("touchstart", (event) => {
+  const onStart = (event: TouchEvent): void => {
     if (screen.scrollTop === 0) startY = event.touches[0]?.clientY ?? 0;
-  }, { passive: true });
-  screen.addEventListener("touchmove", (event) => {
+  };
+  const onMove = (event: TouchEvent): void => {
     if (!startY || screen.scrollTop > 0) return;
     const distance = Math.min(80, Math.max(0, (event.touches[0]?.clientY ?? 0) - startY));
     pulling = distance > 12;
     indicator.style.setProperty("--pull-distance", `${distance}px`);
     indicator.classList.toggle("ready", distance > 64);
-  }, { passive: true });
-  screen.addEventListener("touchend", () => {
+  };
+  const onEnd = (): void => {
     const shouldRefresh = pulling && indicator.classList.contains("ready");
     startY = 0; pulling = false;
     indicator.style.setProperty("--pull-distance", "0px");
     indicator.classList.remove("ready");
     if (shouldRefresh) { indicator.textContent = "Actualizando…"; void refresh(); }
-  }, { passive: true });
+  };
+  screen.addEventListener("touchstart", onStart, { passive: true });
+  screen.addEventListener("touchmove", onMove, { passive: true });
+  screen.addEventListener("touchend", onEnd, { passive: true });
+  return () => {
+    screen.removeEventListener("touchstart", onStart);
+    screen.removeEventListener("touchmove", onMove);
+    screen.removeEventListener("touchend", onEnd);
+  };
 }
 
 interface ChatLauncher {
@@ -205,7 +216,7 @@ export interface AppDeps {
   identity: () => Promise<LinkIdentity>;
   support: Promise<CryptoSupport>;
   fetch: Fetch;
-  gus?: GusAppDeps;
+  gus?: GusAppDeps | (() => Promise<GusAppDeps>);
 }
 
 type Tab = "home" | "tasks" | "permissions" | "receipts" | "phone";
@@ -222,15 +233,32 @@ export function startApp(deps: AppDeps): void {
   let chip: { dot: HTMLElement; label: HTMLElement } | null = null;
   let frameEl: HTMLElement | null = null;
   let gusUnsubscribe: (() => void) | null = null;
-  const gus: GusChatController = createGusChat(deps.gus ?? {
-    local: null, remote: null, catalogue: GUS_MODELS, models: null,
-    secureStore: {
-      async getRemoteConfig() { return null; }, async getApiKey() { return null; },
-      async saveRemoteConfig() { throw new Error("La configuración remota requiere almacenamiento seguro nativo."); },
-      async saveApiKey() { throw new Error("La llave remota requiere almacenamiento seguro nativo."); },
-      async clearRemoteConfig() { throw new Error("La configuración remota requiere almacenamiento seguro nativo."); },
-    },
-  });
+  let screenCleanups: Array<() => void> = [];
+  let gus = null as unknown as GusChatController;
+  let gusLoad: Promise<GusChatController> | null = null;
+  let gusReady = false;
+  let gusDeps: GusAppDeps | null = null;
+  async function loadGus(): Promise<GusChatController> {
+    if (gusLoad) return gusLoad;
+    gusLoad = Promise.all([import("./gus/chat"), import("./gus/catalog.generated"), import("./gus/remote"), typeof deps.gus === "function" ? deps.gus() : Promise.resolve(deps.gus)]).then(([chat, catalog, remote, provided]) => {
+      GUS_MODELS = catalog.GUS_MODELS;
+      NVIDIA_NIM_PRESET = remote.NVIDIA_NIM_PRESET;
+      const fallback: GusAppDeps = provided ?? {
+        local: null, remote: null, catalogue: GUS_MODELS, models: null,
+        secureStore: {
+          async getRemoteConfig() { return null; }, async getApiKey() { return null; },
+          async saveRemoteConfig() { throw new Error("La configuración remota requiere almacenamiento seguro nativo."); },
+          async saveApiKey() { throw new Error("La llave remota requiere almacenamiento seguro nativo."); },
+          async clearRemoteConfig() { throw new Error("La configuración remota requiere almacenamiento seguro nativo."); },
+        },
+      };
+      gusDeps = fallback;
+      gus = chat.createGusChat(fallback);
+      gusReady = true;
+      return gus;
+    });
+    return gusLoad;
+  }
   void deps.support.then((s) => (support = s));
 
   /** What the app is doing, shown by Malbolgato and the status chip. */
@@ -268,6 +296,7 @@ export function startApp(deps: AppDeps): void {
   }
 
   function layout(content: HTMLElement[], tab: Tab | null): void {
+    for (const cleanup of screenCleanups.splice(0)) cleanup();
     gusUnsubscribe?.(); gusUnsubscribe = null;
     pet?.destroy();
     pet = null;
@@ -395,6 +424,13 @@ export function startApp(deps: AppDeps): void {
 
   // --------------------------------------------------------------- GUS
   function gusScreen(): void {
+    if (!gusReady) {
+      const loading = el("p", "gus-loading", "Preparando GUS…");
+      loading.setAttribute("aria-live", "polite");
+      layout([button("‹ Inicio", "back", () => home()), el("div", "eyebrow", "Asistente local"), el("h1", undefined, "GUS"), loading], null);
+      void loadGus().then(() => gusScreen()).catch((error) => { loading.className = "gus-status error"; loading.textContent = explain(error); });
+      return;
+    }
     const state = gus.getState();
     const top = button("‹ Inicio", "back", () => home());
     const modeRow = el("div", "gus-modes");
@@ -406,6 +442,8 @@ export function startApp(deps: AppDeps): void {
     const modelList = el("div", "gus-models");
     const status = el("p", "gus-status"); status.setAttribute("aria-live", "polite");
     const transcript = el("div", "gus-transcript"); transcript.setAttribute("aria-label", "Conversación con GUS");
+    let transcriptKeys: string[] = [];
+    let transcriptNodes: HTMLElement[] = [];
     const prompt = el("textarea", "field gus-prompt"); prompt.rows = 2; prompt.maxLength = 12000; prompt.placeholder = "Pregúntale algo a GUS"; prompt.setAttribute("aria-label", "Mensaje para GUS");
     const composer = el("form", "gus-composer");
     const send = el("button", "btn primary small", "Enviar"); send.type = "submit";
@@ -450,7 +488,7 @@ export function startApp(deps: AppDeps): void {
           for (const limitation of model.limitations) limits.append(el("li", undefined, limitation));
           card.append(limits);
         }
-        if (deps.gus?.models) {
+        if (gusDeps?.models) {
           card.append(installed ? el("span", "pill", "verificado e instalado") : button("Descargar y verificar", "btn small", () => void gus.downloadModel(model.id)));
           if (installed) card.append(button("Guardar copia externa", "btn small", () => void gus.exportModel(model.id)));
           if (current.progress?.modelId === model.id) card.append(button("Cancelar descarga", "btn small", () => void gus.cancelDownload(model.id)));
@@ -464,19 +502,26 @@ export function startApp(deps: AppDeps): void {
       localMode.classList.toggle("selected", next.mode === "local"); remoteMode.classList.toggle("selected", next.mode === "remote");
       localMode.setAttribute("aria-pressed", String(next.mode === "local")); remoteMode.setAttribute("aria-pressed", String(next.mode === "remote"));
       modeHint.textContent = next.mode === "local"
-        ? deps.gus?.local ? "Modo local: el modelo seleccionado se ejecuta en este teléfono." : "Modo local seleccionado. En navegador no hay runtime; la app no enviará nada a la nube."
+        ? gusDeps?.local ? "Modo local: el modelo seleccionado se ejecuta en este teléfono." : "Modo local seleccionado. En navegador no hay runtime; la app no enviará nada a la nube."
         : "Modo remoto seleccionado. Solo se enviarán mensajes cuando pulses Enviar.";
       status.textContent = next.error || next.notice || (next.loading ? "GUS está respondiendo…" : "");
       status.className = next.error ? "gus-status error" : "gus-status";
       flow.dataset.state = next.loading ? "processing" : "idle";
       send.disabled = next.loading;
       stop.disabled = !next.loading;
-      transcript.replaceChildren();
-      for (const message of next.messages) {
+      const nextKeys = next.messages.map((message) => `${message.role}\u0000${message.content}`);
+      let stable = 0;
+      while (stable < transcriptKeys.length && stable < nextKeys.length && transcriptKeys[stable] === nextKeys[stable]) stable += 1;
+      for (let index = stable; index < next.messages.length; index += 1) {
+        const message = next.messages[index]!;
         const bubble = el("p", `gus-message ${message.role}`, message.content);
         bubble.dataset.role = message.role;
-        transcript.append(bubble);
+        if (transcriptNodes[index]) transcript.replaceChild(bubble, transcriptNodes[index]!);
+        else transcript.append(bubble);
+        transcriptNodes[index] = bubble;
       }
+      while (transcriptNodes.length > next.messages.length) transcript.removeChild(transcriptNodes.pop()!);
+      transcriptKeys = nextKeys;
       if (stickToBottom) transcript.scrollTop = transcript.scrollHeight;
       if (next.progress) {
         const mb = (next.progress.receivedBytes / 1_000_000).toFixed(0);
@@ -497,13 +542,13 @@ export function startApp(deps: AppDeps): void {
       modeRow, modeHint,
       flow,
       el("h2", undefined, "Modelos locales verificados"), modelList,
-      ...(deps.gus?.models ? [button("Importar copia guardada con iSyCode", "btn small", () => void gus.importModels())] : []),
+      ...(gusDeps?.models ? [button("Importar copia guardada con iSyCode", "btn small", () => void gus.importModels())] : []),
       remotePanel, transcript, status, composer, stop, clear,
     ], null);
     gusUnsubscribe = gus.subscribe(renderState);
     renderState(state);
     void gus.refreshModels();
-    void deps.gus?.secureStore.getRemoteConfig().then((config) => { if (config) { endpoint.value = config.baseUrl; modelName.value = config.model; } }).catch(() => {});
+    void gusDeps?.secureStore.getRemoteConfig().then((config) => { if (config) { endpoint.value = config.baseUrl; modelName.value = config.model; } }).catch(() => {});
     prompt.focus();
   }
 
@@ -848,7 +893,7 @@ export function startApp(deps: AppDeps): void {
       else if (!pendingCount) notice.textContent = "No hay permisos pendientes.";
       else notice.textContent = `${pendingCount} solicitud${pendingCount === 1 ? "" : "es"} esperando tu decisión.`;
     }
-    enablePullToRefresh(root.querySelector(".screen")!, refresh);
+    screenCleanups.push(enablePullToRefresh(root.querySelector(".screen")!, refresh));
     void refresh().catch((error) => { notice.textContent = explain(error); });
   }
 
@@ -864,13 +909,16 @@ export function startApp(deps: AppDeps): void {
       const body = el("div", "receipt-body");
       body.append(el("strong", undefined, describeReceipt(r)), el("time", undefined, `${r.at.slice(5, 10)} ${clock(r.at)}`));
       const details = el("details", "receipt-details");
-      details.append(el("summary", undefined, kind === "verified" ? "Verificado" : kind === "denied" ? "No concedido" : "Ver detalle"), el("code", undefined, JSON.stringify(r, null, 2)));
+      details.append(el("summary", undefined, kind === "verified" ? "Verificado" : kind === "denied" ? "No concedido" : "Ver detalle"));
+      details.addEventListener("toggle", () => {
+        if (details.open && !details.querySelector("code")) details.append(el("code", undefined, JSON.stringify(r, null, 2)));
+      });
       body.append(details);
       row.append(marker, body);
       feed.append(row);
     }
     layout([el("div", "eyebrow", "Historial de este teléfono"), el("h1", undefined, "Recibos"), el("p", "hint small", "Evidencia local del teléfono. Solo marcamos como verificado lo que llegó con una respuesta sellada."), feed], "receipts");
-    enablePullToRefresh(root.querySelector(".screen")!, () => receiptsScreen());
+    screenCleanups.push(enablePullToRefresh(root.querySelector(".screen")!, () => receiptsScreen()));
   }
 
   function phoneScreen(): void {
