@@ -77,6 +77,10 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
   const reduce = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   const s = { base: ROW.idle as Row, row: ROW.idle as Row, frame: 0, last: 0, once: null as null | (() => void), hold: null as null | { row: Row; frame: number }, carry: false, carryFrame: 0, alive: true };
   let bubbleTimer = 0, lookTimer = 0;
+  let raf = 0;
+  let pageVisible = document.visibilityState !== "hidden";
+  let inViewport = true;
+  let paused = reduce;
 
   function draw(): void {
     if (s.carry) {
@@ -97,7 +101,7 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     draw();
   }
   function tick(t: number): void {
-    if (!s.alive) return;
+    if (!s.alive || paused) { raf = 0; return; }
     const ms = s.carry ? CARRY_MS : frameDuration(s.row, s.frame);
     if (!reduce && !s.hold && t - s.last >= ms) {
       s.last = t;
@@ -113,7 +117,11 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
       }
       draw();
     }
-    requestAnimationFrame(tick);
+    raf = requestAnimationFrame(tick);
+  }
+  function syncPlayback(): void {
+    paused = reduce || !pageVisible || !inViewport;
+    if (!paused && !raf) { s.last = performance.now(); raf = requestAnimationFrame(tick); }
   }
   function playRow(row: Row, loops = 1): void {
     s.hold = null;
@@ -259,8 +267,17 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     requestAnimationFrame(step);
   }
 
+  const onVisibility = (): void => { pageVisible = document.visibilityState !== "hidden"; syncPlayback(); };
+  const onPageHide = (): void => { pageVisible = false; syncPlayback(); };
+  const onPageShow = (): void => { pageVisible = true; syncPlayback(); };
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("pagehide", onPageHide);
+  window.addEventListener("pageshow", onPageShow);
+  const observer = "IntersectionObserver" in globalThis ? new IntersectionObserver(([entry]) => { inViewport = entry?.isIntersecting ?? true; syncPlayback(); }, { threshold: 0.05 }) : null;
+  observer?.observe(button);
+
   draw();
-  requestAnimationFrame(tick);
+  syncPlayback();
   return {
     setState,
     playRow,
@@ -268,6 +285,11 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     run,
     destroy() {
       s.alive = false;
+      cancelAnimationFrame(raf);
+      observer?.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
       clearTimeout(bubbleTimer);
       clearTimeout(lookTimer);
     },
