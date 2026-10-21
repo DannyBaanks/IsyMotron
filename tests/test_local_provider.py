@@ -157,6 +157,17 @@ def test_nvidia_reasoning_budget_is_explicit_and_bounded(stub):
     assert len(_Stub.requests) == before
 
 
+def test_nvidia_can_request_final_answer_without_thinking(stub):
+    p = Provider(name='nvidia', base_url=stub + '/v1', api_key='k')
+    p.complete([{'role': 'user', 'content': 'x'}], enable_thinking=False)
+    assert _Stub.requests[-1]['body']['chat_template_kwargs'] == {'enable_thinking': False}
+    before = len(_Stub.requests)
+    for value in (0, 'false'):
+        with pytest.raises(ProviderError, match='enable_thinking'):
+            p.complete([{'role': 'user', 'content': 'x'}], enable_thinking=value)
+    assert len(_Stub.requests) == before
+
+
 def test_a_stopped_local_server_says_how_to_start_it(stub):
     import socket
     s = socket.socket()

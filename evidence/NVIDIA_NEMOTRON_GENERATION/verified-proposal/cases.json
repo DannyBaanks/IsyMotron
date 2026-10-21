@@ -1,0 +1,1 @@
+[{"name": "duplicated example.com addresses", "inputs": {}, "files": {"contacts.txt": "alice@example.com\nbob@example.com\nalice@example.com\n"}, "expected": {"emails": ["alice@example.com", "bob@example.com"]}}]

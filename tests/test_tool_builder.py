@@ -46,8 +46,8 @@ def test_lightning_has_room_for_answer_and_receives_a_valid_example(tmp_path):
     class Capture(ScriptedProvider):
         def complete(self, messages, **options):
             self.options = dict(options)
-            # The scripted response doesn't need a real model's reasoning budget.
-            options.pop('reasoning_budget', None)
+            # The scripted response doesn't send model-specific generation controls.
+            options.pop('enable_thinking', None)
             return super().complete(messages, **options)
     provider = Capture([json.dumps({'files': package_files()})])
     provider.name = 'nvidia'
@@ -55,7 +55,54 @@ def test_lightning_has_room_for_answer_and_receives_a_valid_example(tmp_path):
     ToolBuilder(provider).propose('Count characters', tmp_path/'proposal')
     assert provider.options['max_tokens'] == 8192
     assert provider.options['json_object'] is True
-    assert provider.options['reasoning_budget'] == 1024
+    assert provider.options['enable_thinking'] is False
+    assert 'reasoning_budget' not in provider.options
     messages = provider.calls[0]
-    example = ToolPackage.from_files(json.loads(messages[2]['content'])['files'])
+    example = ToolBuilder(ScriptedProvider([messages[2]['content']])).propose('Count characters', tmp_path/'example')
     assert example.tool_id == 'text-length'
+
+
+def structured_files():
+    files = package_files()
+    for name in ('tool.json', 'security.json', 'cases.json'):
+        files[name] = json.loads(files[name])
+    return files
+
+
+def test_structured_metadata_is_serialized_by_host_without_changing_source(tmp_path):
+    files = structured_files()
+    files['cases.json'][0]['inputs']['text'] = 'a"b\nc'
+    files['cases.json'][0]['expected']['count'] = 5
+    dest = tmp_path/'proposal'
+    ToolBuilder(ScriptedProvider([json.dumps({'files': files})])).propose('Count characters', dest)
+    saved = ToolPackage.load(dest)
+    assert saved.cases[0]['inputs']['text'] == 'a"b\nc'
+    assert saved.files['main.py'].decode() == files['main.py']
+    assert json.loads((dest/'security.json').read_text())['network'] is False
+
+
+def test_structured_metadata_cannot_bypass_contract_validation(tmp_path):
+    files = structured_files()
+    files['security.json']['network'] = True
+    dest = tmp_path/'proposal'
+    with pytest.raises(ToolError, match='unsupported security control'):
+        ToolBuilder(ScriptedProvider([json.dumps({'files': files})])).propose('Build a tool', dest)
+    assert not dest.exists()
+
+
+@pytest.mark.parametrize('name,value', [('main.py', {}), ('tool.json', []), ('cases.json', {})])
+def test_only_metadata_files_accept_their_declared_json_types(tmp_path, name, value):
+    files = structured_files()
+    files[name] = value
+    dest = tmp_path/'proposal'
+    with pytest.raises(ToolError):
+        ToolBuilder(ScriptedProvider([json.dumps({'files': files})])).propose('Build a tool', dest)
+    assert not dest.exists()
+
+
+def test_invalid_json_reports_location_without_echoing_model_content(tmp_path):
+    with pytest.raises(ToolError) as caught:
+        ToolBuilder(ScriptedProvider(['{"PRIVATE_MODEL_TEXT": }'])).propose('Build', tmp_path/'proposal')
+    assert caught.value.code == 'INVALID_PROPOSAL'
+    assert 'line 1' in caught.value.detail
+    assert 'PRIVATE_MODEL_TEXT' not in caught.value.detail
