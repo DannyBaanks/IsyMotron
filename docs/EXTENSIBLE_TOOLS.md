@@ -14,6 +14,14 @@ python tools/isymotron_cli.py tool demo
 
 La demo ejecuta los dos paquetes incluidos (`csv-cleaner`, `word-count`) en un directorio temporal, verifica, aprueba, ejecuta, comprueba el artefacto CSV/JSON y prueba revocación. Solo la demo concede sus propios recursos temporales; no añade aprobaciones al registro normal ni llama a un proveedor de IA.
 
+## Catálogo de referencia y tools propias
+
+Hay dos vías para preparar un paquete: elegir uno ya escrito en `examples/tools/`, o escribir una carpeta propia con código, contrato, controles y casos. La generación con Nemotron es una ayuda opcional para escribir esa carpeta. Las dos vías usan el mismo registro, verificador y aprobación; no hay que modificar el núcleo por cada tool nueva.
+
+La [guía de autoría](../examples/tools/README.md) incluye el catálogo inicial y cómo escribir una tool manualmente. La [prueba de varios autores](../evidence/TOOLS_MULTI_AUTHOR/RUN.md) verificó seis paquetes y doce ejecuciones, con un ejemplo personal escrito directamente y dos nuevas tools generadas por Nemotron. Una tercera solicitud a Nemotron fue rechazada por contrato inválido.
+
+El origen del paquete no concede autoridad. La verificación se aplica a una revisión y a un proveedor concretos; el usuario decide su alcance. Estas vías funcionan mediante CLI. Una pantalla de catálogo y tools personales todavía no está implementada.
+
 ## Paquete
 
 ```text

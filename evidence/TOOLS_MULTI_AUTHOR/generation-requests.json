@@ -1,0 +1,94 @@
+[
+  {
+    "id": "slugify-text",
+    "intent": "Build slugify-text. Input schema: object with required text string maxLength 4096, additionalProperties false. Return object {slug: string}. Use unicodedata.normalize NFKD then encode ASCII ignoring accents, lowercase, replace each group of non a-z0-9 with a hyphen and strip edge hyphens. No file reads or writes. Include a case with accented text. Do not print.",
+    "holdouts": [
+      {
+        "inputs": {
+          "text": "  ¡Hola, México! 2026  "
+        },
+        "files": {},
+        "expected": {
+          "slug": "hola-mexico-2026"
+        }
+      },
+      {
+        "inputs": {
+          "text": "---"
+        },
+        "files": {},
+        "expected": {
+          "slug": ""
+        }
+      },
+      {
+        "inputs": {
+          "text": "Café + Té / 2"
+        },
+        "files": {},
+        "expected": {
+          "slug": "cafe-te-2"
+        }
+      }
+    ]
+  },
+  {
+    "id": "json-key-inspector",
+    "intent": "Build json-key-inspector. Inputs schema is empty object, properties {}, required [], additionalProperties false. Declare effects.read=[data.json], effects.write=[]. Read ONLY with open(\"/inputs/data.json\", \"r\"). Parse a JSON object. Return {keys: sorted array of its top-level string keys, count: integer number of top-level keys}. Include a contributed case. Absolute /inputs path is mandatory; current directory /work contains no inputs.",
+    "holdouts": [
+      {
+        "inputs": {},
+        "files": {
+          "data.json": "{\"z\":0,\"a\":1}"
+        },
+        "expected": {
+          "keys": [
+            "a",
+            "z"
+          ],
+          "count": 2
+        }
+      },
+      {
+        "inputs": {},
+        "files": {
+          "data.json": "{}"
+        },
+        "expected": {
+          "keys": [],
+          "count": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "csv-column-sum",
+    "intent": "Build csv-column-sum. Inputs schema: object with required column string, additionalProperties false. Declare effects.read=[data.csv], effects.write=[]. Read ONLY with open(\"/inputs/data.csv\", \"r\") and csv.DictReader. Sum int(row[inputs[\"column\"]]) for every data row. Return {total: integer sum, rows: integer data-row count}. Support negative integers and header-only CSV (sum 0, rows 0). Include a contributed case. The path MUST be absolute /inputs/data.csv; current working directory /work contains no input files.",
+    "holdouts": [
+      {
+        "inputs": {
+          "column": "amount"
+        },
+        "files": {
+          "data.csv": "name,amount\nAna,12\nLuis,-5\nMara,3\n"
+        },
+        "expected": {
+          "total": 10,
+          "rows": 3
+        }
+      },
+      {
+        "inputs": {
+          "column": "amount"
+        },
+        "files": {
+          "data.csv": "name,amount\n"
+        },
+        "expected": {
+          "total": 0,
+          "rows": 0
+        }
+      }
+    ]
+  }
+]
