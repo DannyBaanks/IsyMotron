@@ -137,6 +137,10 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     s.base = STATE_ROW[state];
     s.once = null;
     s.hold = null;
+    button.dataset.state = state;
+    button.classList.remove("state-change");
+    void button.offsetWidth;
+    button.classList.add("state-change");
     setRow(s.base);
   }
 
@@ -178,7 +182,7 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     down = null;
     if (d.held) return;
     if (d.moved) {
-      button.style.transition = "transform .35s cubic-bezier(.3,1.4,.5,1)";
+      button.style.transition = reduce ? "none" : "transform .35s cubic-bezier(.3,1.4,.5,1)";
       button.style.transform = "";
       s.carry = false;
       draw();
@@ -221,6 +225,7 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
   let running = false;
   function run(): void {
     if (running) return;
+    if (reduce) { say("Movimiento reducido activo.", 1400); return; }
     running = true;
     say("¡A jugar!", 1500);
     const span = Math.max(0, options.stage.getBoundingClientRect().width - 170);
