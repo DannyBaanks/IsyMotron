@@ -80,22 +80,25 @@ export function generateSwiftCatalogSource(value) {
     `enum GUSCatalog {\n    static let models: [GusModelManifest] = [\n${entries}\n    ]\n}\n`;
 }
 
-const mode = process.argv[2] ?? '--write';
-if (!['--write', '--check'].includes(mode)) throw new Error(`unknown option: ${mode}`);
-const source = generateCatalogSource(JSON.parse(await readFile(inputPath, 'utf8')));
-if (mode === '--check') {
-  const current = await readFile(outputPath, 'utf8');
-  if (current !== source) throw new Error('catalog.generated.ts is stale; run node tools/generate-gus-catalog.mjs --write');
-  const javaSource = generateJavaCatalogSource(JSON.parse(await readFile(inputPath, 'utf8')));
-  const javaCurrent = await readFile(javaOutputPath, 'utf8');
-  if (javaCurrent !== javaSource) throw new Error('GusCatalog.java is stale; run node tools/generate-gus-catalog.mjs --write');
-  const swiftSource = generateSwiftCatalogSource(JSON.parse(await readFile(inputPath, 'utf8')));
-  const swiftCurrent = await readFile(swiftOutputPath, 'utf8');
-  if (swiftCurrent !== swiftSource) throw new Error('GUSCatalog.generated.swift is stale; run node tools/generate-gus-catalog.mjs --write');
-  process.stdout.write('GUS TypeScript, Java, and Swift catalogues verified\n');
-} else {
-  await writeFile(outputPath, source, 'utf8');
-  await writeFile(javaOutputPath, generateJavaCatalogSource(JSON.parse(await readFile(inputPath, 'utf8'))), 'utf8');
-  await writeFile(swiftOutputPath, generateSwiftCatalogSource(JSON.parse(await readFile(inputPath, 'utf8'))), 'utf8');
-  process.stdout.write('generated TypeScript, Java, and Swift GUS catalogues\n');
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  const mode = process.argv[2] ?? '--write';
+  if (!['--write', '--check'].includes(mode)) throw new Error(`unknown option: ${mode}`);
+  const source = generateCatalogSource(JSON.parse(await readFile(inputPath, 'utf8')));
+  if (mode === '--check') {
+    const current = await readFile(outputPath, 'utf8');
+    if (current !== source) throw new Error('catalog.generated.ts is stale; run node tools/generate-gus-catalog.mjs --write');
+    const javaSource = generateJavaCatalogSource(JSON.parse(await readFile(inputPath, 'utf8')));
+    const javaCurrent = await readFile(javaOutputPath, 'utf8');
+    if (javaCurrent !== javaSource) throw new Error('GusCatalog.java is stale; run node tools/generate-gus-catalog.mjs --write');
+    const swiftSource = generateSwiftCatalogSource(JSON.parse(await readFile(inputPath, 'utf8')));
+    const swiftCurrent = await readFile(swiftOutputPath, 'utf8');
+    if (swiftCurrent !== swiftSource) throw new Error('GUSCatalog.generated.swift is stale; run node tools/generate-gus-catalog.mjs --write');
+    process.stdout.write('GUS TypeScript, Java, and Swift catalogues verified\n');
+  } else {
+    await writeFile(outputPath, source, 'utf8');
+    await writeFile(javaOutputPath, generateJavaCatalogSource(JSON.parse(await readFile(inputPath, 'utf8'))), 'utf8');
+    await writeFile(swiftOutputPath, generateSwiftCatalogSource(JSON.parse(await readFile(inputPath, 'utf8'))), 'utf8');
+    process.stdout.write('generated TypeScript, Java, and Swift GUS catalogues\n');
+  }
 }
