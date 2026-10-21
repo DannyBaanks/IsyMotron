@@ -43,6 +43,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `install` | print the command that makes `isymotron` reachable from a new shell |
 | `where` | print the repository this CLI belongs to |
 | `help` | the help |
+| `tool` | `propose \| stage \| verify \| approve \| list \| run \| revoke \| demo` — extensible code packages with scoped initial approval |
 | `keys` | `list \| set <NAME> \| unset <NAME> \| check [--live]` |
 | `quine` | `demo \| verify \| publish` — the Quine Gate |
 | `process` | `observe \| store \| verify` — the Process Verifier (exit 0/1/2) |

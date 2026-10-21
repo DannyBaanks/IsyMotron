@@ -1,0 +1,12 @@
+[
+  {
+    "name": "two rows",
+    "inputs": {},
+    "files": {
+      "data.csv": "name,value\n Ana ,3\n Luis ,4\n"
+    },
+    "expected": {
+      "rows": 2
+    }
+  }
+]

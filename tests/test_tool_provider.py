@@ -55,3 +55,9 @@ def test_declared_artifact_is_returned_but_symlink_is_not():
 def test_missing_provider_never_falls_back_to_plain_python():
     with pytest.raises(ToolError, match='PROVIDER_UNAVAILABLE'):
         LinuxPythonProvider(binary='/missing/bwrap').run(tool("raise RuntimeError('must not execute')"), {'text': 'abc'}, {})
+
+
+def test_guest_sees_only_runtime_not_all_host_commands_or_environment(monkeypatch):
+    monkeypatch.setenv('TOOL_HOST_SECRET','never-inherit-this')
+    p=tool("def run(inputs):\n import os\n return {'count':int(os.path.exists('/usr/bin/cat'))+int('TOOL_HOST_SECRET' in os.environ)}\n")
+    assert LinuxPythonProvider().run(p,{'text':'a'},{}).result=={'count':0}

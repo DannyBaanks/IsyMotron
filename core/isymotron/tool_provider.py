@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import functools
 import json
 import os
 import platform
@@ -16,6 +17,16 @@ from pathlib import Path
 
 from .canon import digest
 from .tool_contract import ToolError, ToolPackage, require, validate
+
+
+@functools.lru_cache(maxsize=1)
+def _runtime():
+    try:
+        info = json.loads(subprocess.check_output(['/usr/bin/python3', '-I', '-S', '-c',
+            'import sys,sysconfig,json;print(json.dumps({"stdlib":sysconfig.get_path("stdlib"),"multiarch":sysconfig.get_config_var("MULTIARCH"),"version":sys.version}))'], text=True, timeout=5))
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        raise ToolError('PROVIDER_UNAVAILABLE', 'system Python is unavailable') from error
+    return info
 
 
 @dataclass(frozen=True)
@@ -37,6 +48,8 @@ class LinuxPythonProvider:
         return {'id': self.provider_id, 'verifier': self.verifier_version,
                 'implementation': digest([Path(__file__).read_text(), Path(__file__).with_name('tool_worker.py').read_text()]),
                 'bwrap': hashlib.sha256(Path(self.binary).read_bytes()).hexdigest(),
+                'python': hashlib.sha256(Path('/usr/bin/python3').read_bytes()).hexdigest(),
+                'runtime': _runtime(),
                 'kernel': platform.release(), 'machine': platform.machine()}
 
     def compile(self, package: ToolPackage) -> dict:
@@ -61,10 +74,20 @@ class LinuxPythonProvider:
                 p = incoming / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(data)
             bootstrap = root / 'worker.py'
             bootstrap.write_bytes(Path(__file__).with_name('tool_worker.py').read_bytes())
+            runtime = _runtime()
             command = [self.binary, '--unshare-all', '--die-with-parent', '--new-session', '--cap-drop', 'ALL',
-                       '--clearenv', '--ro-bind', '/usr', '/usr']
-            for path in ('/lib', '/lib64'):
-                if Path(path).exists(): command += ['--ro-bind', path, path]
+                       '--clearenv', '--ro-bind', '/usr/bin/python3', '/usr/bin/python3',
+                       '--ro-bind', runtime['stdlib'], runtime['stdlib']]
+            # Share the language runtime and dynamic libraries, not /usr/bin,
+            # user packages, the home directory or any host workspace.
+            multiarch = runtime.get('multiarch')
+            if multiarch:
+                for prefix in ('/lib', '/usr/lib'):
+                    path = Path(prefix) / multiarch
+                    if path.is_dir(): command += ['--ro-bind', str(path), str(path)]
+            for prefix in ('/lib', '/lib64'):
+                for loader in Path(prefix).glob('ld-linux*'):
+                    if loader.is_file(): command += ['--ro-bind', str(loader), str(loader)]
             command += ['--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp',
                         '--ro-bind', str(source), '/tool', '--ro-bind', str(incoming), '/inputs',
                         '--bind', str(work), '/work', '--ro-bind', str(bootstrap), '/worker.py',

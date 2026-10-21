@@ -103,6 +103,17 @@ def _process_scope(cap: CapabilityManifest, granted_scope: Mapping[str, Any],
 # The enforcer
 # --------------------------------------------------------------------------
 
+@scope_checker("tools")
+def _tools_scope(cap: CapabilityManifest, granted_scope: Mapping[str, Any],
+                 params: Mapping[str, Any]) -> PolicyDecision:
+    if (granted_scope.get("tool_id") != cap.id.removeprefix("tools.")
+            or not cap.scopes.get("package_digest")
+            or granted_scope.get("package_digest") != cap.scopes["package_digest"]):
+        return _deny(DenyReason.OUT_OF_SCOPE, "tool lease must bind the current verified package")
+    if not isinstance(params.get("inputs"), dict):
+        return _deny(DenyReason.MALFORMED_REQUEST, "tool requires typed inputs")
+    return ALLOW
+
 class Enforcer:
     """Pure function over (host description, leases, request) -> decision.
 
