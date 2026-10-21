@@ -178,6 +178,7 @@ Prebuilt Windows, Linux and macOS packages are published in [GitHub Releases](ht
 The product surface is intentionally easy to enter. The deeper guarantees live in focused documents:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the system fits together.
+- [`docs/CLI.md`](docs/CLI.md) — the command-line entry points and demo commands.
 - [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — what is demonstrated and what is not.
 - [`docs/AVATAR_CONTRACT.md`](docs/AVATAR_CONTRACT.md) — why Malbolgato is representation, never authority.
 - [`docs/GUS_WEB_ENDPOINT.md`](docs/GUS_WEB_ENDPOINT.md) — safe design for a future GUS web endpoint.
