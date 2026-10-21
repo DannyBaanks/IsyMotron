@@ -83,6 +83,21 @@ function button(label: string, className: string, onClick: () => void | Promise<
   return b;
 }
 
+function makeChatLauncher(openChat: () => void): HTMLButtonElement {
+  const launcher = el("button", "malbo-launcher");
+  launcher.type = "button";
+  launcher.setAttribute("aria-label", "Abrir chat con ISyMotron");
+  launcher.title = "Abrir chat con ISyMotron";
+  const image = el("img", "malbo-launcher-image") as HTMLImageElement;
+  image.alt = "";
+  image.draggable = false;
+  const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  image.src = reduced ? "malbolgato/idle-static.png" : "malbolgato/idle-slow.gif";
+  launcher.append(image);
+  launcher.addEventListener("click", openChat);
+  return launcher;
+}
+
 const clock = (iso: string) => new Date(iso).toTimeString().slice(0, 5);
 
 export interface AppDeps {
@@ -162,6 +177,7 @@ export function startApp(deps: AppDeps): void {
     screen.append(...content);
     app.append(screen);
     if (tab) {
+      app.classList.add("has-launcher");
       const bar = el("nav", "tabbar");
       bar.setAttribute("aria-label", "Secciones");
       const tabs: Array<[Tab, string, string]> = [["home", "Inicio", ICON.home], ["tasks", "Tareas", ICON.tasks], ["permissions", "Permisos", ICON.permissions], ["receipts", "Recibos", ICON.receipts], ["phone", "Teléfono", ICON.phone]];
@@ -174,6 +190,7 @@ export function startApp(deps: AppDeps): void {
         bar.append(b);
       }
       app.append(bar);
+      app.append(makeChatLauncher(gusScreen));
     }
     root.replaceChildren(app);
   }

@@ -82,6 +82,13 @@ await p.click("text=Volver");
 assert.equal(await p.isVisible(".row-btn"), true);
 await p.reload();
 await p.waitForSelector(".row-btn");
+const launcher = p.getByRole("button", { name: "Abrir chat con ISyMotron" });
+await launcher.waitFor();
+await launcher.click();
+await p.getByRole("heading", { name: "GUS" }).waitFor();
+assert.equal(await p.getByRole("button", { name: "Abrir chat con ISyMotron" }).count(), 0);
+await p.getByRole("button", { name: "‹ Inicio" }).click();
+await launcher.waitFor();
 // Malbolgato v2 is on Inicio, drawn from the atlas, and a long press opens his controls.
 assert.match(await p.evaluate(() => getComputedStyle(document.querySelector(".sprite")).backgroundImage), /malbolgato\/atlas\.webp/);
 const pet = await p.locator(".pet").boundingBox();
