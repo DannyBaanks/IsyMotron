@@ -110,6 +110,7 @@ h3 { margin: 6px 0 0; font: 600 15px var(--display); }
 .pet { position: absolute; left: 0; bottom: 0; width: 150px; height: 162px; border: 0; background: none; padding: 0; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; z-index: 3; }
 .pet.dragging { z-index: 8; cursor: grabbing; }
 .sprite { position: absolute; left: 3px; bottom: 0; width: 144px; height: 156px; background-size: 1152px 1716px; background-repeat: no-repeat; pointer-events: none; filter: drop-shadow(0 0 1px rgba(198,255,61,.5)) drop-shadow(0 0 10px rgba(118,185,0,.25)); }
+.sprite.static-frame { background-size: 144px 144px; background-position: center bottom; }
 .sprite.carry { height: 252px; bottom: -40px; background-size: 1152px 252px; }
 .pet.state-change .sprite { animation: pet-state-change .24s ease-out; }
 .pet[data-state="thinking"] .sprite { filter: drop-shadow(0 0 2px rgba(224,211,106,.7)) drop-shadow(0 0 12px rgba(224,211,106,.3)); }
