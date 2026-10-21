@@ -164,7 +164,7 @@ function makeChatLauncher(openChat: () => void, app: HTMLElement): ChatLauncher 
   image.alt = "";
   image.draggable = false;
   const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-  image.src = reduced ? "malbolgato/idle-static.png" : "malbolgato/idle-slow.gif";
+  image.src = reduced ? "malbolgato/idle-static.webp" : "malbolgato/idle-slow.gif";
   launcher.append(image, badge);
 
   const setState = (state: PetState): void => {

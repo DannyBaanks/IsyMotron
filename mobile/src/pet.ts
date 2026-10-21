@@ -52,6 +52,8 @@ export interface PetOptions {
   stage: HTMLElement;
   onHold: () => void;
   atlas?: string;
+  /** A small above-the-fold frame used until the full atlas is idle-loaded. */
+  staticFrame?: string;
   carry?: string;
 }
 
@@ -59,6 +61,7 @@ const LINES = ["¡Hola! Aquí vigilo tus PCs.", "Mantén presionado para mis con
 
 export function createPet(host: HTMLElement, options: PetOptions): Pet & { run(): void } {
   const atlas = options.atlas ?? "malbolgato/atlas.webp";
+  const staticFrame = options.staticFrame ?? "malbolgato/idle-static.webp";
   const carrySheet = options.carry ?? "malbolgato/carry.webp";
   const button = document.createElement("button");
   button.type = "button";
@@ -66,7 +69,8 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
   button.setAttribute("aria-label", "Malbolgato. Toca para que salude, dos veces para que salte, arrástralo para cargarlo y mantén presionado para sus controles.");
   const sprite = document.createElement("span");
   sprite.className = "sprite";
-  sprite.style.backgroundImage = `url("${atlas}")`;
+  sprite.classList.add("static-frame");
+  sprite.style.backgroundImage = `url("${staticFrame}")`;
   button.append(sprite);
   const bubble = document.createElement("div");
   bubble.className = "say";
@@ -81,12 +85,25 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
   let pageVisible = document.visibilityState !== "hidden";
   let inViewport = true;
   let paused = reduce;
+  let atlasLoaded = false;
+  const atlasTimer = window.setTimeout(() => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => { atlasLoaded = true; sprite.classList.remove("static-frame"); draw(); };
+    image.src = atlas;
+  }, 300);
 
   function draw(): void {
     if (s.carry) {
       sprite.classList.add("carry");
       sprite.style.backgroundImage = `url("${carrySheet}")`;
       sprite.style.backgroundPosition = `${-s.carryFrame * CELL.w}px 0px`;
+      return;
+    }
+    if (!atlasLoaded) {
+      sprite.classList.add("static-frame");
+      sprite.style.backgroundImage = `url("${staticFrame}")`;
+      sprite.style.backgroundPosition = "center bottom";
       return;
     }
     sprite.classList.remove("carry");
@@ -285,6 +302,7 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     run,
     destroy() {
       s.alive = false;
+      clearTimeout(atlasTimer);
       cancelAnimationFrame(raf);
       observer?.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
