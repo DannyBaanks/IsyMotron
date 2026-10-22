@@ -56,6 +56,24 @@ jobs:
           path: mobile/e2e-out/
           retention-days: 14
 
+  windows:
+    name: Tests on Windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - name: Verify pinned GUS runtime and generated model catalog
+        run: |
+          node tools/sync-gus-runtime.mjs --verify
+          node tools/generate-gus-catalog.mjs --check
+      - run: npm test
+
   android:
     name: Android APK
     needs: web

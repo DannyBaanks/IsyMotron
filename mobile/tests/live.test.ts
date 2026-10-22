@@ -9,12 +9,13 @@ import { delegate, ping, requestPairing, task, cancel, listPermissions, decidePe
 import { loadOrCreateIdentity, memoryKeyStore } from "../src/link/keystore";
 
 const helper = fileURLToPath(new URL("../tools/link_pc_for_tests.py", import.meta.url));
+const python = process.env.PYTHON ?? (process.platform === "win32" ? "py" : "python3");
 let pc: ChildProcessWithoutNullStreams;
 let next: () => Promise<Record<string, unknown>>;
 let port = 0;
 
 beforeAll(async () => {
-  pc = spawn("python3", [helper]);
+  pc = spawn(python, [helper]);
   const lines = createInterface({ input: pc.stdout })[Symbol.asyncIterator]();
   next = async () => JSON.parse((await lines.next()).value as string);
   port = Number((await next()).port);

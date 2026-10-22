@@ -6,3 +6,9 @@
 #
 # `-text` disables the conversion; the files stay diffable.
 evidence/** -text
+
+# The GUS runtime snapshot is pinned by SHA-256 over its exact bytes
+# (mobile/vendor/gus-runtime/VENDOR.json). With core.autocrlf=true on Windows
+# the checked-out bytes are CRLF and tests/gus-runtime-vendor.test.ts fails on
+# a clean clone, even though the blob in Git is LF.
+mobile/vendor/gus-runtime/** -text

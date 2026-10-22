@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const preview = spawn("npx", ["vite", "preview", "--mode", "e2e", "--port", "4175", "--strictPort"], { stdio: "ignore" });
+const viteBin = fileURLToPath(new URL("../node_modules/vite/bin/vite.js", import.meta.url));
+const preview = spawn(process.execPath, [viteBin, "preview", "--mode", "e2e", "--port", "4175", "--strictPort"], { stdio: "ignore" });
 let browser;
 try {
   let ready = false;
