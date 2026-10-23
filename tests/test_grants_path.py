@@ -1,5 +1,6 @@
 """Grants path (XDG) + honest non-Windows host identity."""
 import importlib
+import json
 import os
 
 import windows.grants as grants_mod
@@ -70,3 +71,54 @@ def test_load_missing_is_inert(tmp_path):
     grants = Grants.load(str(tmp_path / "nope.json"))
     assert grants.granted == []
     assert grants.source.startswith("<inert:")
+
+
+# ── M0: tool_profile persistence ────────────────────────────────────────────
+
+def test_legacy_grants_default_to_security(tmp_path):
+    from windows.grants import Grants
+    g = tmp_path / "grants.json"
+    g.write_text(json.dumps({"host_id": "h", "display_name": "d", "granted": [], "scopes": {}}), encoding="utf-8")
+    loaded = Grants.load(str(g))
+    assert loaded.tool_profile == "security"
+    assert loaded.custom is None
+
+
+def test_tool_profile_roundtrip(tmp_path):
+    from windows.grants import Grants
+    g = tmp_path / "grants.json"
+    gr = Grants(host_id="h", display_name="d", granted=["filesystem.read"],
+                scopes={"filesystem.read": {"roots": ["/srv"]}},
+                tool_profile="custom",
+                custom={"capabilities": ["filesystem.read"], "allow_request_prompts": True})
+    gr.save(str(g))
+    loaded = Grants.load(str(g))
+    assert loaded.tool_profile == "custom"
+    assert loaded.custom == {"capabilities": ["filesystem.read"], "allow_request_prompts": True}
+
+
+def test_invalid_tool_profile_fails_closed(tmp_path):
+    from windows.grants import Grants
+    g = tmp_path / "grants.json"
+    g.write_text(json.dumps({"tool_profile": "yolo"}), encoding="utf-8")
+    loaded = Grants.load(str(g))
+    assert loaded.tool_profile == "security"
+    assert loaded.granted == [] and loaded.scopes == {}
+    assert loaded.source.startswith("<inert")
+
+
+def test_invalid_custom_block_fails_closed(tmp_path):
+    from windows.grants import Grants
+    g = tmp_path / "grants.json"
+    g.write_text(json.dumps({"tool_profile": "custom", "custom": {"capabilities": "oops"}}), encoding="utf-8")
+    loaded = Grants.load(str(g))
+    assert loaded.granted == [] and loaded.source.startswith("<inert")
+
+
+def test_full_profile_persists_without_custom(tmp_path):
+    from windows.grants import Grants
+    g = tmp_path / "grants.json"
+    Grants(host_id="h", display_name="d", granted=[], scopes={}, tool_profile="full").save(str(g))
+    loaded = Grants.load(str(g))
+    assert loaded.tool_profile == "full"
+    assert loaded.custom is None

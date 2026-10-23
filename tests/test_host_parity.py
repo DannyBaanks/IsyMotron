@@ -39,7 +39,7 @@ EXPECTED_ENGINE = ("nt-real/" if WINDOWS
 
 def make_host(granted, scopes):
     g = Grants(host_id="parity-host", display_name="parity", granted=list(granted),
-               scopes=dict(scopes), source="<test>")
+               scopes=dict(scopes), source="<test>", tool_profile="full")
     return native.real_host(g)
 
 

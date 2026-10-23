@@ -81,6 +81,9 @@ class MacHost(Host):
             grant_scopes=self.grants.scopes,
             admin_granted=self.grants.admin_granted,
             max_lease_ttl_s=self.grants.max_lease_ttl_s,
+            tool_profile=self.grants.tool_profile,
+            custom=self.grants.custom,
+            inert=self.grants.no_grant_file,
         )
 
     # -- platform seams --------------------------------------------------------

@@ -123,6 +123,28 @@ ENLAZADAS
 inbox: 1 en cola
 ```
 
+## Sesión TTL (4h) y el teléfono
+
+Cada solicitud sellada vale como *toque* que renueva la sesión. La PC devuelve
+`session_until` (ISO UTC) en cada operación. La app lo muestra en la ficha de
+la PC como "Sesión activa hasta HH:MM". El socket no es persistente: al volver
+a la app, la PC y la app solo se animan; no hay re-emparejamiento.
+
+### Mantener la PC viva (systemd-user)
+
+Si el servidor de la PC muere con la terminal, instala el unit de usuario:
+
+```bash
+mkdir -p ~/.config/systemd/user
+cp docs/systems/isymotron-link.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now isymotron-link.service
+```
+
+`Restart=on-failure` trae el servidor de vuelta tras un error; sigue editando
+`ExecStart` si `python3`/checkout cambian. Recuerda que `link servir` para el
+estro vivo sigue siendo el que lanza ese comando manualmente.
+
 ## Cómo leer lo que ves
 
 | Ves | Significa | Qué hacer |

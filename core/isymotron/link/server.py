@@ -24,6 +24,7 @@ import json
 import ipaddress
 import os
 import socket
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -60,6 +61,10 @@ class LinkState:
             permissions.PermissionQueue(self.directory, permission_host)
             if permission_host is not None else None
         )
+        # Session window: every sealed inbound call refreshes it. The phone
+        # can show "sesión activa hasta HH:MM" without keeping a socket
+        # alive; the PC stays the sole authority of when it is valid.
+        self.session_expires_at: float = 0.0
 
     def inbox_path(self) -> Path:
         return self.directory / "inbox.jsonl"
@@ -180,7 +185,19 @@ def handle_call_with_peer(state: LinkState, env: dict) -> tuple[dict, dict]:
             )
     except envelope.EnvelopeError as exc:
         raise LinkError("rejected", str(exc), 403) from exc
-    return (_dispatch(state, peer, payload), peer)
+    result = _dispatch(state, peer, payload)
+    if isinstance(result, dict):
+        result.setdefault("session_until", _session_until_iso(state))
+    return (result, peer)
+
+
+SESSION_TTL_S = 4 * 3600
+
+
+def _session_until_iso(state: LinkState) -> str | None:
+    if state.session_expires_at <= 0:
+        return None
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(state.session_expires_at))
 
 
 def sealed_reply(state: LinkState, peer: dict, env: dict, result: dict) -> dict:
@@ -190,8 +207,13 @@ def sealed_reply(state: LinkState, peer: dict, env: dict, result: dict) -> dict:
 
 def _dispatch(state: LinkState, peer: dict, payload: dict) -> dict:
     op = payload.get("op")
+    state.session_expires_at = time.time() + SESSION_TTL_S
     if op == "ping":
-        return {"ok": True, "pong": True, "from": state.identity["office_id"]}
+        profile = None
+        if state.permissions is not None:
+            profile = getattr(state.permissions.host, "tool_profile", None)
+        return {"ok": True, "pong": True, "from": state.identity["office_id"],
+                "tool_profile": profile}
     if op == "delegate":
         task_id = _task_id()
         state.inbox_append(
@@ -356,6 +378,18 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(exc.status, {"ok": False, "code": exc.code, "error": str(exc)})
 
 
+class ClientTolerantHTTPServer(ThreadingHTTPServer):
+    """Phone clients drop requests mid-flight when networks change or the app
+    backgrounds; that teardown must not print raw tracebacks into the runner
+    logs (2026-10-08: the console server showed the same spam on a 401
+    hang-up). Real handler bugs stay visible."""
+
+    def handle_error(self, request, client_address):
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
+
+
 class LinkServer:
     """HTTP + UDP discovery. start() backgrounds both; stop() ends them."""
 
@@ -369,7 +403,7 @@ class LinkServer:
     ):
         self.state = LinkState(directory, permission_host=permission_host)
         handler = type("BoundHandler", (_Handler,), {"state": self.state})
-        self.http = ThreadingHTTPServer((host, tcp_port), handler)
+        self.http = ClientTolerantHTTPServer((host, tcp_port), handler)
         self.udp_port = udp_port
         self.host = host
         self._udp_sock: socket.socket | None = None

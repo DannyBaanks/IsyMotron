@@ -107,6 +107,13 @@ class ModernHost(Host):
     """Windows 11-shaped engine."""
 
     def __init__(self, fs: dict[str, str], **kw: Any) -> None:
+        # Test fixtures model the pre-profile world (an explicit-grant world)
+        # while still exercising the new profile machinery: only the caps
+        # declared in the fixture's `granted` list are auto-allowed (= custom
+        # defaults), and everything else gets a permission request decision.
+        kw.setdefault("tool_profile", "custom")
+        kw.setdefault("custom", {"capabilities": list(kw.get("granted", [])),
+                                 "allow_request_prompts": True})
         self.fs = _VirtualFS(fs)
         self.processes = ["explorer.exe", "isymotron-host.exe", "notepad.exe"]
         identity = HostIdentity(
@@ -158,6 +165,9 @@ class LegacyHost(Host):
     """Windows 98-shaped engine: fewer capabilities, different path habits."""
 
     def __init__(self, fs: dict[str, str], **kw: Any) -> None:
+        kw.setdefault("tool_profile", "custom")
+        kw.setdefault("custom", {"capabilities": list(kw.get("granted", [])),
+                                 "allow_request_prompts": True})
         self.fs = _VirtualFS(fs)
         self.launched: list[str] = []
         identity = HostIdentity(
