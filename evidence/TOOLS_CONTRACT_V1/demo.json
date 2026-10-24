@@ -1,0 +1,73 @@
+{
+  "csv-cleaner": {
+    "result": {
+      "rows": 2
+    },
+    "artifacts": [
+      "report.json"
+    ],
+    "receipt": {
+      "contract": "ToolReceipt/v1",
+      "receipt_id": "tool_3714f50ac1c34844a6621adb61762247",
+      "tool_id": "csv-cleaner",
+      "package_digest": "sha256:32f6538ea4e53230beccce8b76c2a3b7ba038b7185878adcbc156162c985fa17",
+      "plan_digest": "sha256:f105ac4dd96cc5f1013fcb95347f5abac18d89acccabc7c43c169370af5165de",
+      "subject": "demo",
+      "host_id": "demo-pc",
+      "decision": "ALLOW",
+      "status": "DONE",
+      "wall": 1792608617.176006,
+      "input_digest": "sha256:7b3acbf02bb7c3f3990c15ae19fab169f1d7fb89e6343c77da5cb7edb12bed7a",
+      "result_digest": "sha256:19b98918aa59c26ee086d8a818e64fded188be8b6e213ac21eea6ec19fa3bc00",
+      "artifacts": {
+        "report.json": "f41fd385d6cf45f5c9cabbd6db1679f21f15a87b811922e66aa2a24b8a639980"
+      },
+      "seal": "hmac-sha256:25f7d041281cef3082b324788acb07c9c4883b82f9a436a3f04f7c703a6911e0"
+    }
+  },
+  "word-count": {
+    "result": {
+      "words": 2,
+      "characters": 10
+    },
+    "artifacts": [],
+    "receipt": {
+      "contract": "ToolReceipt/v1",
+      "receipt_id": "tool_2d95e967f7ee465990575a450537f601",
+      "tool_id": "word-count",
+      "package_digest": "sha256:0cdab900b37171fe667ee3504d3e3d000b39c175f586a6f51127425aefc0f4de",
+      "plan_digest": "sha256:55a26e213c227181d420a67a99f701a2a10f4d5a4a1abc1f6356bf68b6ac4b2a",
+      "subject": "demo",
+      "host_id": "demo-pc",
+      "decision": "ALLOW",
+      "status": "DONE",
+      "wall": 1792608617.662352,
+      "input_digest": "sha256:daa4d495759687e70332a1c7e1cb3ae673a9a7ceb11fee863ed380bf856a00e5",
+      "result_digest": "sha256:478258938876f05c10c274cb04b39076a9f30bd72ba74a68a143319ccf0969f8",
+      "artifacts": {},
+      "seal": "hmac-sha256:523fce992cf984607fd594143b802edfceb9ceb75da1283cac016a130b5b94da"
+    }
+  },
+  "published_report": {
+    "columns": [
+      "name",
+      "value"
+    ],
+    "records": [
+      {
+        "name": "Ana",
+        "value": "3"
+      },
+      {
+        "name": "Luis",
+        "value": "4"
+      }
+    ],
+    "rows": 2
+  },
+  "active_tools": [
+    "csv-cleaner",
+    "word-count"
+  ],
+  "revocation_enforced": true
+}

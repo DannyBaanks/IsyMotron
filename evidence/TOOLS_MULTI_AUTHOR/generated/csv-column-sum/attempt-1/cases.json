@@ -1,0 +1,1 @@
+[{"name": "header-only CSV", "inputs": {"column": "amount"}, "files": {"data.csv": "amount\n"}, "expected": {"total": 0, "rows": 0}}, {"name": "sum column with values", "inputs": {"column": "amount"}, "files": {"data.csv": "amount,quantity\n10,5\n-3,2\n"}, "expected": {"total": 7, "rows": 2}}]

@@ -1,0 +1,100 @@
+{
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "date": "2026-10-21",
+  "published": true,
+  "approved": false,
+  "outcome": "GENERATED_AND_HOST_VERIFIED",
+  "tool_id": "contact-email-extractor",
+  "digest": "sha256:f1c54a7271ce9f8338d14af08520d5b04bb2de5f9cd8aa67505dda4ed443e49c",
+  "finish_reason": "stop",
+  "completion_tokens": 378,
+  "response_chars": 1237,
+  "seconds": 2.978,
+  "verification": {
+    "contract": "ToolVerification/v1",
+    "verdict": "PASS_FOR_SCOPE",
+    "package_digest": "sha256:f1c54a7271ce9f8338d14af08520d5b04bb2de5f9cd8aa67505dda4ed443e49c",
+    "plan_digest": "sha256:6cf515c962129b59442440159c398b3be8f36677d58a1ef0d89e510f7be8664f",
+    "provider": {
+      "id": "linux-python/v1",
+      "verifier": "ToolVerifier/v1",
+      "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+      "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+      "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+      "runtime": {
+        "stdlib": "/usr/lib/python3.12",
+        "multiarch": "x86_64-linux-gnu",
+        "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+      },
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64"
+    },
+    "checks": {
+      "host_boundary": true,
+      "cases": [
+        {
+          "name": "duplicated example.com addresses",
+          "passed": true
+        }
+      ]
+    },
+    "seal": "sha256:5edccc31768ea7529fe1ff79b9e85cccb0ca8dd8e93bfff395a62c401d6c42ed"
+  },
+  "holdout_cases": [
+    {
+      "name": "additional duplicates",
+      "passed": true,
+      "result": {
+        "emails": [
+          "ana+demo@example.com",
+          "ana@example.com",
+          "zeta@example.com"
+        ]
+      }
+    },
+    {
+      "name": "empty file",
+      "passed": true,
+      "result": {
+        "emails": []
+      }
+    }
+  ],
+  "registry_verification": {
+    "contract": "ToolVerification/v1",
+    "verdict": "PASS_FOR_SCOPE",
+    "package_digest": "sha256:f1c54a7271ce9f8338d14af08520d5b04bb2de5f9cd8aa67505dda4ed443e49c",
+    "plan_digest": "sha256:6cf515c962129b59442440159c398b3be8f36677d58a1ef0d89e510f7be8664f",
+    "provider": {
+      "id": "linux-python/v1",
+      "verifier": "ToolVerifier/v1",
+      "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+      "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+      "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+      "runtime": {
+        "stdlib": "/usr/lib/python3.12",
+        "multiarch": "x86_64-linux-gnu",
+        "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+      },
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64"
+    },
+    "checks": {
+      "host_boundary": true,
+      "cases": [
+        {
+          "name": "duplicated example.com addresses",
+          "passed": true
+        }
+      ]
+    },
+    "seal": "sha256:5edccc31768ea7529fe1ff79b9e85cccb0ca8dd8e93bfff395a62c401d6c42ed"
+  },
+  "without_approval": {
+    "blocked": true,
+    "code": "AWAITING_APPROVAL"
+  },
+  "registry_persistent": false,
+  "source_edited_by_human": false,
+  "repair_loop": "one model-generated revision after host rejection; feedback orchestrated by Codex, not automatic product retry"
+}

@@ -221,6 +221,12 @@ VERBS: dict[str, Verb] = {
         argv=("tools/link_task_runner.py",),
         entrypoint="tools/link_task_runner.py",
     ),
+    "tool": Verb(
+        name="tool",
+        summary="build, verify, approve, run and revoke extensible code tools",
+        argv=("tools/tool_cli.py",),
+        entrypoint="tools/tool_cli.py",
+    ),
 }
 
 

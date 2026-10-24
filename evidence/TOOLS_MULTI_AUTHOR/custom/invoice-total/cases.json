@@ -1,0 +1,33 @@
+[
+  {
+    "name": "two invoice lines",
+    "inputs": {
+      "lines": [
+        {
+          "quantity": 2,
+          "unit_cents": 125
+        },
+        {
+          "quantity": 3,
+          "unit_cents": 50
+        }
+      ]
+    },
+    "files": {},
+    "expected": {
+      "total_cents": 400,
+      "items": 2
+    }
+  },
+  {
+    "name": "empty invoice",
+    "inputs": {
+      "lines": []
+    },
+    "files": {},
+    "expected": {
+      "total_cents": 0,
+      "items": 0
+    }
+  }
+]

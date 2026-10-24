@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-21",
+  "provider": "NVIDIA NIM",
+  "model": "nvidia/nemotron-3.5-embed-1b",
+  "mode": "hosted embeddings; one query and five tool descriptions",
+  "query_language": "Spanish",
+  "query": "normaliza las columnas de un csv y quita espacios de más en sus valores",
+  "dimensions": 2048,
+  "l2_norm": 1.000001,
+  "latency_seconds_query_then_passages": [0.946, 0.599, 0.578, 0.611, 0.74, 0.693],
+  "cosine_ranking": [
+    {"tool": "csv-cleaner", "similarity": 0.649778},
+    {"tool": "word-count", "similarity": 0.14836},
+    {"tool": "image-resize", "similarity": 0.078351},
+    {"tool": "open-browser", "similarity": 0.064546},
+    {"tool": "document-search", "similarity": 0.054991}
+  ],
+  "result": "expected tool ranked first (one exploratory query; not a quality benchmark)",
+  "secret_handling": "credential loaded from existing private IsyMotron store, passed only in child process env; never printed or modified",
+  "api": "https://integrate.api.nvidia.com/v1/embeddings",
+  "input_type": {"query": "query", "descriptions": "passage"},
+  "api_key_state": "available in secure store"
+}

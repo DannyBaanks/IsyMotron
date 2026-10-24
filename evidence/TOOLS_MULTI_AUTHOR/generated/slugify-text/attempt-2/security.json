@@ -1,0 +1,1 @@
+{"contract": "ToolSecurity/v1", "network": false, "external_processes": false, "timeout_s": 3, "memory_mb": 256, "max_input_bytes": 1048576, "max_output_bytes": 65536}
