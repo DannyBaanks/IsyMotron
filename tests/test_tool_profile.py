@@ -137,6 +137,26 @@ def test_custom_disabled_with_prompts_triggers_approval():
     assert policy.reason is DenyReason.NEEDS_APPROVAL
 
 
+def test_custom_prompts_expose_disabled_capabilities_to_the_planner():
+    host = make_host("custom", custom={"capabilities": ["filesystem.read"], "allow_request_prompts": True})
+    assert "system.info" in host.describe().granted
+    assert any(c.id == "system.info" for c in host.list_capabilities())
+
+
+def test_external_approval_cannot_widen_file_scope():
+    host = make_host("security")
+    host.record_external_approval(
+        "alice", "filesystem.read",
+        {"roots": ["C:/Photos", "C:/Secrets"]}, 120)
+    lease, policy = host.request_lease(
+        "alice", "filesystem.read", 120, {"roots": ["C:/Secrets"]})
+    assert lease is not None and policy.decision is Decision.ALLOW
+    req = ExecutionRequest.make(host.identify().host_id, "alice", "filesystem.read",
+                                {"path": "C:/Secrets/k.txt"}, lease_id=lease.lease_id)
+    rcpt = host.execute_capability(req)
+    assert rcpt.decision.decision is Decision.DENY
+
+
 def test_custom_approval_allows():
     host = make_host("custom", custom={"capabilities": ["filesystem.read"], "allow_request_prompts": True})
     lease, policy = host.mint_approved_lease("subj", "system.info", {}, 120)

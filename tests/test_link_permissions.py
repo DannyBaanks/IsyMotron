@@ -179,6 +179,18 @@ def test_phone_approval_cannot_override_local_host_grants(tmp_path):
         server.stop()
 
 
+def test_second_queue_instance_does_not_expire_an_active_approval(tmp_path):
+    host = ModernHost({}, granted=["system.info"], grant_scopes={"system.info": {}})
+    first = PermissionQueue(tmp_path, host)
+    created = first.submit({
+        "subject": "agent:planner", "capability": "system.info",
+        "scope": {}, "ttl_s": 60, "reason": "cross-process approval",
+    })
+    first.decide(created["request_id"], "approve", "office-phone")
+    second = PermissionQueue(tmp_path, host)
+    assert second.local_status(created["request_id"])["status"] == "approved"
+
+
 def test_runner_timeout_expires_pending_request(tmp_path):
     host = ModernHost({}, granted=["system.info"], grant_scopes={"system.info": {}})
     queue = PermissionQueue(tmp_path, host)

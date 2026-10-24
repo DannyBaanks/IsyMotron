@@ -37,7 +37,9 @@ class PermissionQueue:
         """A host restart drops in-memory leases; never report them as usable."""
         with self._lock, locked(self.path):
             for item in self._latest().values():
-                if item.get("status") != "approved":
+                if item.get("status") != "approved" or item.get("lease_id") is not None:
+                    # A lease id means another process may still hold that
+                    # lease; local_status() invalidates it if this host cannot.
                     continue
                 updated = {
                     **item,

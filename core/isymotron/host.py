@@ -132,7 +132,13 @@ class Host(ABC):
             return [c.id for c in self._capabilities]
         if self._tool_profile == "custom":
             allowed = self._custom.get("capabilities") if isinstance(self._custom, Mapping) else None
+            prompts = bool(self._custom.get("allow_request_prompts", False)) if isinstance(self._custom, Mapping) else False
             allowed_ids = set(allowed) if isinstance(allowed, list) else set()
+            if prompts:
+                # The planner may propose a capability declared in the grants
+                # file even when the custom profile disables it; the lease gate
+                # still says NEEDS_APPROVAL until a human approves it.
+                allowed_ids.update(self._granted)
             ids = [c.id for c in self._capabilities if c.id in allowed_ids]
             ids.extend(extra)
             return ids
@@ -233,7 +239,10 @@ class Host(ABC):
         bound for its TTL). No new lease is minted here."""
         import time as _t
         horizon = _t.time() + max(float(ttl_s), 0.0)
-        self._approved[(subject, capability)] = (horizon, dict(scope or {}))
+        # The grants file remains the outer bound: an approval can narrow it,
+        # never widen it.
+        bounded = _narrow(dict(self._grant_scopes.get(capability, {})), dict(scope or {}))
+        self._approved[(subject, capability)] = (horizon, bounded)
         self._rebuild_enforcer()
 
     def mint_approved_lease(self, subject: str, capability: str,
