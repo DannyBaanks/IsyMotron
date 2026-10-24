@@ -180,6 +180,39 @@ class PermissionQueue:
                 lease = None
             return self._public(item, include_lease=True, lease=lease.to_dict() if lease else None)
 
+    def expire(self, request_id: str, reason: str = "request_timeout") -> dict | None:
+        """Expire one pending request before its TTL.
+
+        The task runner uses a shorter deadline than the queue's 15-minute
+        TTL. Without this explicit expiry, a task the runner already denied
+        could leave a pending permission that a human approves later.
+        """
+        with self._lock:
+            item = self._latest().get(request_id)
+            if item is None or item.get("status") != "pending":
+                return None
+            updated = {
+                **item,
+                "status": "expired",
+                "decision_reason": reason,
+                "decided_at": time.time(),
+                "decided_by": "host:runner-timeout",
+                "lease_id": None,
+            }
+            self._append(updated)
+            from . import receipts
+
+            receipts.append_receipt(
+                self.directory,
+                "link_permission_decided",
+                {"request_id": request_id, "subject": item["subject"],
+                 "capability": item["capability"], "decision": "expired",
+                 "decision_reason": reason, "lease_id": None,
+                 "by": "host:runner-timeout",
+                 "tool_profile": getattr(self.host, "tool_profile", "unknown")},
+            )
+            return self._public(updated)
+
     def decide(self, request_id: str, decision: str, office_id: str) -> dict:
         if decision not in ("approve", "deny"):
             raise PermissionQueueError("bad_decision", "decision must be approve or deny")

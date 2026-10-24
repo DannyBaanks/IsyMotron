@@ -265,16 +265,16 @@ export function startApp(deps: AppDeps): void {
     if (tab === "phone") phoneScreen();
   }
 
-  let lastProfile: string | null = null;
-  let lastSessionUntil: string | null = null;
+  const profilesByPeer = new Map<string, string | null>();
+  const sessionsByPeer = new Map<string, string | null>();
 
   async function doPing(peer: Peer): Promise<boolean> {
     setMood("thinking");
     pet?.say(`Preguntándole a ${peer.name}…`, 1400);
     try {
       const reply = await ping(await deps.identity(), peer, deps.fetch);
-      lastProfile = (reply?.tool_profile as string | null | undefined) ?? null;
-      lastSessionUntil = (reply?.session_until as string | null | undefined) ?? null;
+      profilesByPeer.set(peer.office_id, (reply?.tool_profile as string | null | undefined) ?? null);
+      sessionsByPeer.set(peer.office_id, (reply?.session_until as string | null | undefined) ?? null);
       setMood("success", 1800);
       showSigned(peer.name, "pong", `respuesta sellada y atada a la petición · ${new Date().toTimeString().slice(0, 5)}`);
       return true;
@@ -285,7 +285,8 @@ export function startApp(deps: AppDeps): void {
     }
   }
 
-  function sessionBadge(): string {
+  function sessionBadge(peer: Peer): string {
+    const lastSessionUntil = sessionsByPeer.get(peer.office_id) ?? null;
     if (!lastSessionUntil) return "Sesión: aún no validada";
     const when = new Date(lastSessionUntil);
     const now = new Date();
@@ -293,7 +294,8 @@ export function startApp(deps: AppDeps): void {
     return `Sesión activa hasta ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   }
 
-  function profileBadge(): string {
+  function profileBadge(peer: Peer): string {
+    const lastProfile = profilesByPeer.get(peer.office_id) ?? null;
     if (!lastProfile) return "Perfil de herramientas: desconocido (haz ping)";
     if (lastProfile === "full") return "Perfil de tools: FULL ⚠ testing/no recomendado";
     if (lastProfile === "custom") return "Perfil de tools: CUSTOM";
@@ -649,9 +651,9 @@ export function startApp(deps: AppDeps): void {
   }
 
   function peerScreen(peer: Peer, notice = ""): void {
-    // Opening the PC card refreshes the Link session window so the badge
-    // "Sesión activa" is what the human sees first, not a stale one.
-    if (!lastProfile || !lastSessionUntil) void doPing(peer);
+    // Opening a PC card refreshes that PC's session window; another PC's
+    // badge must never leak into this one.
+    if (!profilesByPeer.has(peer.office_id) || !sessionsByPeer.has(peer.office_id)) void doPing(peer);
     const out = el("p", "hint", notice);
     out.setAttribute("aria-live", "polite");
     const title = el("input", "field");
@@ -696,8 +698,8 @@ export function startApp(deps: AppDeps): void {
       button("‹ Mis PCs", "back", () => home()),
       el("h1", undefined, peer.name),
       el("p", "hint small", `Huella ${prettyFingerprint(peer.office_id)} · ${peer.addresses.join(", ")}`),
-      el("p", "hint small", profileBadge()),
-      el("p", "hint small", sessionBadge()),
+      el("p", "hint small", profileBadge(peer)),
+      el("p", "hint small", sessionBadge(peer)),
       button("Probar conexión", "btn", async () => {
         out.textContent = "Llamando…";
         out.textContent = (await doPing(peer)) ? `✓ ${peer.name} contestó, con su firma.` : "No contestó. Revisa la Wi-Fi y que corra «isymotron link servir --red».";

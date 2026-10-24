@@ -31,6 +31,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import envelope, identity, pairing, permissions
+from .file_lock import locked
 
 PROBE = "ISYMO-LINK?v1"
 DEFAULT_TCP_PORT = 47931
@@ -83,7 +84,7 @@ class LinkState:
         return out
 
     def inbox(self) -> list[dict]:
-        with self.inbox_lock:
+        with self.inbox_lock, locked(self.inbox_path()):
             return self._read_inbox_unlocked()
 
     def _rewrite_inbox_unlocked(self, entries: list[dict]) -> None:
@@ -93,8 +94,8 @@ class LinkState:
                 handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     def inbox_update(self, task_id: str, office_id: str, mutate) -> dict | None:
-        """Read, mutate and rewrite one owned task under one process-local lock."""
-        with self.inbox_lock:
+        """Read, mutate and rewrite one owned task under one cross-process lock."""
+        with self.inbox_lock, locked(self.inbox_path()):
             entries = self._read_inbox_unlocked()
             hit = next(
                 (
@@ -111,7 +112,7 @@ class LinkState:
             return hit
 
     def inbox_append(self, entry: dict) -> dict:
-        with self.inbox_lock:
+        with self.inbox_lock, locked(self.inbox_path()):
             self.directory.mkdir(parents=True, exist_ok=True)
             record = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **entry}
             with open(self.inbox_path(), "a", encoding="utf-8", newline="\n") as handle:

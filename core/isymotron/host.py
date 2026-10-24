@@ -85,8 +85,9 @@ class Host(ABC):
         self._tool_profile = tool_profile if tool_profile in ("full", "security", "custom") else "security"
         self._inert = inert
         self._custom = dict(custom) if isinstance(custom, Mapping) else None
-        # capability -> (horizon, approved_scope) for approval-minted grants.
-        self._approved: dict[str, tuple[float, dict[str, Any]]] = {}
+        # (subject, capability) -> (horizon, approved_scope) for approval-minted grants.
+        # Approvals are per-subject: Alice's yes must never become Bob's lease.
+        self._approved: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
         self._leases: dict[str, Lease] = {}
         self._receipts: dict[str, ExecutionReceipt] = {}
         self._claim_bundles: dict[str, ClaimBundle] = {}
@@ -105,9 +106,9 @@ class Host(ABC):
     def _prune_expired_approvals(self) -> bool:
         import time as _t
         now = _t.time()
-        expired = [c for c, (horizon, _scope) in self._approved.items() if horizon <= now]
-        for c in expired:
-            del self._approved[c]
+        expired = [key for key, (horizon, _scope) in self._approved.items() if horizon <= now]
+        for key in expired:
+            del self._approved[key]
         return bool(expired)
 
     def _rebuild_enforcer(self) -> None:
@@ -118,8 +119,8 @@ class Host(ABC):
         extra = []
         import time as _t
         now = _t.time()
-        for cap, (horizon, _scope) in self._approved.items():
-            if horizon > now:
+        for (_subject, cap), (horizon, _scope) in self._approved.items():
+            if horizon > now and cap not in extra:
                 extra.append(cap)
         # Planner-visible catalogue per profile:
         # full and security expose all manifest capabilities; the difference
@@ -179,7 +180,7 @@ class Host(ABC):
             self._rebuild_enforcer()
 
         if self._tool_profile == "security":
-            approved = self._approved.get(capability)
+            approved = self._approved.get((subject, capability))
             if approved is None:
                 return None, PolicyDecision(
                     Decision.DENY, DenyReason.NEEDS_APPROVAL,
@@ -201,7 +202,7 @@ class Host(ABC):
                 lease = Lease.issue(self._identity.host_id, subject, capability, effective, ttl)
                 self._leases[lease.lease_id] = lease
                 return lease, PolicyDecision(Decision.ALLOW)
-            approved = self._approved.get(capability)
+            approved = self._approved.get((subject, capability))
             if approved is not None:
                 horizon, approved_scope = approved
                 effective = _narrow(approved_scope, scope)
@@ -232,7 +233,7 @@ class Host(ABC):
         bound for its TTL). No new lease is minted here."""
         import time as _t
         horizon = _t.time() + max(float(ttl_s), 0.0)
-        self._approved[capability] = (horizon, dict(scope or {}))
+        self._approved[(subject, capability)] = (horizon, dict(scope or {}))
         self._rebuild_enforcer()
 
     def mint_approved_lease(self, subject: str, capability: str,
@@ -259,7 +260,7 @@ class Host(ABC):
         lease = Lease.issue(self._identity.host_id, subject, capability, scope, ttl)
         self._leases[lease.lease_id] = lease
         import time as _t
-        self._approved[capability] = (_t.time() + ttl, scope)
+        self._approved[(subject, capability)] = (_t.time() + ttl, scope)
         self._rebuild_enforcer()
         return lease, PolicyDecision(Decision.ALLOW)
 

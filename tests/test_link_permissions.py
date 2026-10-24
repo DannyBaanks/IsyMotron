@@ -8,8 +8,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "core"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "hosts"))
 
 from isymotron.link import envelope, identity, pairing, receipts
+from isymotron.link.permissions import PermissionQueue, PermissionQueueError
 from isymotron.link.server import LinkServer
 from simulator.engines import ModernHost
+
+import pytest
 
 
 def _post(url: str, payload: dict) -> tuple[int, dict]:
@@ -174,6 +177,23 @@ def test_phone_approval_cannot_override_local_host_grants(tmp_path):
         assert receipt["by"] == phone["office_id"]
     finally:
         server.stop()
+
+
+def test_runner_timeout_expires_pending_request(tmp_path):
+    host = ModernHost({}, granted=["system.info"], grant_scopes={"system.info": {}})
+    queue = PermissionQueue(tmp_path, host)
+    created = queue.submit({
+        "subject": "agent:planner", "capability": "system.info",
+        "scope": {}, "ttl_s": 900, "reason": "runner deadline test",
+    })
+    expired = queue.expire(created["request_id"], "runner_timeout")
+    assert expired is not None
+    assert expired["status"] == "expired"
+    assert expired["decision_reason"] == "runner_timeout"
+    assert queue.local_status(created["request_id"])["status"] == "expired"
+    with pytest.raises(PermissionQueueError) as excinfo:
+        queue.decide(created["request_id"], "approve", "office-phone")
+    assert excinfo.value.code == "already_decided"
 
 
 def test_unpaired_office_cannot_list_or_decide_permissions(tmp_path):

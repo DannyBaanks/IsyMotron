@@ -101,6 +101,18 @@ def test_security_missing_approval_means_deny():
     assert rcpt.decision.decision is Decision.DENY
 
 
+def test_security_approval_is_subject_scoped():
+    host = make_host("security")
+    host.record_external_approval("alice", "filesystem.read", {"roots": ["C:/Photos"]}, 120)
+    alice_lease, alice_policy = host.request_lease(
+        "alice", "filesystem.read", 120, {"roots": ["C:/Photos"]})
+    bob_lease, bob_policy = host.request_lease(
+        "bob", "filesystem.read", 120, {"roots": ["C:/Photos"]})
+    assert alice_lease is not None and alice_policy.decision is Decision.ALLOW
+    assert bob_lease is None
+    assert bob_policy.reason is DenyReason.NEEDS_APPROVAL
+
+
 # -- custom ------------------------------------------------------------------
 
 CUSTOM_DEF = {"capabilities": ["filesystem.read"], "allow_request_prompts": False}

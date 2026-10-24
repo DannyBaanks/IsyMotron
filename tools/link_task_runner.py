@@ -30,6 +30,7 @@ for sub in ("", "core", "hosts", "agents"):
         sys.path.insert(0, p)
 
 from isymotron.link import identity as link_identity  # noqa: E402
+from isymotron.link.file_lock import locked  # noqa: E402
 from agents.executor import Executor  # noqa: E402
 from agents.planner import Planner, PlanRejected  # noqa: E402
 from agents.provider import Provider, ProviderError  # noqa: E402
@@ -50,15 +51,50 @@ def load_inbox() -> list[dict]:
     path = _inbox_path()
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    with locked(path):
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
 
 
 def save_inbox(entries: list[dict]) -> None:
     path = _inbox_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in entries), encoding="utf-8")
-    tmp.replace(path)
+    with locked(path):
+        tmp.write_text(
+            "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in entries),
+            encoding="utf-8",
+        )
+        tmp.replace(path)
+
+
+def update_inbox_entry(task_id: str, updates: dict) -> dict | None:
+    """Update one task without dropping entries appended by the Link server."""
+    path = _inbox_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with locked(path):
+        try:
+            entries = [
+                json.loads(line)
+                for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+        except OSError:
+            return None
+        hit = next((e for e in entries if e.get("task_id") == task_id), None)
+        if hit is None:
+            return None
+        hit.update(updates)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(
+            "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in entries),
+            encoding="utf-8",
+        )
+        tmp.replace(path)
+        return hit
 
 
 def append_receipt(entry: dict) -> None:
@@ -83,22 +119,30 @@ def build_relay(grants_path: str | None):
     return relay
 
 
-def run_task(relay, provider: Provider, task: dict) -> dict:
+def run_task(relay, provider: Provider, task: dict, resume: dict | None = None) -> dict:
     intent = (str(task.get("title", "")) + "\n" + str(task.get("body", ""))).strip()
     if not intent:
         return {"status": "failed", "detail": "empty intent"}
-    descs = [relay._host(h["host_id"]).describe() for h in relay.hosts()]
-    try:
-        plan = Planner(provider).plan(intent, descs, max_tokens=2000)
-    except PlanRejected as exc:
-        return {"status": "rejected", "detail": exc.detail or exc.reason}
-    except ProviderError as exc:
-        attribution = exc.outcome.attribution.value if exc.outcome else "UNKNOWN"
-        return {"status": "failed", "detail": str(exc), "attribution": attribution}
-    if plan.is_refusal() or not plan.steps:
-        return {"status": "rejected", "detail": plan.refused or "the planner returned no steps"}
-
-    execution = Executor(relay, f"{SUBJECT}:{task.get('from', '')}").run(plan)
+    if resume is None:
+        descs = [relay._host(h["host_id"]).describe() for h in relay.hosts()]
+        try:
+            plan = Planner(provider).plan(intent, descs, max_tokens=2000)
+        except PlanRejected as exc:
+            return {"status": "rejected", "detail": exc.detail or exc.reason}
+        except ProviderError as exc:
+            attribution = exc.outcome.attribution.value if exc.outcome else "UNKNOWN"
+            return {"status": "failed", "detail": str(exc), "attribution": attribution}
+        if plan.is_refusal() or not plan.steps:
+            return {"status": "rejected", "detail": plan.refused or "the planner returned no steps"}
+        execution = Executor(relay, f"{SUBJECT}:{task.get('from', '')}").run(plan)
+    else:
+        plan = resume["plan"]
+        execution = Executor(relay, f"{SUBJECT}:{task.get('from', '')}").run(
+            plan,
+            start_at=resume["start_at"],
+            results=resume["results"],
+            done=resume["done"],
+        )
     if execution.stop_reason and "NEEDS_APPROVAL" in execution.stop_reason:
         cap = None
         import re as _re
@@ -122,6 +166,19 @@ def run_task(relay, provider: Provider, task: dict) -> dict:
         else:
             outcome["derived_scope"] = {}
         outcome["params"] = params
+        # Keep the plan and the partial execution so an approval resumes the
+        # remaining steps instead of re-executing the ones already completed.
+        results = {
+            step.index: step.receipt.result
+            for step in execution.steps
+            if isinstance(step.receipt.result, dict)
+        }
+        outcome["_resume"] = {
+            "plan": plan,
+            "start_at": execution.stopped_at or 1,
+            "results": results,
+            "done": list(execution.steps),
+        }
         return outcome
     receipts = []
     denied = None
@@ -159,50 +216,48 @@ def run_task(relay, provider: Provider, task: dict) -> dict:
 
 def process_inbox(relay, provider_factory, limit: int | None = None, approvals_timeout_s: float = 60.0) -> int:
     entries = load_inbox()
-    changed = False
     processed = 0
-    for entry in entries:
-        if entry.get("status") != "queued":
+    for snapshot in entries:
+        if snapshot.get("status") != "queued":
             continue
-        entry["status"] = "running"
-        save_inbox(entries)
+        task_id = snapshot.get("task_id")
+        if not task_id:
+            continue
+        update_inbox_entry(task_id, {"status": "running"})
         try:
             provider = provider_factory()
         except ProviderError as exc:
-            entry.update({"status": "failed", "detail": str(exc)})
+            outcome = {"status": "failed", "detail": str(exc)}
             append_receipt({
                 "kind": "link_task_failed",
                 "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "task_id": entry.get("task_id"),
+                "task_id": task_id,
                 "detail": str(exc),
             })
         else:
-            outcome, request_id = _run_with_approval_flow(relay, provider, entry, approvals_timeout_s)
+            outcome, request_id = _run_with_approval_flow(relay, provider, snapshot, approvals_timeout_s)
             if request_id:
-                entry["permission_request_id"] = request_id
-            entry.update(outcome)
+                outcome["permission_request_id"] = request_id
             profile = "unknown"
             try:
                 first = relay.hosts()[0]
                 profile = getattr(relay._host(first["host_id"]), "tool_profile", "unknown")
             except Exception:
                 pass
-            entry["tool_profile"] = profile
+            outcome["tool_profile"] = profile
             append_receipt({
                 "kind": f"link_task_{outcome['status']}",
                 "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "task_id": entry.get("task_id"),
-                "from": entry.get("from"),
+                "task_id": task_id,
+                "from": snapshot.get("from"),
                 "receipts": outcome.get("receipts", []),
                 "detail": outcome.get("detail"),
                 "tool_profile": profile,
             })
-        changed = True
+        update_inbox_entry(task_id, outcome)
         processed += 1
         if limit is not None and processed >= limit:
             break
-    if changed:
-        save_inbox(entries)
     return processed
 
 
@@ -249,10 +304,10 @@ def _approval_outcome(queue, request_id, timeout_s):
         if item["status"] in ("denied", "expired"):
             return "denied", item.get("decision_reason", item["status"])
         time.sleep(min(0.5, max(deadline - time.time(), 0.0)))
-    # Reflect expiry into the shared queue so the pending item cannot be
-    # re-used by a later dedupe scan.
+    # The runner's own deadline is shorter than the queue's 15-minute TTL.
+    # Expire the pending request here so it cannot be approved and reused later.
     try:
-        queue.local_status(request_id)
+        queue.expire(request_id, "runner_timeout")
     except Exception:
         pass
     return "denied", "request_timeout"
@@ -260,6 +315,7 @@ def _approval_outcome(queue, request_id, timeout_s):
 
 def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
     outcome = run_task(relay, provider, task)
+    resume = outcome.pop("_resume", None)
     if outcome.get("status") != "needs_approval":
         return outcome, None
     cap = outcome.get("capability")
@@ -291,20 +347,16 @@ def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
         })
         request_id = item["request_id"]
     # Persist the pending state so the phone/CLI sees the wait, not "queued".
-    task["status"] = "pending_permission"
-    task["permission_request_id"] = request_id
-    try:
-        _entries = load_inbox()
-        for _e in _entries:
-            if _e.get("task_id") == task.get("task_id"):
-                _e.update({"status": "pending_permission", "permission_request_id": request_id})
-        save_inbox(_entries)
-    except Exception:
-        pass
+    task_id = task.get("task_id")
+    if task_id:
+        update_inbox_entry(task_id, {
+            "status": "pending_permission",
+            "permission_request_id": request_id,
+        })
     decision, detail = _approval_outcome(queue, request_id, approvals_timeout_s)
     if decision == "approved":
         # The shared queue recorded the approval. The runner's own host gets
-        # the exact same bound injected so the retry can lease it.
+        # the exact same bound injected so the resume can lease it.
         scope = detail.get("scope") or {} if isinstance(detail, dict) else {}
         ttl = (detail.get("ttl_s") if isinstance(detail, dict) else None) or 120.0
         try:
@@ -314,9 +366,9 @@ def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
             )
         except Exception:
             pass
-        outcome = run_task(relay, provider, task)
-        if isinstance(outcome, dict):
-            outcome["permission_request_id"] = request_id
+        outcome = run_task(relay, provider, task, resume=resume)
+        outcome.pop("_resume", None)
+        outcome["permission_request_id"] = request_id
         return outcome, request_id
     return {"status": "denied", "detail": str(detail)}, request_id
 
