@@ -6,6 +6,7 @@ a base URL, where its key comes from, a default model — not code.
 
 | `ISYMOTRON_PROVIDER` | Where | Key | Default model | JSON mode |
 |---|---|---|---|---|
+| `openai` | OpenAI API (`api.openai.com/v1`) | `OPENAI_API_KEY` (required) | `gpt-6-luna` | yes |
 | `nebius` (default) | Nebius Token Factory (`api.tokenfactory.us-central1.nebius.com/v1`) | `NEBIUS_API_KEY` (required) | `nvidia/nemotron-3-super-120b-a12b` | no (prompt only) |
 | `nvidia` | `integrate.api.nvidia.com/v1` | `NVIDIA_NIM_API_KEY` (required) | same | no (prompt only) |
 | `ollama` | `127.0.0.1:11434/v1`, or `$OLLAMA_HOST` | none (`OLLAMA_API_KEY` if your server wants one) | `llama3.1:8b` | yes |
@@ -14,6 +15,22 @@ a base URL, where its key comes from, a default model — not code.
 Overrides for any preset: `ISYMOTRON_MODEL`, `ISYMOTRON_BASE_URL`. LM Studio,
 vLLM and other OpenAI-compatible local servers work through `llamacpp` plus
 `ISYMOTRON_BASE_URL`.
+
+## OpenAI API
+
+```sh
+export ISYMOTRON_PROVIDER=openai
+export OPENAI_API_KEY="..."  # or: isymotron keys set OPENAI_API_KEY
+# Optional: none, low, medium, high, xhigh, max (default: medium)
+export ISYMOTRON_REASONING_EFFORT=medium
+# Optional; defaults to gpt-6-luna
+export ISYMOTRON_MODEL=gpt-6-luna
+```
+
+The GPT-6 Chat Completions request uses `max_completion_tokens` and
+`reasoning_effort`. When effort is not `none`, the provider omits `temperature`
+as required by the model API. This preset uses API-key auth; it does not use
+ChatGPT/Codex login sessions. API billing is separate from ChatGPT billing.
 
 ## Llama
 

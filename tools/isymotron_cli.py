@@ -435,12 +435,15 @@ def build_argv(verb: Verb, rest: list[str], *,
 
 #: Values that must never be printed once stored.
 SECRET_KEYS: tuple[str, ...] = (
-    "NEBIUS_API_KEY", "NVIDIA_NIM_API_KEY", "ISYMOTRON_RECEIPT_KEY",
+    "OPENAI_API_KEY", "NEBIUS_API_KEY", "NVIDIA_NIM_API_KEY",
+    "ISYMOTRON_RECEIPT_KEY",
 )
 #: Non-secret configuration the same command manages.
 CONFIG_KEYS: tuple[str, ...] = ("ISYMOTRON_PROVIDER",)
 KNOWN_KEYS: tuple[str, ...] = SECRET_KEYS + CONFIG_KEYS
-PROVIDER_VALUES: tuple[str, ...] = ("nvidia", "nebius", "ollama", "llamacpp")
+PROVIDER_VALUES: tuple[str, ...] = (
+    "openai", "nvidia", "nebius", "ollama", "llamacpp",
+)
 
 STORE_ENV = "ISYMOTRON_KEY_STORE"
 
@@ -617,9 +620,17 @@ def cmd_keys(rest: list[str]) -> int:
                 shown = fingerprint(value) if name in SECRET_KEYS else value
                 print(f"  {name:<24} ok  {shown}")
         if "--live" in args:
-            provider_key = values.get("NEBIUS_API_KEY") or values.get("NVIDIA_NIM_API_KEY")
-            if not provider_key:
-                return _keys_problem("--live needs a provider key stored first")
+            selected = values.get("ISYMOTRON_PROVIDER", "nebius")
+            key_name = {
+                "openai": "OPENAI_API_KEY",
+                "nvidia": "NVIDIA_NIM_API_KEY",
+                "nebius": "NEBIUS_API_KEY",
+            }.get(selected)
+            provider_key = values.get(key_name, "") if key_name else ""
+            if selected not in {"ollama", "llamacpp"} and not provider_key:
+                return _keys_problem(
+                    f"--live needs the key for provider {selected!r} stored first"
+                )
             print("running the provider probe with the stored key (live network call)")
             return run_entrypoint(VERBS["nemotron"], [])
         return 0 if ok else 2
