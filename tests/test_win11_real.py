@@ -25,6 +25,9 @@ SUBJECT = "test:local"
 
 
 def make_host(tmp_path, granted, scopes, **kw) -> Win11Host:
+    # These gates exercise the real engine's scope checks, not the approval
+    # queue; pin the profile to full unless a specific test overrides it.
+    kw.setdefault("tool_profile", "full")
     g = Grants(host_id="win11-test", display_name="test host",
                granted=list(granted), scopes=dict(scopes), source="<test>", **kw)
     return Win11Host(g)
