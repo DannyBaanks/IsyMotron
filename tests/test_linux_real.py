@@ -29,7 +29,7 @@ SUBJECT = "test:linux"
 
 def make_host(granted, scopes) -> LinuxHost:
     return LinuxHost(Grants(host_id="linux-test", display_name="t", granted=list(granted),
-                            scopes=dict(scopes), source="<test>"))
+                            scopes=dict(scopes), source="<test>", tool_profile="full"))
 
 
 def act(host, capability, **params):
@@ -68,8 +68,12 @@ def test_host_cli_uses_the_linux_engine_and_denies_the_case_escape(tmp_path):
     (tmp_path / "photos").mkdir()
     (tmp_path / "photos" / "loot.txt").write_text("SECRET", encoding="utf-8")
     grants = tmp_path / "grants.json"
+    # Profile pinned to full: this case targets the real engine's scope check,
+    # not the lease gate; in security the same request would instead stop at
+    # NEEDS_APPROVAL.
     Grants(host_id="linux-cli", display_name="t", granted=["filesystem.read"],
-           scopes={"filesystem.read": {"roots": [str(tmp_path / "Photos")]}}).save(str(grants))
+           scopes={"filesystem.read": {"roots": [str(tmp_path / "Photos")]}},
+           tool_profile="full").save(str(grants))
     cli = [sys.executable, os.path.join(REPO, "tools", "host_cli.py"), "--grants", str(grants)]
     status = subprocess.run(cli + ["status"], capture_output=True, text=True, timeout=60)
     assert "linux-real/" in status.stdout and "nt-real" not in status.stdout

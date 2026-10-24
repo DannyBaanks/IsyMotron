@@ -9,6 +9,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .file_lock import locked
+
 REQUEST_TTL_S = 15 * 60
 MAX_PENDING = 100
 
@@ -33,9 +35,11 @@ class PermissionQueue:
 
     def _mark_lost_leases(self) -> None:
         """A host restart drops in-memory leases; never report them as usable."""
-        with self._lock:
+        with self._lock, locked(self.path):
             for item in self._latest().values():
-                if item.get("status") != "approved":
+                if item.get("status") != "approved" or item.get("lease_id") is not None:
+                    # A lease id means another process may still hold that
+                    # lease; local_status() invalidates it if this host cannot.
                     continue
                 updated = {
                     **item,
@@ -52,7 +56,8 @@ class PermissionQueue:
                     {"request_id": item["request_id"], "subject": item["subject"],
                      "capability": item["capability"], "decision": "expired",
                      "decision_reason": "host_restarted", "lease_id": None,
-                     "by": "host:restart"},
+                     "by": "host:restart",
+                     "tool_profile": getattr(self.host, "tool_profile", "unknown")},
                 )
 
     def _latest(self) -> dict[str, dict]:
@@ -84,6 +89,8 @@ class PermissionQueue:
         }
         if item.get("decision_reason"):
             result["decision_reason"] = item["decision_reason"]
+        if item.get("lease_expires_at") is not None:
+            result["lease_expires_at"] = item["lease_expires_at"]
         if include_lease and lease is not None:
             result["lease"] = lease
         return result
@@ -110,7 +117,7 @@ class PermissionQueue:
         except (TypeError, ValueError):
             raise PermissionQueueError("bad_request", "scope must contain JSON values") from None
 
-        with self._lock:
+        with self._lock, locked(self.path):
             latest = self._latest()
             pending = sum(item.get("status") == "pending" for item in latest.values())
             if pending >= MAX_PENDING:
@@ -131,7 +138,7 @@ class PermissionQueue:
 
     def pending(self) -> list[dict]:
         now = time.time()
-        with self._lock:
+        with self._lock, locked(self.path):
             items = self._latest()
             out = []
             for item in items.values():
@@ -146,7 +153,8 @@ class PermissionQueue:
                         self.directory,
                         "link_permission_decided",
                         {"request_id": item["request_id"], "subject": item["subject"],
-                         "capability": item["capability"], "decision": "expired", "by": "host:timeout"},
+                         "capability": item["capability"], "decision": "expired", "by": "host:timeout",
+                         "tool_profile": getattr(self.host, "tool_profile", "unknown")},
                     )
                     continue
                 out.append(item)
@@ -154,7 +162,7 @@ class PermissionQueue:
             return [self._public(item) for item in out]
 
     def local_status(self, request_id: str) -> dict | None:
-        with self._lock:
+        with self._lock, locked(self.path):
             item = self._latest().get(request_id)
             if item is None:
                 return None
@@ -169,7 +177,8 @@ class PermissionQueue:
                     {"request_id": item["request_id"], "subject": item["subject"],
                      "capability": item["capability"], "decision": "expired",
                      "decision_reason": "request_timeout", "lease_id": None,
-                     "by": "host:timeout"},
+                     "by": "host:timeout",
+                     "tool_profile": getattr(self.host, "tool_profile", "unknown")},
                 )
             lease = self._issued.get(request_id)
             if lease is not None and not self.host.validate_lease(lease.lease_id):
@@ -177,10 +186,43 @@ class PermissionQueue:
                 lease = None
             return self._public(item, include_lease=True, lease=lease.to_dict() if lease else None)
 
+    def expire(self, request_id: str, reason: str = "request_timeout") -> dict | None:
+        """Expire one pending request before its TTL.
+
+        The task runner uses a shorter deadline than the queue's 15-minute
+        TTL. Without this explicit expiry, a task the runner already denied
+        could leave a pending permission that a human approves later.
+        """
+        with self._lock, locked(self.path):
+            item = self._latest().get(request_id)
+            if item is None or item.get("status") != "pending":
+                return None
+            updated = {
+                **item,
+                "status": "expired",
+                "decision_reason": reason,
+                "decided_at": time.time(),
+                "decided_by": "host:runner-timeout",
+                "lease_id": None,
+            }
+            self._append(updated)
+            from . import receipts
+
+            receipts.append_receipt(
+                self.directory,
+                "link_permission_decided",
+                {"request_id": request_id, "subject": item["subject"],
+                 "capability": item["capability"], "decision": "expired",
+                 "decision_reason": reason, "lease_id": None,
+                 "by": "host:runner-timeout",
+                 "tool_profile": getattr(self.host, "tool_profile", "unknown")},
+            )
+            return self._public(updated)
+
     def decide(self, request_id: str, decision: str, office_id: str) -> dict:
         if decision not in ("approve", "deny"):
             raise PermissionQueueError("bad_decision", "decision must be approve or deny")
-        with self._lock:
+        with self._lock, locked(self.path):
             item = self._latest().get(request_id)
             if item is None:
                 raise PermissionQueueError("no_such_request", "permission request not found", 404)
@@ -191,9 +233,18 @@ class PermissionQueue:
             elif decision == "deny":
                 status, decision_reason, lease = "denied", "human_denied", None
             else:
-                lease, policy = self.host.request_lease(
-                    item["subject"], item["capability"], item["ttl_s"], item["scope"]
-                )
+                # Approvals mint through the new approval path (security/custom),
+                # falling back to the classic grant lookup when the host
+                # predates the profile model.
+                mint = getattr(self.host, "mint_approved_lease", None)
+                if mint is not None:
+                    lease, policy = mint(
+                        item["subject"], item["capability"], item["scope"], item["ttl_s"]
+                    )
+                else:
+                    lease, policy = self.host.request_lease(
+                        item["subject"], item["capability"], item["ttl_s"], item["scope"]
+                    )
                 if lease is None:
                     status = "denied"
                     decision_reason = policy.reason.value if policy.reason else "host_denied"
@@ -207,6 +258,7 @@ class PermissionQueue:
                 "decided_at": time.time(),
                 "decided_by": office_id,
                 "lease_id": lease.lease_id if lease is not None else None,
+                "lease_expires_at": lease.expires_at if lease is not None else None,
             }
             self._append(updated)
             from . import receipts
@@ -217,6 +269,7 @@ class PermissionQueue:
                 {"request_id": request_id, "subject": item["subject"],
                  "capability": item["capability"], "decision": status,
                  "decision_reason": decision_reason, "lease_id": lease.lease_id if lease else None,
-                 "by": office_id},
+                 "by": office_id,
+                 "tool_profile": getattr(self.host, "tool_profile", "unknown")},
             )
             return {"request_id": request_id, "status": status, "decision_reason": decision_reason}

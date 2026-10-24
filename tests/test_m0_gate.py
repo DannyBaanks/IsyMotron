@@ -156,11 +156,13 @@ def test_admin_capability_denied_without_admin_grant(world):
     # Force-grant it locally to reach the admin check rather than the grant check.
     modern._granted.append("system.admin_task")
     modern._grant_scopes["system.admin_task"] = {}
-    modern._enforcer = type(modern._enforcer)(modern.describe(), admin_granted=False)
-    lease = phone.approve("win11-victus", "system.admin_task")
-    assert lease is not None
-    rcpt = phone.act("win11-victus", "system.admin_task", action="wipe")
-    assert rcpt.decision.reason is DenyReason.EXCESS_AUTHORITY
+    modern._tool_profile = "full"
+    modern._rebuild_enforcer()
+    # Under the profile model the lease gate itself refuses an admin capability
+    # when the host has no admin flag; there is no lease to act with.
+    lease, policy = modern.request_lease("e2e", "system.admin_task", 60)
+    assert lease is None
+    assert policy.reason is DenyReason.EXCESS_AUTHORITY
 
 
 def test_expired_lease_is_denied(world):
@@ -226,6 +228,7 @@ def test_unmapped_capability_family_falls_to_deny():
         HostIdentity("odd-1", "Odd", "windows", "11-24h2", "odd/0.1"),
         [cap], ["quantum.entangle"], {"quantum.entangle": {}},
     )
+    host._tool_profile = "full"
     lease, _ = host.request_lease("s", "quantum.entangle", 60)
     req = ExecutionRequest.make("odd-1", "s", "quantum.entangle", {"x": 1}, lease.lease_id)
     rcpt = host.execute_capability(req)

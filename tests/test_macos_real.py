@@ -43,8 +43,10 @@ from windows.grants import Grants                          # noqa: E402
 
 
 def make_host(granted, scopes) -> MacHost:
+    # The real-engine gate targets scope resolution, not the approval queue;
+    # full keeps the lease step out of the way unless a test opts out.
     return MacHost(Grants(host_id="mac-test", display_name="t", granted=list(granted),
-                          scopes=dict(scopes), source="<test>"))
+                          scopes=dict(scopes), source="<test>", tool_profile="full"))
 
 
 def act(host, capability, **params):

@@ -27,6 +27,7 @@ import mimetypes
 import os
 import secrets
 import socket
+import sys
 import threading
 import time
 import urllib.parse
@@ -651,11 +652,23 @@ def lan_address() -> str:
         s.close()
 
 
+class ClientTolerantHTTPServer(http.server.ThreadingHTTPServer):
+    """A client that hangs up mid-response is routine traffic, not a console
+    error. The default ``handle_error`` prints a raw BrokenPipeError traceback
+    for every early close (audit 2026-10-08: the 401 hang-up in the link panel
+    tests did exactly that); real handler bugs must stay visible."""
+
+    def handle_error(self, request, client_address):
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def serve(state: ConsoleState, port: int = 8760, lan: bool = False):
     """Return a configured, unstarted server plus the URL to open."""
     handler = type("BoundConsoleHandler", (ConsoleHandler,),
                    {"state": state, "allow_lan": lan})
     host = "0.0.0.0" if lan else "127.0.0.1"
-    httpd = http.server.ThreadingHTTPServer((host, port), handler)
+    httpd = ClientTolerantHTTPServer((host, port), handler)
     shown = lan_address() if lan else "127.0.0.1"
     return httpd, f"http://{shown}:{port}/?t={state.token}"

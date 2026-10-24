@@ -13,6 +13,7 @@ import { canPair, type CryptoSupport } from "./support";
 import { createGusChat, type GusAppDeps, type GusChatController } from "./gus/chat";
 import { GUS_MODELS } from "./gus/catalog.generated";
 import { NVIDIA_NIM_PRESET } from "./gus/remote";
+import { composeDelegateFromMessages } from "./gus/compose";
 
 export function supportLines(s: CryptoSupport): string[] {
   const mark = (ok: boolean) => (ok ? "✓" : "✗");
@@ -264,11 +265,16 @@ export function startApp(deps: AppDeps): void {
     if (tab === "phone") phoneScreen();
   }
 
+  const profilesByPeer = new Map<string, string | null>();
+  const sessionsByPeer = new Map<string, string | null>();
+
   async function doPing(peer: Peer): Promise<boolean> {
     setMood("thinking");
     pet?.say(`Preguntándole a ${peer.name}…`, 1400);
     try {
-      await ping(await deps.identity(), peer, deps.fetch);
+      const reply = await ping(await deps.identity(), peer, deps.fetch);
+      profilesByPeer.set(peer.office_id, (reply?.tool_profile as string | null | undefined) ?? null);
+      sessionsByPeer.set(peer.office_id, (reply?.session_until as string | null | undefined) ?? null);
       setMood("success", 1800);
       showSigned(peer.name, "pong", `respuesta sellada y atada a la petición · ${new Date().toTimeString().slice(0, 5)}`);
       return true;
@@ -277,6 +283,23 @@ export function startApp(deps: AppDeps): void {
       pet?.say(explain(error), 3200);
       return false;
     }
+  }
+
+  function sessionBadge(peer: Peer): string {
+    const lastSessionUntil = sessionsByPeer.get(peer.office_id) ?? null;
+    if (!lastSessionUntil) return "Sesión: aún no validada";
+    const when = new Date(lastSessionUntil);
+    const now = new Date();
+    if (when.getTime() + 60000 < now.getTime()) return `Sesión expirada (${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} UTC renueva con ping)`;
+    return `Sesión activa hasta ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  }
+
+  function profileBadge(peer: Peer): string {
+    const lastProfile = profilesByPeer.get(peer.office_id) ?? null;
+    if (!lastProfile) return "Perfil de herramientas: desconocido (haz ping)";
+    if (lastProfile === "full") return "Perfil de tools: FULL ⚠ testing/no recomendado";
+    if (lastProfile === "custom") return "Perfil de tools: CUSTOM";
+    return "Perfil de tools: SECURITY";
   }
 
   // ---------------------------------------------------------------- Inicio
@@ -436,16 +459,34 @@ export function startApp(deps: AppDeps): void {
 
     modeRow.setAttribute("role", "group"); modeRow.setAttribute("aria-label", "Modo de inferencia");
     modeRow.append(localMode, remoteMode);
+    const isyCard = el("section", "card gus-isymotron");
+    isyCard.append(
+      el("div", "eyebrow", "GUS ISYMOTRON"),
+      el("p", "hint small", "GUS te ayuda a formular; la PC recibe la tarea por Link, la decide, la ejecuta y deja recibo. GUS nunca toca Link, permisos ni archivos por su cuenta."),
+      button("Mandar el último mensaje a mi PC", "btn", async () => {
+        const peer = Object.values(loadPeers(kv))[0];
+        if (!peer) { status.textContent = "Enlaza una PC primero (Inicio → Enlazar con mi PC)."; return; }
+        const composed = composeDelegateFromMessages(gus.getState().messages);
+        if (!composed) { status.textContent = "Escribe primero un mensaje para GUS."; return; }
+        status.textContent = "Delegando…";
+        try {
+          const reply = await delegate(await deps.identity(), peer, composed.title, composed.body, deps.fetch);
+          addReceipt(kv, { kind: "link_delegated", office_id: peer.office_id, name: peer.name, task_id: String(reply.task_id), title: composed.title });
+          status.textContent = `✓ Tarea en la bandeja de ${peer.name} (${String(reply.task_id)}). Sigue su estado en Tareas.`;
+        } catch (error) { status.textContent = explain(error); }
+      }),
+    );
     composer.addEventListener("submit", (event) => {
       event.preventDefault(); const value = prompt.value; prompt.value = ""; void gus.send(value);
     });
     layout([
-      top, el("div", "eyebrow", "Orientación · sin acceso a Link"), el("h1", undefined, "GUS"),
-      el("p", "hint small", "GUS solo conversa. No puede usar tus permisos, leer archivos ni mandar tareas a tus PCs."),
+      top, el("div", "eyebrow", "Orientación · GUS no decide"), el("h1", undefined, "GUS"),
+      el("p", "hint small", "GUS solo conversa. No puede usar tus permisos, leer archivos ni mandar tareas a tus PCs. Para delegar una tarea en tu PC usa la tarjeta GUS ISYMOTRON de abajo."),
       modeRow, modeHint,
       el("h2", undefined, "Modelos locales verificados"), modelList,
       ...(deps.gus?.models ? [button("Importar copia guardada con iSyCode", "btn small", () => void gus.importModels())] : []),
       remotePanel, transcript, status, composer, stop, clear,
+      isyCard,
     ], null);
     gusUnsubscribe = gus.subscribe(renderState);
     renderState(state);
@@ -610,6 +651,9 @@ export function startApp(deps: AppDeps): void {
   }
 
   function peerScreen(peer: Peer, notice = ""): void {
+    // Opening a PC card refreshes that PC's session window; another PC's
+    // badge must never leak into this one.
+    if (!profilesByPeer.has(peer.office_id) || !sessionsByPeer.has(peer.office_id)) void doPing(peer);
     const out = el("p", "hint", notice);
     out.setAttribute("aria-live", "polite");
     const title = el("input", "field");
@@ -654,6 +698,8 @@ export function startApp(deps: AppDeps): void {
       button("‹ Mis PCs", "back", () => home()),
       el("h1", undefined, peer.name),
       el("p", "hint small", `Huella ${prettyFingerprint(peer.office_id)} · ${peer.addresses.join(", ")}`),
+      el("p", "hint small", profileBadge(peer)),
+      el("p", "hint small", sessionBadge(peer)),
       button("Probar conexión", "btn", async () => {
         out.textContent = "Llamando…";
         out.textContent = (await doPing(peer)) ? `✓ ${peer.name} contestó, con su firma.` : "No contestó. Revisa la Wi-Fi y que corra «isymotron link servir --red».";

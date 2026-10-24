@@ -37,7 +37,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `test` | the acceptance suite (default `-q`) |
 | `build` | rebuild `IsyMotron.exe` (smoke test included) |
 | `spoof` | append the hostile demo lines to an inbox |
-| `host` | `status \| grant \| revoke \| do` — the local human, via `tools/host_cli.py` |
+| `host` | `status \| grant \| revoke \| do \| profile show\|set\|custom` — the local human, via `tools/host_cli.py` |
 | `demo` | the M0 walkthrough (writes `evidence/M0/`) |
 | `learn` | a verified lesson from a learning pack (Malbolge) |
 | `install` | print the command that makes `isymotron` reachable from a new shell |
@@ -55,6 +55,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `repaint` | request UI repaint without restart |
 | `ctl` | `ping | status | stop` — control channel |
 | `link` | `buscar | emparejar | aceptar | enviar | tarea | mensaje | cancelar | olvidar | estado | servir` — linked offices (Munder Link port; EN aliases included) |
+| `task-runner` | drain the Link inbox: queued task → planner → host enforcer → done/denied/rejected/failed + receipt |
 
 Flags after a verb are forwarded **verbatim** to the command that implements
 it. The top-level dispatch parses no flags, so there is no `--` separator to

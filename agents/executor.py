@@ -87,11 +87,14 @@ class Executor:
         self.subject = subject
         self.lease_ttl_s = lease_ttl_s
 
-    def run(self, plan: Plan) -> Execution:
-        results: dict[int, Mapping[str, Any]] = {}
-        done: list[ExecutedStep] = []
+    def run(self, plan: Plan, *, start_at: int = 1,
+            results: Mapping[int, Mapping[str, Any]] | None = None,
+            done: list[ExecutedStep] | None = None) -> Execution:
+        results = dict(results or {})
+        done = list(done or [])
+        start = max(1, int(start_at))
 
-        for i, step in enumerate(plan.steps, 1):
+        for i, step in enumerate(plan.steps[start - 1:], start):
             try:
                 params = self._resolve(step.params, results, i)
             except UnresolvedReference as exc:
