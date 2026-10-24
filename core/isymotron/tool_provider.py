@@ -116,7 +116,10 @@ class LinuxPythonProvider:
                     os.killpg(proc.pid, signal.SIGKILL); proc.wait()
                     raise ToolError('LIMIT_EXCEEDED', 'tool timed out') from None
                 stdout.seek(0); output = stdout.read(policy['max_output_bytes'] + 1)
-                require(proc.returncode == 0, f'worker stopped ({proc.returncode})', 'EXECUTION_FAILED')
+                if proc.returncode != 0:
+                    stderr.seek(0)
+                    tail = stderr.read(400).decode('utf-8', 'replace').strip()
+                    require(False, f'worker stopped ({proc.returncode}): {tail}', 'EXECUTION_FAILED')
                 require(len(output) <= policy['max_output_bytes'], 'output budget exceeded', 'LIMIT_EXCEEDED')
             try: result = json.loads(output)
             except (ValueError, UnicodeError, RecursionError) as exc: raise ToolError('INVALID_OUTPUT', 'worker must return one JSON result') from exc
