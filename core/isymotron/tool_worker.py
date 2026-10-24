@@ -2,9 +2,11 @@
 import ctypes
 import json
 import os
-import resource
 import runpy
 import sys
+
+if sys.platform.startswith('linux'):
+    import resource
 
 
 def main():
