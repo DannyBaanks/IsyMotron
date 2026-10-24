@@ -79,9 +79,10 @@ export function generateSwiftCatalogSource(value) {
     `enum GUSCatalog {\n    static let models: [GusModelManifest] = [\n${entries}\n    ]\n}\n`;
 }
 
-const mode = process.argv[2] ?? '--write';
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 async function main() {
+  const mode = process.argv[2] ?? '--write';
   if (!['--write', '--check'].includes(mode)) throw new Error(`unknown option: ${mode}`);
   const source = generateCatalogSource(JSON.parse(await readFile(inputPath, 'utf8')));
   if (mode === '--check') {
@@ -102,4 +103,4 @@ async function main() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
+if (isMain) await main();

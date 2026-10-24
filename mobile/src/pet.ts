@@ -52,6 +52,8 @@ export interface PetOptions {
   stage: HTMLElement;
   onHold: () => void;
   atlas?: string;
+  /** A small above-the-fold frame used until the full atlas is idle-loaded. */
+  staticFrame?: string;
   carry?: string;
 }
 
@@ -59,6 +61,7 @@ const LINES = ["¡Hola! Aquí vigilo tus PCs.", "Mantén presionado para mis con
 
 export function createPet(host: HTMLElement, options: PetOptions): Pet & { run(): void } {
   const atlas = options.atlas ?? "malbolgato/atlas.webp";
+  const staticFrame = options.staticFrame ?? "malbolgato/idle-static.webp";
   const carrySheet = options.carry ?? "malbolgato/carry.webp";
   const button = document.createElement("button");
   button.type = "button";
@@ -66,7 +69,8 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
   button.setAttribute("aria-label", "Malbolgato. Toca para que salude, dos veces para que salte, arrástralo para cargarlo y mantén presionado para sus controles.");
   const sprite = document.createElement("span");
   sprite.className = "sprite";
-  sprite.style.backgroundImage = `url("${atlas}")`;
+  sprite.classList.add("static-frame");
+  sprite.style.backgroundImage = `url("${staticFrame}")`;
   button.append(sprite);
   const bubble = document.createElement("div");
   bubble.className = "say";
@@ -77,12 +81,29 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
   const reduce = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   const s = { base: ROW.idle as Row, row: ROW.idle as Row, frame: 0, last: 0, once: null as null | (() => void), hold: null as null | { row: Row; frame: number }, carry: false, carryFrame: 0, alive: true };
   let bubbleTimer = 0, lookTimer = 0;
+  let raf = 0;
+  let pageVisible = document.visibilityState !== "hidden";
+  let inViewport = true;
+  let paused = reduce;
+  let atlasLoaded = false;
+  const atlasTimer = window.setTimeout(() => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => { atlasLoaded = true; sprite.classList.remove("static-frame"); draw(); };
+    image.src = atlas;
+  }, 300);
 
   function draw(): void {
     if (s.carry) {
       sprite.classList.add("carry");
       sprite.style.backgroundImage = `url("${carrySheet}")`;
       sprite.style.backgroundPosition = `${-s.carryFrame * CELL.w}px 0px`;
+      return;
+    }
+    if (!atlasLoaded) {
+      sprite.classList.add("static-frame");
+      sprite.style.backgroundImage = `url("${staticFrame}")`;
+      sprite.style.backgroundPosition = "center bottom";
       return;
     }
     sprite.classList.remove("carry");
@@ -97,7 +118,7 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     draw();
   }
   function tick(t: number): void {
-    if (!s.alive) return;
+    if (!s.alive || paused) { raf = 0; return; }
     const ms = s.carry ? CARRY_MS : frameDuration(s.row, s.frame);
     if (!reduce && !s.hold && t - s.last >= ms) {
       s.last = t;
@@ -113,7 +134,11 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
       }
       draw();
     }
-    requestAnimationFrame(tick);
+    raf = requestAnimationFrame(tick);
+  }
+  function syncPlayback(): void {
+    paused = reduce || !pageVisible || !inViewport;
+    if (!paused && !raf) { s.last = performance.now(); raf = requestAnimationFrame(tick); }
   }
   function playRow(row: Row, loops = 1): void {
     s.hold = null;
@@ -137,6 +162,10 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     s.base = STATE_ROW[state];
     s.once = null;
     s.hold = null;
+    button.dataset.state = state;
+    button.classList.remove("state-change");
+    void button.offsetWidth;
+    button.classList.add("state-change");
     setRow(s.base);
   }
 
@@ -178,7 +207,7 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     down = null;
     if (d.held) return;
     if (d.moved) {
-      button.style.transition = "transform .35s cubic-bezier(.3,1.4,.5,1)";
+      button.style.transition = reduce ? "none" : "transform .35s cubic-bezier(.3,1.4,.5,1)";
       button.style.transform = "";
       s.carry = false;
       draw();
@@ -221,6 +250,7 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
   let running = false;
   function run(): void {
     if (running) return;
+    if (reduce) { say("Movimiento reducido activo.", 1400); return; }
     running = true;
     say("¡A jugar!", 1500);
     const span = Math.max(0, options.stage.getBoundingClientRect().width - 170);
@@ -254,8 +284,17 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     requestAnimationFrame(step);
   }
 
+  const onVisibility = (): void => { pageVisible = document.visibilityState !== "hidden"; syncPlayback(); };
+  const onPageHide = (): void => { pageVisible = false; syncPlayback(); };
+  const onPageShow = (): void => { pageVisible = true; syncPlayback(); };
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("pagehide", onPageHide);
+  window.addEventListener("pageshow", onPageShow);
+  const observer = "IntersectionObserver" in globalThis ? new IntersectionObserver(([entry]) => { inViewport = entry?.isIntersecting ?? true; syncPlayback(); }, { threshold: 0.05 }) : null;
+  observer?.observe(button);
+
   draw();
-  requestAnimationFrame(tick);
+  syncPlayback();
   return {
     setState,
     playRow,
@@ -263,6 +302,12 @@ export function createPet(host: HTMLElement, options: PetOptions): Pet & { run()
     run,
     destroy() {
       s.alive = false;
+      clearTimeout(atlasTimer);
+      cancelAnimationFrame(raf);
+      observer?.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
       clearTimeout(bubbleTimer);
       clearTimeout(lookTimer);
     },
