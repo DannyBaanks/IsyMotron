@@ -57,7 +57,7 @@ class LinuxPythonProvider:
         return {'contract': 'SecurityPlan/v1', 'provider': self.identity(), 'package_digest': package.package_digest,
                 'controls': package.security, 'effects': package.contract['effects'],
                 'mounts': {'runtime': 'readonly', 'tool': 'readonly', 'inputs': 'readonly', 'work': 'readonly-directories+declared-artifact-binds', 'scratch': 'unavailable'},
-                'network': 'isolated+seccomp', 'processes': 'seccomp', 'environment': 'empty'}
+                'network': 'seccomp', 'processes': 'seccomp', 'environment': 'empty'}
 
     def run(self, package: ToolPackage, inputs: object, files: dict[str, bytes]) -> ToolResult:
         self.compile(package)
@@ -87,7 +87,7 @@ class LinuxPythonProvider:
             bootstrap = root / 'worker.py'
             bootstrap.write_bytes(Path(__file__).with_name('tool_worker.py').read_bytes())
             runtime = _runtime()
-            command = [self.binary, '--unshare-all', '--die-with-parent', '--new-session', '--cap-drop', 'ALL',
+            command = [self.binary, '--unshare-all', '--share-net', '--die-with-parent', '--new-session', '--cap-drop', 'ALL',
                        '--clearenv', '--ro-bind', '/usr/bin/python3', '/usr/bin/python3',
                        '--ro-bind', runtime['stdlib'], runtime['stdlib']]
             # Share the language runtime and dynamic libraries, not /usr/bin,
