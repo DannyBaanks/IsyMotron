@@ -103,6 +103,14 @@ def test_provider_failure_marks_failed_loudly(state_dir):
     assert "no key configured" in entry["detail"]
 
 
+def test_claim_inbox_entry_is_atomic(state_dir):
+    _queue(state_dir)
+    assert runner.claim_inbox_entry("task-1") is True
+    assert runner.claim_inbox_entry("task-1") is False
+    entry = json.loads((state_dir / "inbox.jsonl").read_text().strip())
+    assert entry["status"] == "running"
+
+
 def test_concurrent_inbox_append_survives_runner_update(state_dir, monkeypatch):
     _queue(state_dir)
 

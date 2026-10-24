@@ -97,6 +97,36 @@ def update_inbox_entry(task_id: str, updates: dict) -> dict | None:
         return hit
 
 
+def claim_inbox_entry(task_id: str) -> bool:
+    """Atomically move one queued task to running.
+
+    Two runner processes can watch the same inbox. Only the process that
+    observes the task still queued under the file lock may claim it.
+    """
+    path = _inbox_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with locked(path):
+        try:
+            entries = [
+                json.loads(line)
+                for line in path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+        except OSError:
+            return False
+        hit = next((e for e in entries if e.get("task_id") == task_id), None)
+        if hit is None or hit.get("status") != "queued":
+            return False
+        hit["status"] = "running"
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(
+            "".join(json.dumps(e, ensure_ascii=False) + "\n" for e in entries),
+            encoding="utf-8",
+        )
+        tmp.replace(path)
+        return True
+
+
 def append_receipt(entry: dict) -> None:
     path = _receipts_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -223,7 +253,8 @@ def process_inbox(relay, provider_factory, limit: int | None = None, approvals_t
         task_id = snapshot.get("task_id")
         if not task_id:
             continue
-        update_inbox_entry(task_id, {"status": "running"})
+        if not claim_inbox_entry(task_id):
+            continue
         try:
             provider = provider_factory()
         except ProviderError as exc:
@@ -316,45 +347,55 @@ def _approval_outcome(queue, request_id, timeout_s):
 def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
     outcome = run_task(relay, provider, task)
     resume = outcome.pop("_resume", None)
-    if outcome.get("status") != "needs_approval":
-        return outcome, None
-    cap = outcome.get("capability")
-    subject = f"{SUBJECT}:{task.get('from', '')}"
-    try:
-        queue = _permission_queue(relay)
-    except Exception:
-        return {"status": "failed", "detail": "no permission queue available"}, None
-    # dedupe: reuse a pending request for the same subject+capability
-    existing = None
-    for item in queue.pending() + [
-        e for it in queue._latest().values() for e in [it] if it.get("status") == "pending"
-    ]:
-        if item.get("subject") == subject and item.get("capability") == cap:
-            existing = item
-            break
-    if existing is not None:
-        request_id = existing["request_id"]
-    else:
-        # Always prefer the host's declared bound as the approval scope; the
-        # approval mint clamps it against the file scope anyway.
-        scope = _derive_scope(cap, outcome.get("params") or {}, relay) or outcome.get("derived_scope") or {}
-        item = queue.submit({
-            "subject": subject,
-            "capability": cap,
-            "scope": scope,
-            "ttl_s": 120.0,
-            "reason": f"{task.get('title', '')}: {task.get('body', '')}"[:280],
-        })
-        request_id = item["request_id"]
-    # Persist the pending state so the phone/CLI sees the wait, not "queued".
+    request_id = None
     task_id = task.get("task_id")
-    if task_id:
-        update_inbox_entry(task_id, {
-            "status": "pending_permission",
-            "permission_request_id": request_id,
-        })
-    decision, detail = _approval_outcome(queue, request_id, approvals_timeout_s)
-    if decision == "approved":
+    subject = f"{SUBJECT}:{task.get('from', '')}"
+
+    # A plan can cross more than one approval boundary. Resume after each
+    # approval instead of stopping at the first one.
+    for _round in range(5):
+        if outcome.get("status") != "needs_approval":
+            break
+        cap = outcome.get("capability")
+        try:
+            queue = _permission_queue(relay)
+        except Exception:
+            return {"status": "failed", "detail": "no permission queue available"}, request_id
+
+        # dedupe: reuse a pending request for the same subject+capability
+        existing = None
+        for item in queue.pending() + [
+            e for it in queue._latest().values() for e in [it] if it.get("status") == "pending"
+        ]:
+            if item.get("subject") == subject and item.get("capability") == cap:
+                existing = item
+                break
+        if existing is not None:
+            request_id = existing["request_id"]
+        else:
+            # Always prefer the host's declared bound as the approval scope; the
+            # approval mint clamps it against the file scope anyway.
+            scope = _derive_scope(cap, outcome.get("params") or {}, relay) or outcome.get("derived_scope") or {}
+            item = queue.submit({
+                "subject": subject,
+                "capability": cap,
+                "scope": scope,
+                "ttl_s": 120.0,
+                "reason": f"{task.get('title', '')}: {task.get('body', '')}"[:280],
+            })
+            request_id = item["request_id"]
+
+        # Persist the pending state so the phone/CLI sees the wait, not "queued".
+        if task_id:
+            update_inbox_entry(task_id, {
+                "status": "pending_permission",
+                "permission_request_id": request_id,
+            })
+
+        decision, detail = _approval_outcome(queue, request_id, approvals_timeout_s)
+        if decision != "approved":
+            return {"status": "denied", "detail": str(detail)}, request_id
+
         # The shared queue recorded the approval. The runner's own host gets
         # the exact same bound injected so the resume can lease it.
         scope = detail.get("scope") or {} if isinstance(detail, dict) else {}
@@ -366,11 +407,16 @@ def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
             )
         except Exception:
             pass
+
         outcome = run_task(relay, provider, task, resume=resume)
-        outcome.pop("_resume", None)
+        resume = outcome.pop("_resume", None)
+
+    if request_id is not None:
         outcome["permission_request_id"] = request_id
-        return outcome, request_id
-    return {"status": "denied", "detail": str(detail)}, request_id
+    if outcome.get("status") == "needs_approval":
+        outcome["status"] = "failed"
+        outcome["detail"] = "too many approval boundaries in one plan"
+    return outcome, request_id
 
 
 def main(argv=None) -> int:

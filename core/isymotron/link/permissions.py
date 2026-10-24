@@ -9,6 +9,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .file_lock import locked
+
 REQUEST_TTL_S = 15 * 60
 MAX_PENDING = 100
 
@@ -33,7 +35,7 @@ class PermissionQueue:
 
     def _mark_lost_leases(self) -> None:
         """A host restart drops in-memory leases; never report them as usable."""
-        with self._lock:
+        with self._lock, locked(self.path):
             for item in self._latest().values():
                 if item.get("status") != "approved":
                     continue
@@ -111,7 +113,7 @@ class PermissionQueue:
         except (TypeError, ValueError):
             raise PermissionQueueError("bad_request", "scope must contain JSON values") from None
 
-        with self._lock:
+        with self._lock, locked(self.path):
             latest = self._latest()
             pending = sum(item.get("status") == "pending" for item in latest.values())
             if pending >= MAX_PENDING:
@@ -132,7 +134,7 @@ class PermissionQueue:
 
     def pending(self) -> list[dict]:
         now = time.time()
-        with self._lock:
+        with self._lock, locked(self.path):
             items = self._latest()
             out = []
             for item in items.values():
@@ -156,7 +158,7 @@ class PermissionQueue:
             return [self._public(item) for item in out]
 
     def local_status(self, request_id: str) -> dict | None:
-        with self._lock:
+        with self._lock, locked(self.path):
             item = self._latest().get(request_id)
             if item is None:
                 return None
@@ -187,7 +189,7 @@ class PermissionQueue:
         TTL. Without this explicit expiry, a task the runner already denied
         could leave a pending permission that a human approves later.
         """
-        with self._lock:
+        with self._lock, locked(self.path):
             item = self._latest().get(request_id)
             if item is None or item.get("status") != "pending":
                 return None
@@ -216,7 +218,7 @@ class PermissionQueue:
     def decide(self, request_id: str, decision: str, office_id: str) -> dict:
         if decision not in ("approve", "deny"):
             raise PermissionQueueError("bad_decision", "decision must be approve or deny")
-        with self._lock:
+        with self._lock, locked(self.path):
             item = self._latest().get(request_id)
             if item is None:
                 raise PermissionQueueError("no_such_request", "permission request not found", 404)
