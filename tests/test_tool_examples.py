@@ -6,9 +6,13 @@ import pytest
 
 from isymotron.tool_contract import ToolPackage
 from isymotron.tool_provider import LinuxPythonProvider
+from tool_support import bwrap_works
 
 ROOT = Path(__file__).resolve().parents[1]
-pytestmark = pytest.mark.skipif(not sys.platform.startswith('linux'), reason='real Linux worker')
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith('linux') or not bwrap_works(),
+    reason='real Linux worker with bubblewrap user namespaces',
+)
 
 
 def test_developer_json_prettifier_publishes_only_its_declared_artifact():

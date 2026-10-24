@@ -7,8 +7,12 @@ import pytest
 from isymotron.tool_contract import ToolError
 from isymotron.tool_registry import ToolRegistry
 from test_tool_contract import package_files, write_package
+from tool_support import bwrap_works
 
-pytestmark = pytest.mark.skipif(not sys.platform.startswith('linux'), reason='real Linux worker')
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith('linux') or not bwrap_works(),
+    reason='real Linux worker with bubblewrap user namespaces',
+)
 
 
 def staged(tmp_path):

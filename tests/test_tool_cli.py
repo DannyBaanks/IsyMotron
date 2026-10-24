@@ -6,11 +6,15 @@ from pathlib import Path
 import pytest
 
 from test_tool_contract import write_package
+from tool_support import bwrap_works
 
 ROOT=Path(__file__).resolve().parents[1]
 
 
-@pytest.mark.skipif(not sys.platform.startswith('linux'),reason='real Linux worker')
+@pytest.mark.skipif(
+    not sys.platform.startswith('linux') or not bwrap_works(),
+    reason='real Linux worker with bubblewrap user namespaces',
+)
 def test_cli_initial_approval_execution_and_revoke(tmp_path):
     package=write_package(tmp_path/'package')
     prefix=[sys.executable,str(ROOT/'tools/isymotron_cli.py'),'tool','--registry',str(tmp_path/'registry')]

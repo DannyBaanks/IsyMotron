@@ -6,8 +6,12 @@ import pytest
 from isymotron.tool_contract import ToolError, ToolPackage
 from isymotron.tool_provider import LinuxPythonProvider
 from test_tool_contract import package_files
+from tool_support import bwrap_works
 
-pytestmark = pytest.mark.skipif(not sys.platform.startswith('linux'), reason='Linux provider only')
+pytestmark = pytest.mark.skipif(
+    not sys.platform.startswith('linux') or not bwrap_works(),
+    reason='Linux provider with bubblewrap user namespaces',
+)
 
 
 def tool(code):
