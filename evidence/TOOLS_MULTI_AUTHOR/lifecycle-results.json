@@ -1,0 +1,416 @@
+{
+  "date": "2026-10-21",
+  "registry": "disposable synthetic test registry, not personal registry",
+  "origin_labels": "evidence only; not authenticated publisher identities or permissions",
+  "packages": [
+    {
+      "tool_id": "csv-cleaner",
+      "source": "developer-reference",
+      "package_digest": "sha256:32f6538ea4e53230beccce8b76c2a3b7ba038b7185878adcbc156162c985fa17",
+      "verification": {
+        "contract": "ToolVerification/v1",
+        "verdict": "PASS_FOR_SCOPE",
+        "package_digest": "sha256:32f6538ea4e53230beccce8b76c2a3b7ba038b7185878adcbc156162c985fa17",
+        "plan_digest": "sha256:f105ac4dd96cc5f1013fcb95347f5abac18d89acccabc7c43c169370af5165de",
+        "provider": {
+          "id": "linux-python/v1",
+          "verifier": "ToolVerifier/v1",
+          "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+          "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+          "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+          "runtime": {
+            "stdlib": "/usr/lib/python3.12",
+            "multiarch": "x86_64-linux-gnu",
+            "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+          },
+          "kernel": "7.0.0-38-generic",
+          "machine": "x86_64"
+        },
+        "checks": {
+          "host_boundary": true,
+          "cases": [
+            {
+              "name": "two rows",
+              "passed": true
+            }
+          ]
+        },
+        "seal": "sha256:57fe7d9b92f972cfcac9617ab584353952ce1f54f9c9da28517efbf7bb70e648"
+      },
+      "before_approval": {
+        "blocked": true,
+        "code": "AWAITING_APPROVAL"
+      },
+      "runs": [
+        {
+          "result": {
+            "rows": 2
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        },
+        {
+          "result": {
+            "rows": 2
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        }
+      ],
+      "other_subject": {
+        "blocked": true,
+        "code": "NOT_AUTHORIZED"
+      }
+    },
+    {
+      "tool_id": "word-count",
+      "source": "developer-reference",
+      "package_digest": "sha256:0cdab900b37171fe667ee3504d3e3d000b39c175f586a6f51127425aefc0f4de",
+      "verification": {
+        "contract": "ToolVerification/v1",
+        "verdict": "PASS_FOR_SCOPE",
+        "package_digest": "sha256:0cdab900b37171fe667ee3504d3e3d000b39c175f586a6f51127425aefc0f4de",
+        "plan_digest": "sha256:55a26e213c227181d420a67a99f701a2a10f4d5a4a1abc1f6356bf68b6ac4b2a",
+        "provider": {
+          "id": "linux-python/v1",
+          "verifier": "ToolVerifier/v1",
+          "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+          "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+          "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+          "runtime": {
+            "stdlib": "/usr/lib/python3.12",
+            "multiarch": "x86_64-linux-gnu",
+            "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+          },
+          "kernel": "7.0.0-38-generic",
+          "machine": "x86_64"
+        },
+        "checks": {
+          "host_boundary": true,
+          "cases": [
+            {
+              "name": "two words",
+              "passed": true
+            }
+          ]
+        },
+        "seal": "sha256:bcb24c23dfd2b3797ae60df39952e05f1372578452ebe67fce8bce90356bd826"
+      },
+      "before_approval": {
+        "blocked": true,
+        "code": "AWAITING_APPROVAL"
+      },
+      "runs": [
+        {
+          "result": {
+            "words": 2,
+            "characters": 10
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        },
+        {
+          "result": {
+            "words": 2,
+            "characters": 10
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        }
+      ],
+      "other_subject": {
+        "blocked": true,
+        "code": "NOT_AUTHORIZED"
+      }
+    },
+    {
+      "tool_id": "json-prettifier",
+      "source": "developer-reference",
+      "package_digest": "sha256:deed6138c8ff5878331b781d2124cbf327ab8778f846eec6fd0d73344b3923cb",
+      "verification": {
+        "contract": "ToolVerification/v1",
+        "verdict": "PASS_FOR_SCOPE",
+        "package_digest": "sha256:deed6138c8ff5878331b781d2124cbf327ab8778f846eec6fd0d73344b3923cb",
+        "plan_digest": "sha256:a2de0a101075cfad925f9ae252b3b5274c8d1c7e76c8fbe2da5dcf5f09d78610",
+        "provider": {
+          "id": "linux-python/v1",
+          "verifier": "ToolVerifier/v1",
+          "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+          "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+          "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+          "runtime": {
+            "stdlib": "/usr/lib/python3.12",
+            "multiarch": "x86_64-linux-gnu",
+            "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+          },
+          "kernel": "7.0.0-38-generic",
+          "machine": "x86_64"
+        },
+        "checks": {
+          "host_boundary": true,
+          "cases": [
+            {
+              "name": "two keys",
+              "passed": true
+            }
+          ]
+        },
+        "seal": "sha256:3ba6938552b7d2f5c9e5c0d61af0afc205c3b68cbf4ec0d7a260d9149ab69929"
+      },
+      "before_approval": {
+        "blocked": true,
+        "code": "AWAITING_APPROVAL"
+      },
+      "runs": [
+        {
+          "result": {
+            "keys": 2
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        },
+        {
+          "result": {
+            "keys": 2
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        }
+      ],
+      "published_artifact_checked": true,
+      "other_subject": {
+        "blocked": true,
+        "code": "NOT_AUTHORIZED"
+      }
+    },
+    {
+      "tool_id": "invoice-total",
+      "source": "custom-author-example",
+      "package_digest": "sha256:178b6cc3b9168a4a49982bb08decbf3da28dc4b72eedab59b53b351fea9014fe",
+      "verification": {
+        "contract": "ToolVerification/v1",
+        "verdict": "PASS_FOR_SCOPE",
+        "package_digest": "sha256:178b6cc3b9168a4a49982bb08decbf3da28dc4b72eedab59b53b351fea9014fe",
+        "plan_digest": "sha256:9fd97ab0ed95c65e3c43507d5eb3c4c211d99d847a84da1c989a6db0069c33d8",
+        "provider": {
+          "id": "linux-python/v1",
+          "verifier": "ToolVerifier/v1",
+          "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+          "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+          "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+          "runtime": {
+            "stdlib": "/usr/lib/python3.12",
+            "multiarch": "x86_64-linux-gnu",
+            "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+          },
+          "kernel": "7.0.0-38-generic",
+          "machine": "x86_64"
+        },
+        "checks": {
+          "host_boundary": true,
+          "cases": [
+            {
+              "name": "two invoice lines",
+              "passed": true
+            },
+            {
+              "name": "empty invoice",
+              "passed": true
+            }
+          ]
+        },
+        "seal": "sha256:3f8fe540d413639743313ad1847ca5e9dab72ccace8ec78871526967ae30ef9d"
+      },
+      "before_approval": {
+        "blocked": true,
+        "code": "AWAITING_APPROVAL"
+      },
+      "runs": [
+        {
+          "result": {
+            "total_cents": 599,
+            "items": 2
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        },
+        {
+          "result": {
+            "total_cents": 599,
+            "items": 2
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        }
+      ],
+      "other_subject": {
+        "blocked": true,
+        "code": "NOT_AUTHORIZED"
+      }
+    },
+    {
+      "tool_id": "slugify-text",
+      "source": "nemotron",
+      "package_digest": "sha256:63dcf7cea899824891e14976f558057c9248006e3b743d46231331b6475e549f",
+      "verification": {
+        "contract": "ToolVerification/v1",
+        "verdict": "PASS_FOR_SCOPE",
+        "package_digest": "sha256:63dcf7cea899824891e14976f558057c9248006e3b743d46231331b6475e549f",
+        "plan_digest": "sha256:78d23dfa5b38418b64ba55158ebe0f09e873ffccc8cf2a1b6d980ea6ad353bbf",
+        "provider": {
+          "id": "linux-python/v1",
+          "verifier": "ToolVerifier/v1",
+          "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+          "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+          "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+          "runtime": {
+            "stdlib": "/usr/lib/python3.12",
+            "multiarch": "x86_64-linux-gnu",
+            "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+          },
+          "kernel": "7.0.0-38-generic",
+          "machine": "x86_64"
+        },
+        "checks": {
+          "host_boundary": true,
+          "cases": [
+            {
+              "name": "accented text",
+              "passed": true
+            },
+            {
+              "name": "simple text",
+              "passed": true
+            },
+            {
+              "name": "numbers",
+              "passed": true
+            }
+          ]
+        },
+        "seal": "sha256:e39489541eaaf0d718964f6c62ef71b990520bd88a33d59ce8013c4f7f294e0b"
+      },
+      "before_approval": {
+        "blocked": true,
+        "code": "AWAITING_APPROVAL"
+      },
+      "runs": [
+        {
+          "result": {
+            "slug": "hola-mexico-2026"
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        },
+        {
+          "result": {
+            "slug": "hola-mexico-2026"
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        }
+      ],
+      "other_subject": {
+        "blocked": true,
+        "code": "NOT_AUTHORIZED"
+      }
+    },
+    {
+      "tool_id": "csv-column-sum",
+      "source": "nemotron",
+      "package_digest": "sha256:341775c4d2f06857407006b406833acdeb9599cb1398a2ef910c351b560a5082",
+      "verification": {
+        "contract": "ToolVerification/v1",
+        "verdict": "PASS_FOR_SCOPE",
+        "package_digest": "sha256:341775c4d2f06857407006b406833acdeb9599cb1398a2ef910c351b560a5082",
+        "plan_digest": "sha256:38e2da33914d03c8a7761652a595a491bf52e4645905fd87e019729f1eae6653",
+        "provider": {
+          "id": "linux-python/v1",
+          "verifier": "ToolVerifier/v1",
+          "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+          "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+          "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+          "runtime": {
+            "stdlib": "/usr/lib/python3.12",
+            "multiarch": "x86_64-linux-gnu",
+            "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+          },
+          "kernel": "7.0.0-38-generic",
+          "machine": "x86_64"
+        },
+        "checks": {
+          "host_boundary": true,
+          "cases": [
+            {
+              "name": "header-only CSV",
+              "passed": true
+            },
+            {
+              "name": "sum column with values",
+              "passed": true
+            }
+          ]
+        },
+        "seal": "sha256:8a7b8e5627591ffe5f8eee7091d9e785d3cb2b418c85d5f0d571967f99a91fab"
+      },
+      "before_approval": {
+        "blocked": true,
+        "code": "AWAITING_APPROVAL"
+      },
+      "runs": [
+        {
+          "result": {
+            "total": 10,
+            "rows": 3
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        },
+        {
+          "result": {
+            "total": 10,
+            "rows": 3
+          },
+          "receipt_valid": true,
+          "decision": "ALLOW"
+        }
+      ],
+      "other_subject": {
+        "blocked": true,
+        "code": "NOT_AUTHORIZED"
+      }
+    }
+  ],
+  "active_catalogue_before_revocation": [
+    "csv-cleaner",
+    "csv-column-sum",
+    "invoice-total",
+    "json-prettifier",
+    "slugify-text",
+    "word-count"
+  ],
+  "other_user_catalogue_empty": true,
+  "outside_read_root": {
+    "blocked": true,
+    "code": "OUT_OF_SCOPE"
+  },
+  "self_verified_claim": {
+    "blocked": true,
+    "code": "INVALID_CONTRACT"
+  },
+  "undeclared_network": {
+    "blocked": true,
+    "code": "EXECUTION_FAILED"
+  },
+  "after_revocation": {
+    "blocked": true,
+    "code": "REVOKED"
+  },
+  "custom_update_requires_reapproval": {
+    "blocked": true,
+    "code": "DRAFT"
+  },
+  "core_fingerprint_before": "715a009c3fc3ec4e865f662b7bef742fb6c9da681e6441cb4dde7502c9ed2291",
+  "core_fingerprint_after": "715a009c3fc3ec4e865f662b7bef742fb6c9da681e6441cb4dde7502c9ed2291",
+  "core_unchanged": true
+}

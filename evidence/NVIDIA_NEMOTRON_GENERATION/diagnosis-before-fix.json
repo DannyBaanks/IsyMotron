@@ -1,0 +1,18 @@
+{
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "date": "2026-10-21",
+  "published": false,
+  "approved": false,
+  "outcome": "REJECTED",
+  "code": "INVALID_PROPOSAL",
+  "detail": "model did not produce a supported package",
+  "cause_type": "ToolError",
+  "contract_error": {
+    "code": "INVALID_CONTRACT",
+    "detail": "package metadata must be JSON"
+  },
+  "finish_reason": "stop",
+  "completion_tokens": 1439,
+  "response_chars": 1377,
+  "seconds": 41.927
+}

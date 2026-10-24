@@ -1,0 +1,246 @@
+...............................s........................................ [ 11%]
+........................................................................ [ 22%]
+...................................F.................................... [ 33%]
+..s..................................................................... [ 44%]
+..................sssss................................................. [ 56%]
+.......................................................F...sssss........ [ 67%]
+........................................................................ [ 78%]
+..................................................................F..... [ 89%]
+........................................................F........        [100%]
+=================================== FAILURES ===================================
+_______________________ test_menu_ctrl_c_aborts_with_130 _______________________
+
+    @LINUX_ONLY
+    def test_menu_ctrl_c_aborts_with_130():
+>       code, out = _run_in_pty(b"\x03")
+                    ^^^^^^^^^^^^^^^^^^^^
+
+tests/test_isymotron_cli.py:433: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_isymotron_cli.py:407: in _run_in_pty
+    proc.wait(timeout=5)
+/usr/lib/python3.12/subprocess.py:1264: in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Popen: returncode: None args: ['/home/danny/.local/bin/python', '/tmp/isymo...>
+timeout = 5
+
+    def _wait(self, timeout):
+        """Internal implementation of wait() on POSIX."""
+        if self.returncode is not None:
+            return self.returncode
+    
+        if timeout is not None:
+            endtime = _time() + timeout
+            # Enter a busy loop if we have a timeout.  This busy loop was
+            # cribbed from Lib/threading.py in Thread.wait() at r71065.
+            delay = 0.0005 # 500 us -> initial delay of 1 ms
+            while True:
+                if self._waitpid_lock.acquire(False):
+                    try:
+                        if self.returncode is not None:
+                            break  # Another thread waited.
+                        (pid, sts) = self._try_wait(os.WNOHANG)
+                        assert pid == self.pid or pid == 0
+                        if pid == self.pid:
+                            self._handle_exitstatus(sts)
+                            break
+                    finally:
+                        self._waitpid_lock.release()
+                remaining = self._remaining_time(endtime)
+                if remaining <= 0:
+>                   raise TimeoutExpired(self.args, timeout)
+E                   subprocess.TimeoutExpired: Command '['/home/danny/.local/bin/python', '/tmp/isymotron-tools-contract/tools/isymotron_cli.py']' timed out after 5 seconds
+
+/usr/lib/python3.12/subprocess.py:2045: TimeoutExpired
+__________ test_scenario_X_execve_keeps_instance_and_changes_artifact __________
+
+    @LINUX
+    def test_scenario_X_execve_keeps_instance_and_changes_artifact():
+        # `exec` into a LONG-LIVED image: `/bin/true` exits at once, which leaves a
+        # zombie whose /proc/<pid>/exe is unreadable. The original researcher run
+        # compared against that unreadable marker, not against a live new image;
+        # this is the corrected measurement.
+        #
+        # Timing is polled, never slept on: the fixed-sleep version flaked when the
+        # whole suite ran on a loaded machine.
+        proc = _spawn(["bash", "-c", "sleep 1.5; exec sleep 30"])
+        try:
+            baseline = _wait_until(lambda: _observe_quietly(proc.pid))
+            assert baseline is not None, "the shell never became observable"
+            assert not str(baseline.observations["exe_sha256"]).startswith("<"), \
+                "the baseline image must be readable"
+    
+            current = _wait_until(lambda: (lambda c: c if (
+                c is not None
+                and c.observations["exe_sha256"] != baseline.observations["exe_sha256"]
+            ) else None)(_observe_quietly(proc.pid)))
+            assert current is not None, "execve never happened within the timeout"
+    
+            assert current.observations["starttime"] == baseline.observations["starttime"], \
+                "instance identity survives execve"
+            assert not str(current.observations["exe_sha256"]).startswith("<"), \
+                "the new image must be readable, or the test proves nothing"
+            verdict = verdict_for(baseline, current)
+>           assert verdict.status == DENY and verdict.reason == ARTIFACT_DRIFT
+E           AssertionError: assert ('DENY' == 'DENY'
+E             
+E               DENY and 'INSTANCE_MISMATCH' == 'ARTIFACT_DRIFT'
+E             
+E             - ARTIFACT_DRIFT
+E             + INSTANCE_MISMATCH)
+
+tests/test_process_identity.py:277: AssertionError
+___________________ test_outside_write_is_blocked_and_denied ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-danny/pytest-85/test_outside_write_is_blocked_0')
+
+    def test_outside_write_is_blocked_and_denied(tmp_path):
+        outside = tmp_path / "outside.txt"
+        script = _activity(
+            tmp_path,
+            f"from pathlib import Path\ntry:\n Path(r'{outside}').write_text('nope')\nexcept PermissionError:\n pass\n",
+        )
+        result = PythonSandbox().run(ActivityManifest("escape", "0.1"), script)
+>       assert result.exit_code == 0
+E       AssertionError: assert None == 0
+E        +  where None = SandboxResult(exit_code=None, timed_out=True, stdout='', stderr='', effects=(), report=DoctorReport(activity_id='escap...ved_effects=(), undeclared_effects=(), seal='sha256:a0a1e83e08fcd329a8af2955d801e4b364105e4d0fe1f7dfe08e6e9e4f5471bd')).exit_code
+
+tests/test_sandbox.py:34: AssertionError
+_________ test_only_approved_input_snapshots_and_destinations_are_used _________
+
+self = <isymotron.tool_provider.LinuxPythonProvider object at 0x75a35823e0f0>
+package = ToolPackage(files=mappingproxy({'cases.json': b'[{"name": "three characters", "inputs": {"text": "abc"}, "files": {"in..."write": ["report.txt"]}}'}), package_digest='sha256:cba8a608485c373a77c86ab87066cfcd6c96916ba42311156fec13f634596966')
+
+    def _boundary_probes(self, package: ToolPackage) -> None:
+        schema = {'type': 'object', 'properties': {}, 'required': [], 'additionalProperties': False}
+        for operation in ["open('/outside-control-probe','w').write('x')",
+                          "import socket; socket.socket()", "import os; os.fork()"]:
+            files = dict(package.files)
+            contract = package.contract
+            contract.update(entrypoint='probe.py', input_schema=schema, output_schema=schema, effects={'read': [], 'write': []})
+            files['tool.json'] = json.dumps(contract).encode()
+            files['cases.json'] = json.dumps([{'name': 'host probe', 'inputs': {}, 'files': {}, 'expected': {}}]).encode()
+            files['probe.py'] = ('def run(inputs):\n ' + operation + '\n return {}\n').encode()
+>           try: self.run(ToolPackage.from_files(files), {}, {})
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+core/isymotron/tool_provider.py:164: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <isymotron.tool_provider.LinuxPythonProvider object at 0x75a35823e0f0>
+package = ToolPackage(files=mappingproxy({'cases.json': b'[{"name": "host probe", "inputs": {}, "files": {}, "expected": {}}]', ...; os.fork()\n return {}\n'}), package_digest='sha256:8da9834e10b9f76dce7dd22ac4364fa0c0c05c0086f0ac9a0b3612da51a86795')
+inputs = {}, files = {}
+
+    def run(self, package: ToolPackage, inputs: object, files: dict[str, bytes]) -> ToolResult:
+        self.compile(package)
+        validate(package.contract['input_schema'], inputs)
+        effects, policy = package.contract['effects'], package.security
+        require(set(files) == set(effects['read']) and all(type(v) is bytes for v in files.values()), 'input files differ from contract', 'SCHEMA_MISMATCH')
+        request = json.dumps({'entrypoint': package.contract['entrypoint'], 'inputs': inputs, 'security': policy}, allow_nan=False).encode()
+        require(len(request) + sum(map(len, files.values())) <= policy['max_input_bytes'], 'input budget exceeded', 'LIMIT_EXCEEDED')
+        with tempfile.TemporaryDirectory(prefix='isymotron-tool-') as temp:
+            root = Path(temp)
+            source, incoming, work = (root / n for n in ('tool', 'inputs', 'work'))
+            package.write(source); incoming.mkdir(); work.mkdir()
+            for name, data in files.items():
+                p = incoming / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(data)
+            # Bound live inode/storage use before running guest code. Only
+            # declared regular artifact files are writable; guest mkdir,
+            # unlink and arbitrary scratch allocation are unavailable.
+            artifact_paths = []
+            initial_artifacts = {}
+            for name in effects['write']:
+                path = work / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+                initial_artifacts[name] = path.stat().st_mtime_ns
+                artifact_paths.append((path, '/work/' + name))
+            scratch = root / 'empty-tmp'; scratch.mkdir()
+            bootstrap = root / 'worker.py'
+            bootstrap.write_bytes(Path(__file__).with_name('tool_worker.py').read_bytes())
+            runtime = _runtime()
+            command = [self.binary, '--unshare-all', '--die-with-parent', '--new-session', '--cap-drop', 'ALL',
+                       '--clearenv', '--ro-bind', '/usr/bin/python3', '/usr/bin/python3',
+                       '--ro-bind', runtime['stdlib'], runtime['stdlib']]
+            # Share the language runtime and dynamic libraries, not /usr/bin,
+            # user packages, the home directory or any host workspace.
+            multiarch = runtime.get('multiarch')
+            if multiarch:
+                for prefix in ('/lib', '/usr/lib'):
+                    path = Path(prefix) / multiarch
+                    if path.is_dir(): command += ['--ro-bind', str(path), str(path)]
+            for prefix in ('/lib', '/lib64'):
+                for loader in Path(prefix).glob('ld-linux*'):
+                    if loader.is_file(): command += ['--ro-bind', str(loader), str(loader)]
+            command += ['--proc', '/proc', '--remount-ro', '/proc', '--dev', '/dev', '--remount-ro', '/dev',
+                        '--ro-bind', str(scratch), '/tmp',
+                        '--ro-bind', str(source), '/tool', '--ro-bind', str(incoming), '/inputs',
+                        '--ro-bind', str(work), '/work', '--ro-bind', str(bootstrap), '/worker.py']
+            for source_path, target_path in artifact_paths:
+                command += ['--bind', str(source_path), target_path]
+            command += ['--chdir', '/work', '--remount-ro', '/', '--', '/usr/bin/python3', '-I', '-S', '-B', '/worker.py']
+            with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+                proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=stdout, stderr=stderr,
+                                        start_new_session=True, env={'PATH': '/usr/bin:/bin'})
+                try:
+                    proc.communicate(request, timeout=policy['timeout_s'] + 2)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid, signal.SIGKILL); proc.wait()
+>                   raise ToolError('LIMIT_EXCEEDED', 'tool timed out') from None
+E                   isymotron.tool_contract.ToolError: LIMIT_EXCEEDED: tool timed out
+
+core/isymotron/tool_provider.py:117: ToolError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = PosixPath('/tmp/pytest-of-danny/pytest-85/test_only_approved_input_snaps0')
+
+    def test_only_approved_input_snapshots_and_destinations_are_used(tmp_path):
+        files = package_files("def run(inputs):\n text=open('/inputs/in.txt').read()\n open('report.txt','w').write(text.upper())\n return {'count':len(text)}\n")
+        manifest = json.loads(files['tool.json']); manifest['effects'] = {'read':['in.txt'], 'write':['report.txt']}; files['tool.json'] = json.dumps(manifest)
+        cases = json.loads(files['cases.json']); cases[0]['files'] = {'in.txt':'abc'}; files['cases.json'] = json.dumps(cases)
+        incoming, outgoing = tmp_path/'input', tmp_path/'output'; incoming.mkdir(); outgoing.mkdir()
+        (incoming/'in.txt').write_text('hello')
+>       registry=ToolRegistry(tmp_path/'registry'); registry.stage(write_package(tmp_path/'p', files)); registry.verify('text-count')
+                                                                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_tool_registry.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+core/isymotron/tool_registry.py:116: in verify
+    report = self._provider(package).verify(package)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+core/isymotron/tool_provider.py:143: in verify
+    self._boundary_probes(package)
+core/isymotron/tool_provider.py:166: in _boundary_probes
+    require(error.code == 'EXECUTION_FAILED', 'provider controls unavailable', 'PROVIDER_UNAVAILABLE')
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+condition = False, detail = 'provider controls unavailable'
+code = 'PROVIDER_UNAVAILABLE'
+
+    def require(condition: Any, detail: str, code: str = 'INVALID_CONTRACT') -> None:
+        if not condition:
+>           raise ToolError(code, detail)
+E           isymotron.tool_contract.ToolError: PROVIDER_UNAVAILABLE: provider controls unavailable
+
+core/isymotron/tool_contract.py:24: ToolError
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_live_local_model.py:21: live local model: set ISYMOTRON_LIVE_LOCAL=1 with Ollama running
+SKIPPED [1] tests/test_macos_real.py:36: real macOS engine (runs in CI on macos-latest)
+SKIPPED [1] tests/test_win11_real.py:16: real Windows engine
+SKIPPED [1] tests/test_avatar_surface.py:75: ISYCO_ROOT unset: cross-repo check stays out of the suite by default
+SKIPPED [1] tests/test_learning_malbolge.py:245: sibling repositories not present (this check is dev-machine only)
+SKIPPED [1] tests/test_live_model.py:66: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:74: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:83: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:97: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_live_model.py:110: no NEBIUS_API_KEY in the environment
+SKIPPED [1] tests/test_process_identity.py:341: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:356: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:371: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:395: Windows process source needs sys.platform == 'win32'
+SKIPPED [1] tests/test_process_identity.py:407: Windows process source needs sys.platform == 'win32'
+4 failed, 625 passed, 15 skipped in 262.39s (0:04:22)

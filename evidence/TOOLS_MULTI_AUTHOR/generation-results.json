@@ -1,0 +1,233 @@
+{
+  "date": "2026-10-21",
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "max_attempts_per_tool": 2,
+  "repair_orchestrated_by": "test harness, not autonomous product behavior",
+  "tools": [
+    {
+      "tool_id": "slugify-text",
+      "source": "nemotron",
+      "attempts": [
+        {
+          "attempt": 1,
+          "path": "evidence/TOOLS_MULTI_AUTHOR/generated/slugify-text/attempt-1",
+          "outcome": "REJECTED",
+          "code": "INVALID_PROPOSAL",
+          "detail": "model response is not JSON at line 1, column 1227",
+          "finish_reason": "stop",
+          "completion_tokens": 402,
+          "seconds": 4.345
+        },
+        {
+          "attempt": 2,
+          "path": "evidence/TOOLS_MULTI_AUTHOR/generated/slugify-text/attempt-2",
+          "package_digest": "sha256:63dcf7cea899824891e14976f558057c9248006e3b743d46231331b6475e549f",
+          "verification": {
+            "contract": "ToolVerification/v1",
+            "verdict": "PASS_FOR_SCOPE",
+            "package_digest": "sha256:63dcf7cea899824891e14976f558057c9248006e3b743d46231331b6475e549f",
+            "plan_digest": "sha256:78d23dfa5b38418b64ba55158ebe0f09e873ffccc8cf2a1b6d980ea6ad353bbf",
+            "provider": {
+              "id": "linux-python/v1",
+              "verifier": "ToolVerifier/v1",
+              "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+              "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+              "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+              "runtime": {
+                "stdlib": "/usr/lib/python3.12",
+                "multiarch": "x86_64-linux-gnu",
+                "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+              },
+              "kernel": "7.0.0-38-generic",
+              "machine": "x86_64"
+            },
+            "checks": {
+              "host_boundary": true,
+              "cases": [
+                {
+                  "name": "accented text",
+                  "passed": true
+                },
+                {
+                  "name": "simple text",
+                  "passed": true
+                },
+                {
+                  "name": "numbers",
+                  "passed": true
+                }
+              ]
+            },
+            "seal": "sha256:e39489541eaaf0d718964f6c62ef71b990520bd88a33d59ce8013c4f7f294e0b"
+          },
+          "outcome": "PASS",
+          "holdouts": [
+            {
+              "inputs": {
+                "text": "  \u00a1Hola, M\u00e9xico! 2026  "
+              },
+              "files": {},
+              "expected": {
+                "slug": "hola-mexico-2026"
+              },
+              "actual": {
+                "slug": "hola-mexico-2026"
+              },
+              "passed": true
+            },
+            {
+              "inputs": {
+                "text": "---"
+              },
+              "files": {},
+              "expected": {
+                "slug": ""
+              },
+              "actual": {
+                "slug": ""
+              },
+              "passed": true
+            },
+            {
+              "inputs": {
+                "text": "Caf\u00e9 + T\u00e9 / 2"
+              },
+              "files": {},
+              "expected": {
+                "slug": "cafe-te-2"
+              },
+              "actual": {
+                "slug": "cafe-te-2"
+              },
+              "passed": true
+            }
+          ],
+          "finish_reason": "stop",
+          "completion_tokens": 462,
+          "seconds": 4.89
+        }
+      ],
+      "approved_in_personal_registry": false,
+      "outcome": "PASS",
+      "accepted_path": "evidence/TOOLS_MULTI_AUTHOR/generated/slugify-text/attempt-2",
+      "package_digest": "sha256:63dcf7cea899824891e14976f558057c9248006e3b743d46231331b6475e549f"
+    },
+    {
+      "tool_id": "json-key-inspector",
+      "source": "nemotron",
+      "attempts": [
+        {
+          "attempt": 1,
+          "path": "evidence/TOOLS_MULTI_AUTHOR/generated/json-key-inspector/attempt-1",
+          "outcome": "REJECTED",
+          "code": "INVALID_PROPOSAL",
+          "detail": "model package failed validation: objects need properties and additionalProperties=false",
+          "finish_reason": "stop",
+          "completion_tokens": 340,
+          "seconds": 3.368
+        },
+        {
+          "attempt": 2,
+          "path": "evidence/TOOLS_MULTI_AUTHOR/generated/json-key-inspector/attempt-2",
+          "outcome": "REJECTED",
+          "code": "INVALID_PROPOSAL",
+          "detail": "model package failed validation: case files must match reads",
+          "finish_reason": "stop",
+          "completion_tokens": 359,
+          "seconds": 5.289
+        }
+      ],
+      "approved_in_personal_registry": false,
+      "outcome": "REJECTED"
+    },
+    {
+      "tool_id": "csv-column-sum",
+      "source": "nemotron",
+      "attempts": [
+        {
+          "attempt": 1,
+          "path": "evidence/TOOLS_MULTI_AUTHOR/generated/csv-column-sum/attempt-1",
+          "package_digest": "sha256:341775c4d2f06857407006b406833acdeb9599cb1398a2ef910c351b560a5082",
+          "verification": {
+            "contract": "ToolVerification/v1",
+            "verdict": "PASS_FOR_SCOPE",
+            "package_digest": "sha256:341775c4d2f06857407006b406833acdeb9599cb1398a2ef910c351b560a5082",
+            "plan_digest": "sha256:38e2da33914d03c8a7761652a595a491bf52e4645905fd87e019729f1eae6653",
+            "provider": {
+              "id": "linux-python/v1",
+              "verifier": "ToolVerifier/v1",
+              "implementation": "sha256:1c923874c743ec814f28d90e968c0fb98717434cc72d9b7d22b865269c434ce5",
+              "bwrap": "e318903862396f96de3df57264e0158682b952fd3fb53ac23d876413e7b30f71",
+              "python": "e50d468e8b0adfb05733f5b87b3cff34829c4a8c1aea50c865aa8bdfe4bb150f",
+              "runtime": {
+                "stdlib": "/usr/lib/python3.12",
+                "multiarch": "x86_64-linux-gnu",
+                "version": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]"
+              },
+              "kernel": "7.0.0-38-generic",
+              "machine": "x86_64"
+            },
+            "checks": {
+              "host_boundary": true,
+              "cases": [
+                {
+                  "name": "header-only CSV",
+                  "passed": true
+                },
+                {
+                  "name": "sum column with values",
+                  "passed": true
+                }
+              ]
+            },
+            "seal": "sha256:8a7b8e5627591ffe5f8eee7091d9e785d3cb2b418c85d5f0d571967f99a91fab"
+          },
+          "outcome": "PASS",
+          "holdouts": [
+            {
+              "inputs": {
+                "column": "amount"
+              },
+              "files": {
+                "data.csv": "name,amount\nAna,12\nLuis,-5\nMara,3\n"
+              },
+              "expected": {
+                "total": 10,
+                "rows": 3
+              },
+              "actual": {
+                "total": 10,
+                "rows": 3
+              },
+              "passed": true
+            },
+            {
+              "inputs": {
+                "column": "amount"
+              },
+              "files": {
+                "data.csv": "name,amount\n"
+              },
+              "expected": {
+                "total": 0,
+                "rows": 0
+              },
+              "actual": {
+                "total": 0,
+                "rows": 0
+              },
+              "passed": true
+            }
+          ],
+          "finish_reason": "stop",
+          "completion_tokens": 428,
+          "seconds": 5.576
+        }
+      ],
+      "approved_in_personal_registry": false,
+      "outcome": "PASS",
+      "accepted_path": "evidence/TOOLS_MULTI_AUTHOR/generated/csv-column-sum/attempt-1",
+      "package_digest": "sha256:341775c4d2f06857407006b406833acdeb9599cb1398a2ef910c351b560a5082"
+    }
+  ]
+}

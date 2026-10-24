@@ -1,0 +1,12 @@
+[
+  {
+    "name": "two keys",
+    "inputs": {},
+    "files": {
+      "data.json": "{\"z\":1,\"a\":2}"
+    },
+    "expected": {
+      "keys": 2
+    }
+  }
+]

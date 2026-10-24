@@ -43,6 +43,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `install` | print the command that makes `isymotron` reachable from a new shell |
 | `where` | print the repository this CLI belongs to |
 | `help` | the help |
+| `tool` | `propose \| stage \| verify \| approve \| list \| run \| revoke \| demo` — extensible code packages with scoped initial approval |
 | `keys` | `list \| set <NAME> \| unset <NAME> \| check [--live]` |
 | `quine` | `demo \| verify \| publish` — the Quine Gate |
 | `process` | `observe \| store \| verify` — the Process Verifier (exit 0/1/2) |
@@ -65,12 +66,15 @@ directory once the shim is installed.
 
 ## Keys
 
-`isymotron keys` manages the four values the product reads: `NEBIUS_API_KEY`,
-`NVIDIA_NIM_API_KEY`, `ISYMOTRON_RECEIPT_KEY` (secrets) and
-`ISYMOTRON_PROVIDER` (configuration: `nvidia` or `nebius`).
+`isymotron keys` manages provider credentials (`OPENAI_API_KEY`,
+`NEBIUS_API_KEY`, `NVIDIA_NIM_API_KEY`), `ISYMOTRON_RECEIPT_KEY`, and
+`ISYMOTRON_PROVIDER` (`openai`, `nvidia`, `nebius`, `ollama`, or `llamacpp`).
+ISyCode reads the selected provider key from this same external store when it
+starts, so a key stored here is available to the TUI without exporting it.
 
 ```bash
-isymotron keys set NEBIUS_API_KEY     # hidden prompt, or one line from stdin
+isymotron keys set OPENAI_API_KEY    # hidden prompt, or one line from stdin
+isymotron keys set ISYMOTRON_PROVIDER # set to openai, nvidia, nebius, ollama, or llamacpp
 isymotron keys list                   # set/missing + sha256[:12], never the value
 isymotron keys check                  # presence and format; no network
 isymotron keys check --live           # delegates to the provider probe (network)

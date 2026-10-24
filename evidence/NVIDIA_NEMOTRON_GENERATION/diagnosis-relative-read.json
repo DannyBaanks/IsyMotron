@@ -1,0 +1,19 @@
+{
+  "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+  "date": "2026-10-21",
+  "published": true,
+  "approved": false,
+  "outcome": "VALIDATED_PROPOSAL",
+  "tool_id": "contact-email-extractor",
+  "digest": "sha256:6511b90c4b80f73425365dc3c3cd02664c44dc2d9ee5249560cdf6842a3f822a",
+  "finish_reason": "stop",
+  "completion_tokens": 388,
+  "response_chars": 1242,
+  "seconds": 5.1,
+  "verification": {
+    "outcome": "REJECTED",
+    "code": "EXECUTION_FAILED",
+    "detail": "worker stopped (1)"
+  },
+  "review_finding": "reads contacts.txt relative to /work, but declared inputs exist only in /inputs; requires a new model proposal"
+}

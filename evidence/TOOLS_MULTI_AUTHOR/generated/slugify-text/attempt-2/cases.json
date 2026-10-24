@@ -1,0 +1,1 @@
+[{"name": "accented text", "inputs": {"text": "Caf\u00e9 R\u00e9sum\u00e9"}, "files": {}, "expected": {"slug": "cafe-resume"}}, {"name": "simple text", "inputs": {"text": "Hello World"}, "files": {}, "expected": {"slug": "hello-world"}}, {"name": "numbers", "inputs": {"text": "Test 123"}, "files": {}, "expected": {"slug": "test-123"}}]

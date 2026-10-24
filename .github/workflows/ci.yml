@@ -38,6 +38,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install Linux tool provider dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap libseccomp2
       # pytest + pillow (the PNG test oracle). The runtime itself is
       # stdlib-only; test_runtime_imports_no_third_party_package enforces it.
       - run: python -m pip install -r requirements-dev.txt

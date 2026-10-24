@@ -163,6 +163,8 @@ def build_relay(grants_path: str | None):
 
 
 def run_task(relay, provider: Provider, task: dict, resume: dict | None = None) -> dict:
+    from isymotron.tool_host import attach_configured_tools
+    attach_configured_tools(relay, f"{SUBJECT}:{task.get('from', '')}")
     intent = (str(task.get("title", "")) + "\n" + str(task.get("body", ""))).strip()
     if not intent:
         return {"status": "failed", "detail": "empty intent"}

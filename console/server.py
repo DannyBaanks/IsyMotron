@@ -122,6 +122,8 @@ class ConsoleState:
         self.grants_path = grants_path
         self.provider_factory = provider_factory
         self.subject = subject
+        from isymotron.tool_host import attach_configured_tools
+        attach_configured_tools(self.relay, subject)
         self.receipts: list[dict] = []
         self.token = secrets.token_urlsafe(24)
         # The avatar is a representation, never an authority

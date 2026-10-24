@@ -1,0 +1,13 @@
+[
+  {
+    "name": "two words",
+    "inputs": {
+      "text": "hola mundo"
+    },
+    "files": {},
+    "expected": {
+      "words": 2,
+      "characters": 10
+    }
+  }
+]

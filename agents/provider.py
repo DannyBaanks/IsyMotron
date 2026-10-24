@@ -9,7 +9,9 @@ So the provider is configuration, not code. Develop against whichever one
 answers today, submit against whichever one the rules require, change one
 environment variable.
 
-    ISYMOTRON_PROVIDER=nebius|nvidia|ollama|llamacpp   (default: nebius)
+    ISYMOTRON_PROVIDER=nebius|nvidia|openai|ollama|llamacpp   (default: nebius)
+    OPENAI_API_KEY=...                  (only when provider=openai)
+    ISYMOTRON_REASONING_EFFORT=none|low|medium|high|xhigh|max (OpenAI; default medium)
     NEBIUS_API_KEY=...
     NVIDIA_NIM_API_KEY=nvapi-...            (only when provider=nvidia)
     ISYMOTRON_MODEL=nvidia/nemotron-3-super-120b-a12b  (default: the preset's)
@@ -39,7 +41,16 @@ from isymotron.awareness import HostAwarenessEngine
 
 DEFAULT_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 
-PRESETS: dict[str, dict[str, str]] = {
+PRESETS: dict[str, dict[str, Any]] = {
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "key_env": "OPENAI_API_KEY",
+        "label": "OpenAI API",
+        "default_model": "gpt-6-luna",
+        "json_mode": True,
+        "token_limit_field": "max_completion_tokens",
+        "reasoning_effort": "medium",
+    },
     "nvidia": {
         "base_url": "https://integrate.api.nvidia.com/v1",
         "key_env": "NVIDIA_NIM_API_KEY",
@@ -223,6 +234,21 @@ class Provider:
         self.key_env = preset["key_env"]
         self.key_required = preset.get("key_required", True)
         self.json_mode = bool(preset.get("json_mode"))
+        self.token_limit_field = preset.get("token_limit_field", "max_tokens")
+        self.reasoning_effort = None
+        if self.name == "openai":
+            effort = os.environ.get(
+                "ISYMOTRON_REASONING_EFFORT",
+                str(preset.get("reasoning_effort", "medium")),
+            ).strip().lower()
+            if effort not in {"none", "low", "medium", "high", "xhigh", "max"}:
+                raise ProviderError(
+                    "invalid ISYMOTRON_REASONING_EFFORT; use none, low, medium, high, xhigh, or max"
+                )
+            self.reasoning_effort = effort
+        self.temperature_supported = (
+            self.reasoning_effort in (None, "none")
+        )
         self.start_hint = preset.get("start_hint", "")
         # A key is a credential: it never crosses the network in clear text.
         # Plain http is fine for a server on this machine, nowhere else.
@@ -261,6 +287,7 @@ class Provider:
             "key_env": self.key_env,
             "key_required": self.key_required,
             "key_present": bool(self.api_key),
+            "reasoning_effort": self.reasoning_effort,
         }
 
     def models(self) -> list[str]:
@@ -271,7 +298,9 @@ class Provider:
     def complete(self, messages: Sequence[Mapping[str, str]], *,
                  max_tokens: int = 1024, temperature: float = 0.2,
                  stop: Sequence[str] | None = None,
-                 json_object: bool = False) -> Completion:
+                 json_object: bool = False,
+                 reasoning_budget: int | None = None,
+                 enable_thinking: bool | None = None) -> Completion:
         """`json_object=True` asks for one JSON object. Honoured only where the
         preset declares JSON mode; elsewhere the prompt alone asks for it, and
         the planner still parses (and refuses) the same way."""
@@ -281,13 +310,24 @@ class Provider:
         body: dict[str, Any] = {
             "model": self.model,
             "messages": list(messages),
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+            self.token_limit_field: max_tokens,
         }
+        if self.temperature_supported:
+            body["temperature"] = temperature
+        if self.reasoning_effort is not None:
+            body["reasoning_effort"] = self.reasoning_effort
         if stop:
             body["stop"] = list(stop)
         if json_object and self.json_mode:
             body["response_format"] = {"type": "json_object"}
+        if reasoning_budget is not None:
+            if self.name != "nvidia" or type(reasoning_budget) is not int or not 0 <= reasoning_budget < max_tokens:
+                raise ProviderError("reasoning_budget requires NVIDIA and 0 <= budget < max_tokens")
+            body["reasoning_budget"] = reasoning_budget
+        if enable_thinking is not None:
+            if self.name != "nvidia" or type(enable_thinking) is not bool:
+                raise ProviderError("enable_thinking requires NVIDIA and a boolean")
+            body["chat_template_kwargs"] = {"enable_thinking": enable_thinking}
 
         before = self.awareness.snapshot() if self.awareness else None
         t0 = time.time()
