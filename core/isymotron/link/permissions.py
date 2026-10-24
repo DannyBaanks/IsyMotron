@@ -89,6 +89,8 @@ class PermissionQueue:
         }
         if item.get("decision_reason"):
             result["decision_reason"] = item["decision_reason"]
+        if item.get("lease_expires_at") is not None:
+            result["lease_expires_at"] = item["lease_expires_at"]
         if include_lease and lease is not None:
             result["lease"] = lease
         return result
@@ -256,6 +258,7 @@ class PermissionQueue:
                 "decided_at": time.time(),
                 "decided_by": office_id,
                 "lease_id": lease.lease_id if lease is not None else None,
+                "lease_expires_at": lease.expires_at if lease is not None else None,
             }
             self._append(updated)
             from . import receipts

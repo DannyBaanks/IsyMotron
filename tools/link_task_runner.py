@@ -97,6 +97,19 @@ def update_inbox_entry(task_id: str, updates: dict) -> dict | None:
         return hit
 
 
+def get_inbox_entry(task_id: str) -> dict | None:
+    path = _inbox_path()
+    if not path.exists():
+        return None
+    with locked(path):
+        entries = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    return next((e for e in entries if e.get("task_id") == task_id), None)
+
+
 def claim_inbox_entry(task_id: str) -> bool:
     """Atomically move one queued task to running.
 
@@ -276,6 +289,12 @@ def process_inbox(relay, provider_factory, limit: int | None = None, approvals_t
             except Exception:
                 pass
             outcome["tool_profile"] = profile
+            current = get_inbox_entry(task_id) or {}
+            if current.get("status") == "cancelled":
+                # The user withdrew the task while it was running; keep the
+                # cancellation instead of overwriting it with an execution result.
+                processed += 1
+                continue
             append_receipt({
                 "kind": f"link_task_{outcome['status']}",
                 "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -285,7 +304,9 @@ def process_inbox(relay, provider_factory, limit: int | None = None, approvals_t
                 "detail": outcome.get("detail"),
                 "tool_profile": profile,
             })
-        update_inbox_entry(task_id, outcome)
+        current = get_inbox_entry(task_id) or {}
+        if current.get("status") != "cancelled":
+            update_inbox_entry(task_id, outcome)
         processed += 1
         if limit is not None and processed >= limit:
             break
@@ -396,10 +417,21 @@ def _run_with_approval_flow(relay, provider, task, approvals_timeout_s: float):
         if decision != "approved":
             return {"status": "denied", "detail": str(detail)}, request_id
 
+        # A cancellation that arrived while the human was approving must win;
+        # the approved capability must not execute a task the user withdrew.
+        if task_id:
+            current = get_inbox_entry(task_id) or {}
+            if current.get("status") == "cancelled":
+                return {"status": "cancelled"}, request_id
+
         # The shared queue recorded the approval. The runner's own host gets
         # the exact same bound injected so the resume can lease it.
         scope = detail.get("scope") or {} if isinstance(detail, dict) else {}
-        ttl = (detail.get("ttl_s") if isinstance(detail, dict) else None) or 120.0
+        lease_expires_at = detail.get("lease_expires_at") if isinstance(detail, dict) else None
+        if isinstance(lease_expires_at, (int, float)):
+            ttl = max(float(lease_expires_at) - time.time(), 0.0)
+        else:
+            ttl = (detail.get("ttl_s") if isinstance(detail, dict) else None) or 120.0
         try:
             first = relay.hosts()[0]
             relay._host(first["host_id"]).record_external_approval(

@@ -111,6 +111,19 @@ def test_claim_inbox_entry_is_atomic(state_dir):
     assert entry["status"] == "running"
 
 
+def test_cancellation_wins_over_a_late_runner_result(state_dir, monkeypatch):
+    _queue(state_dir)
+
+    def fake_run_task(relay, provider, task):
+        runner.update_inbox_entry("task-1", {"status": "cancelled"})
+        return {"status": "done", "receipts": []}
+
+    monkeypatch.setattr(runner, "run_task", fake_run_task)
+    runner.process_inbox(_host_relay(), lambda: None)
+    entry = json.loads((state_dir / "inbox.jsonl").read_text().strip())
+    assert entry["status"] == "cancelled"
+
+
 def test_concurrent_inbox_append_survives_runner_update(state_dir, monkeypatch):
     _queue(state_dir)
 
