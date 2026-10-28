@@ -46,7 +46,7 @@ def resolve_peer(directory: Path, query: str) -> dict:
 
 
 def sealed_call(directory: Path, query: str, payload: dict) -> dict:
-    """Seal op to a paired office, try its addresses, return result body."""
+    """Seal a request and return only its authenticated, bound reply."""
     own = identity.load_identity(directory)
     peer = resolve_peer(directory, query)
     env = envelope.seal(own, peer, payload)
@@ -54,6 +54,17 @@ def sealed_call(directory: Path, query: str, payload: dict) -> dict:
     for address in peer.get("addresses", []):
         status, body = post_json(f"http://{address}/link/v1/call", {"env": env})
         if status == 200 and body.get("ok"):
-            return body
+            reply = body.get("renv")
+            if not isinstance(reply, dict):
+                raise LinkCallError("invalid reply: missing sealed envelope")
+            try:
+                _, result = envelope.open_envelope(
+                    own, {peer["office_id"]: peer}, reply, {}
+                )
+            except (envelope.EnvelopeError, KeyError, TypeError, ValueError) as exc:
+                raise LinkCallError(f"invalid reply: {exc}") from exc
+            if result.get("re") != env["nonce"]:
+                raise LinkCallError("invalid reply: different request nonce")
+            return {key: value for key, value in result.items() if key != "re"}
         last = body
     raise LinkCallError(f"sin respuesta de {peer.get('name')}: {last}")
