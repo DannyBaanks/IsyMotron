@@ -145,6 +145,11 @@ systemctl --user enable --now isymotron-link.service
 `ExecStart` si `python3`/checkout cambian. Recuerda que `link servir` para el
 estro vivo sigue siendo el que lanza ese comando manualmente.
 
+El unit invoca `python3 -m tools.link_cli servir --red`: ese módulo ya es
+la entrada de Link. Añadir otro `link` antes de `servir` impide arrancar
+con `invalid choice: 'link'`. Si usas el CLI general, la forma equivalente
+es `python3 tools/isymotron_cli.py link servir --red`.
+
 ## Cómo leer lo que ves
 
 | Ves | Significa | Qué hacer |
