@@ -55,16 +55,17 @@ def sealed_call(directory: Path, query: str, payload: dict) -> dict:
         status, body = post_json(f"http://{address}/link/v1/call", {"env": env})
         if status == 200 and body.get("ok"):
             reply = body.get("renv")
-            if not isinstance(reply, dict):
-                raise LinkCallError("invalid reply: missing sealed envelope")
             try:
+                if not isinstance(reply, dict):
+                    raise envelope.EnvelopeError("missing sealed envelope")
                 _, result = envelope.open_envelope(
                     own, {peer["office_id"]: peer}, reply, {}
                 )
+                if result.get("re") != env["nonce"]:
+                    raise envelope.EnvelopeError("different request nonce")
             except (envelope.EnvelopeError, KeyError, TypeError, ValueError) as exc:
-                raise LinkCallError(f"invalid reply: {exc}") from exc
-            if result.get("re") != env["nonce"]:
-                raise LinkCallError("invalid reply: different request nonce")
+                last = {"ok": False, "code": "invalid_reply", "error": str(exc)}
+                continue
             return {key: value for key, value in result.items() if key != "re"}
         last = body
     raise LinkCallError(f"sin respuesta de {peer.get('name')}: {last}")

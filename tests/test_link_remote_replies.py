@@ -1,8 +1,11 @@
 """The CLI/console client must authenticate results from the HTTP transport."""
 
 from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
 from pathlib import Path
 import sys
+import threading
 
 import pytest
 
@@ -83,3 +86,40 @@ def test_client_accepts_authenticated_reply_for_its_request(tmp_path):
         result = remote.sealed_call(directory, "receiver", {"op": "ping"})
         assert result["ok"] is True
         assert result["pong"] is True
+
+
+def test_client_tries_live_address_after_stale_address_returns_unsigned_success(tmp_path):
+    attempts = []
+
+    class StaleAddress(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            attempts.append(self.path)
+            body = json.dumps({"ok": True, "pong": True}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format, *args):
+            pass
+
+    stale = ThreadingHTTPServer(("127.0.0.1", 0), StaleAddress)
+    worker = threading.Thread(target=stale.serve_forever, daemon=True)
+    worker.start()
+    try:
+        with _offices(tmp_path) as directory:
+            peer = remote.resolve_peer(directory, "receiver")
+            peer["addresses"] = [
+                f"127.0.0.1:{stale.server_address[1]}", *peer["addresses"]
+            ]
+            identity.save_peers({peer["office_id"]: peer}, directory)
+            result = remote.sealed_call(directory, "receiver", {"op": "ping"})
+            assert attempts == ["/link/v1/call"]
+            assert result["pong"] is True
+            assert result["from"] == peer["office_id"]
+    finally:
+        stale.shutdown()
+        stale.server_close()
+        worker.join(timeout=5)
