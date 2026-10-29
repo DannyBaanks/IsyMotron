@@ -226,10 +226,15 @@ def test_scenario_D_binary_deleted_under_a_live_process(tmp_path):
     fake = tmp_path / "victim.bin"
     fake.write_bytes(Path("/bin/sleep").read_bytes())
     fake.chmod(0o755)
-    proc = _spawn([str(fake), "20"])
+    # Preserve the applet name when /bin/sleep is a multicall executable
+    # (e.g. Ubuntu's uutils); victim.bin would otherwise exit immediately.
+    proc = subprocess.Popen(["sleep", "20"], executable=str(fake),
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(0.10)
     try:
+        assert proc.poll() is None, "the copied sleep executable exited before observation"
         baseline = observe(proc.pid)
+        assert baseline.observations["exe_link"] == str(fake)
         fake.unlink()
         time.sleep(0.05)
         current = observe(proc.pid)
