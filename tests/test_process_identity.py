@@ -223,13 +223,18 @@ def test_scenario_I1_I2_instance_identity_and_field_ablation():
 
 @LINUX
 def test_scenario_D_binary_deleted_under_a_live_process(tmp_path):
-    fake = tmp_path / "victim.bin"
-    fake.write_bytes(Path("/bin/sleep").read_bytes())
+    fake = tmp_path / "sh"
+    fake.write_bytes(Path("/bin/sh").read_bytes())
     fake.chmod(0o755)
-    proc = _spawn([str(fake), "20"])
+    # A shell builtin blocks on our open pipe without launching another image.
+    # Keep the shell name for systems whose /bin/sh is a multicall executable.
+    proc = subprocess.Popen([str(fake), "-c", "read value"], stdin=subprocess.PIPE,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
     time.sleep(0.10)
     try:
+        assert proc.poll() is None, proc.stderr.read().decode(errors="replace")
         baseline = observe(proc.pid)
+        assert baseline.observations["exe_link"] == str(fake)
         fake.unlink()
         time.sleep(0.05)
         current = observe(proc.pid)
@@ -245,6 +250,9 @@ def test_scenario_D_binary_deleted_under_a_live_process(tmp_path):
         assert _sha256_file(str(fake)) != current.observations["exe_sha256"]
     finally:
         _cleanup(proc)
+        proc.wait(timeout=5)
+        proc.stdin.close()
+        proc.stderr.close()
 
 
 @LINUX

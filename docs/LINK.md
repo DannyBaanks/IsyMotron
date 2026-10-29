@@ -65,6 +65,7 @@ isymotron link enviar ──sobre sellado──▶ POST /link/v1/call ──▶ 
 
 - Identidad = par Ed25519 (firma) + X25519 (cifrado); el `office_id` es la huella SHA-256 de la llave pública de firma. Una oficina no puede mentir quién es.
 - Cada llamada va **firmada** (Ed25519) y **cifrada** (X25519 DH → HKDF-SHA256 → AES-128-GCM). Sobre repetido, alterado, viejo o no dirigido a ti: rechazado.
+- El cliente del CLI y la consola verifica también la respuesta sellada y que corresponda al nonce de su solicitud. El resultado procede de ese mensaje autenticado; los campos HTTP sin firmar no sustituyen su contenido.
 - El código de 6 dígitos se deriva de **las dos llaves y los dos nonces** (ordenado): un MITM no puede hacer que ambas pantallas muestren lo mismo.
 - Delegar solo deja la tarea en el inbox de la otra oficina (`queued`). Nunca toca tu sesión ni tus terminales.
 - Recibo en ambos lados de cada delegación: `link_delegated` en quien envía, `link_received` en quien recibe (`~/.local/state/isymotron/link/receipts.jsonl`).
@@ -144,6 +145,11 @@ systemctl --user enable --now isymotron-link.service
 `Restart=on-failure` trae el servidor de vuelta tras un error; sigue editando
 `ExecStart` si `python3`/checkout cambian. Recuerda que `link servir` para el
 estro vivo sigue siendo el que lanza ese comando manualmente.
+
+El unit invoca `python3 -m tools.link_cli servir --red`: ese módulo ya es
+la entrada de Link. Añadir otro `link` antes de `servir` impide arrancar
+con `invalid choice: 'link'`. Si usas el CLI general, la forma equivalente
+es `python3 tools/isymotron_cli.py link servir --red`.
 
 ## Cómo leer lo que ves
 

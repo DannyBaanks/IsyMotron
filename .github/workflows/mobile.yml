@@ -20,7 +20,9 @@ defaults:
 jobs:
   web:
     name: Tests + build
-    runs-on: ubuntu-latest
+    # The pinned Playwright release supports this image; ubuntu-latest moved
+    # to 26.04 before that release acquired browser dependency support.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
