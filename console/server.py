@@ -384,7 +384,12 @@ class ConsoleHandler(http.server.BaseHTTPRequestHandler):
             return self._deny("the avatar token is read-only: the avatar holds "
                               "no authority (R5)", 403)
 
-        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return self._deny("bad Content-Length", 400)
+        if length < 0:
+            return self._deny("bad Content-Length", 400)
         if length > 1_000_000:
             return self._deny("payload too large", 413)
         try:

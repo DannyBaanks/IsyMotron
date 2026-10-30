@@ -89,9 +89,14 @@ class LinkState:
 
     def _rewrite_inbox_unlocked(self, entries: list[dict]) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
-        with open(self.inbox_path(), "w", encoding="utf-8", newline="\n") as handle:
+        # Write-then-replace: a crash mid-write must not truncate the inbox.
+        tmp = self.inbox_path().with_name(self.inbox_path().name + ".tmp")
+        with open(tmp, "w", encoding="utf-8", newline="\n") as handle:
             for entry in entries:
                 handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, self.inbox_path())
 
     def inbox_update(self, task_id: str, office_id: str, mutate) -> dict | None:
         """Read, mutate and rewrite one owned task under one cross-process lock."""
@@ -347,6 +352,10 @@ class _Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             length = 0
+        if length < 0:
+            # read(-1) would block until EOF and pin a handler thread.
+            self._send(400, {"ok": False, "code": "bad_length"})
+            return
         if length > envelope.MAX_BODY_BYTES:
             self._send(413, {"ok": False, "code": "too_large"})
             return
