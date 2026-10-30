@@ -118,9 +118,9 @@ The demo is intentionally short and testable:
 
 The public demonstration video is available here:
 
-**[Watch the real ISyMotron demo on YouTube](https://youtu.be/CXpOxUFJMrI)**
+**[Watch the ISyMotron demo on YouTube](https://youtu.be/eTpDezO8GPA)**
 
-It shows a live plan where Nemotron proposes, the host decides, and receipts record the outcome.
+The video combines earlier console footage with a summary of a separately recorded Nebius and Nemotron run. Its results are preserved in [`evidence/DEMO_VIDEO_2026-10-30/run.json`](evidence/DEMO_VIDEO_2026-10-30/run.json).
 
 ### Hosted demo
 
