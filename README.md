@@ -182,7 +182,7 @@ The product surface is intentionally easy to enter. The deeper guarantees live i
 - [`docs/QUINE_GATE.md`](docs/QUINE_GATE.md) — how receipt verification is reproduced.
 - [`docs/PLATFORM_SUPPORT.md`](docs/PLATFORM_SUPPORT.md) — platform scope and parity.
 - [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — provider seams and local model options.
-- [`web/`](web/) — the optional Next.js control-room frontend. Its dashboard proxy does not authenticate visitors; keep it local and do not connect it to private data on an exposed server. See [`web/README.md`](web/README.md).
+- [`web/`](web/) — the optional Next.js control-room frontend. Its dashboard proxy requires a separate visitor key when connected to a backend; keep it local unless TLS is configured. See [`web/README.md`](web/README.md).
 - [`tests/`](tests/) — contract, host, planner, console and adversarial gates.
 - [`evidence/`](evidence/) — sealed runs and screenshots.
 
