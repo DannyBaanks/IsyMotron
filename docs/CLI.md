@@ -49,6 +49,7 @@ with no escape sequences at all: `ISYMOTRON_MENU=plain`, or `TERM=dumb`.
 | `process` | `observe \| store \| verify` — the Process Verifier (exit 0/1/2) |
 | `evidence` | `verify <manifest.json>` — the `hashes.json` checker |
 | `nemotron` | probe the provider seam (`--provider nebius\|nvidia`, `--models`) |
+| `demo-video` | paced live walkthrough for the hackathon video: Nemotron on Nebius proposes, host ALLOW/DENY, receipts verified (`--pause N`) |
 | `load` | measure provider continuity under load (claim H; `--calls`, `--interval`, `--json`) |
 | `host-watch` | watch host awareness over time (`--seconds`, `--tick`, `--probe`) |
 | `session` | `ver | armar | quitar` — session management (like munder) |

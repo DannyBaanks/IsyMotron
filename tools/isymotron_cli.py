@@ -158,6 +158,12 @@ VERBS: dict[str, Verb] = {
         argv=("tools/nemotron_check.py",),
         entrypoint="tools/nemotron_check.py",
     ),
+    "demo-video": Verb(
+        name="demo-video",
+        summary="paced live walkthrough for the hackathon video (Nemotron on Nebius; --pause N)",
+        argv=("tools/demo_nebius_video.py",),
+        entrypoint="tools/demo_nebius_video.py",
+    ),
     "load": Verb(
         name="load",
         summary="measure provider continuity under load (claim H; writes provider-load/v0)",
