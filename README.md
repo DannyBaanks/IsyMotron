@@ -10,6 +10,7 @@
   [![CI](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml/badge.svg)](https://github.com/DannyBaanks/IsyMotron/actions/workflows/ci.yml)
   [![License: MIT](https://img.shields.io/badge/License-MIT-76B900.svg)](LICENSE)
   [![Releases](https://img.shields.io/github/v/release/DannyBaanks/IsyMotron?include_prereleases&label=releases&color=76B900)](https://github.com/DannyBaanks/IsyMotron/releases)
+  [![Track: Best Apps and Agents](https://img.shields.io/badge/track-Best%20Apps%20%26%20Agents-76B900.svg)](https://nebiusglobalaihackathon.devpost.com/)
 
   <sub>Built for the <a href="https://nebiusglobalaihackathon.devpost.com/">Nebius × NVIDIA Global AI Hackathon</a>.</sub>
 </div>
@@ -189,7 +190,7 @@ The README is the product story. Security contracts, threat boundaries and platf
 
 ## Hackathon alignment
 
-ISyMotron is submitted to the [Nebius × NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). The project is built around the challenge requirements: a working application using an NVIDIA open model through Nebius infrastructure, a public repository, a runnable demo path and a short public demonstration video.
+ISyMotron is submitted to the **Best Apps and Agents** track of the [Nebius × NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). The project is built around the challenge requirements: a working application using an NVIDIA open model through Nebius infrastructure, a public repository, a runnable demo path and a short public demonstration video.
 
 The project uses Nebius Token Factory for live Nemotron planning. Our feedback is grounded in a real application rather than a benchmark: Token Factory gives the planning layer a fast path to an open NVIDIA model, while the host contract keeps the resulting system bounded and inspectable.
 

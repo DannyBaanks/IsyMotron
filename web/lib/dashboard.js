@@ -1,3 +1,14 @@
+function flowCaption(receipt) {
+  const verified = receipt.seal_ok === true;
+  const decision = receipt.decision?.decision;
+  const outcome = decision === "ALLOW" ? "La última solicitud fue permitida" : decision === "DENY" ? "La última solicitud fue rechazada" : "La última solicitud no tiene una decisión reconocida";
+  return {
+    title: verified ? "Recibo verificado" : "Sello pendiente",
+    detail: `${outcome}; ${verified ? "su sello está verificado" : "su sello no está verificado"}.`,
+    verified,
+  };
+}
+
 export function buildDashboardSnapshot(state = {}) {
   const host = state.hosts?.[0];
   const identity = host?.identity ?? {};
@@ -25,6 +36,7 @@ export function buildDashboardSnapshot(state = {}) {
       source: receipt.source ?? null,
       freshness: receipt.freshness ?? null,
       seal: receipt.seal_ok === true ? "SEALED" : "PENDING",
+      flowCaption: flowCaption(receipt),
     })).reverse(),
   };
 }

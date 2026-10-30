@@ -2,6 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildDashboardSnapshot } from "./dashboard.js";
 
+test("a permitted decision without a verified seal never claims it is sealed", () => {
+  const receipt = buildDashboardSnapshot({ receipts: [{ receipt_id: "r1", decision: { decision: "ALLOW" }, seal_ok: false }] }).receipts[0];
+  assert.deepEqual(receipt.flowCaption, {
+    title: "Sello pendiente",
+    detail: "La última solicitud fue permitida; su sello no está verificado.",
+    verified: false,
+  });
+});
+
+test("a verified denial reports both the decision and the verified seal", () => {
+  const receipt = buildDashboardSnapshot({ receipts: [{ decision: { decision: "DENY" }, seal_ok: true }] }).receipts[0];
+  assert.equal(receipt.flowCaption.verified, true);
+  assert.equal(receipt.flowCaption.detail, "La última solicitud fue rechazada; su sello está verificado.");
+});
+
 test("buildDashboardSnapshot maps a host and awareness into the status rail", () => {
   const snapshot = buildDashboardSnapshot({
     hosts: [{
