@@ -95,8 +95,7 @@ The new web control room is designed for people who should not need to understan
 - Malbolgato as a read-only companion that represents the system without pretending to authorize it.
 
 <p align="center">
-  <img src="docs/assets/screenshots/05-desktop-avatar.png" alt="Real ISyMotron desktop avatar and control surface" width="48%" />
-  <img src="evidence/AV4/web_avatar.png" alt="Real ISyMotron web avatar evidence" width="48%" />
+  <img src="evidence/AV4/web_avatar.png" alt="ISyMotron control room showing devices, Malbolgato and a denied request" width="100%" />
 </p>
 
 ### Malbolgato: the companion with a hard boundary
