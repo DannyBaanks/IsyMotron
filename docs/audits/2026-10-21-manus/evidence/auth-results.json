@@ -1,0 +1,5 @@
+{
+  "direct_backend_without_token": 401,
+  "frontend_proxy_without_token_or_cookie": 200,
+  "private_result_exposed": true
+}

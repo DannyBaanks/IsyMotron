@@ -1,0 +1,18 @@
+{
+  "demo_notice": "Estás explorando una vista de demostración\nLos datos de esta pantalla son de ejemplo. Conecta un host para ver actividad real.\nComprobar conexión ↗",
+  "web_mobile_overflow": false,
+  "web_chat_has_composer": false,
+  "web_chat_escape_closes": false,
+  "real_backend_summary": "PROTECCIÓN LOCAL\nActiva y funcionando\nTu equipo decide cada acción\n↗\nTUS EQUIPOS\n0 activos\nVictus (Windows 11) · listo para trabajar\nCAPACIDADES DISPONIBLES\n2 permitidas\nControladas por ti\nRECIBOS VERIFICABLES\n1 registrados\nCada acción deja evidencia",
+  "real_backend_capability": "Leer archivos\nfilesystem.read\nGRANTED\n\nDescripción no disponible en el contrato actual.\n\nAlcance: No especificado\nRiesgo: No especificado",
+  "real_backend_receipts": [
+    "Permitido\nsystem.info\nsystem.info\nVictus (Windows 11)\nrcpt_40595a5aa56c4b8e\nVerificado\nAhora\nDetalle"
+  ],
+  "badseal_caption": "Todo en orden\nLa última decisión fue permitida y quedó sellada.\nrcpt_40595a5aa56c4b8e",
+  "wrong_host_receipt": "Permitido\nsystem.info\nsystem.info\nVictus (Windows 11)\nrcpt_40595a5aa56c4b8e\nPendiente\nAhora\nDetalle",
+  "mobile_left_loading_screen": true,
+  "mobile_loading_forces_navigation_back_to_gus": true,
+  "mobile_load_failure_persists_after_network_restored": "Failed to fetch dynamically imported module: http://127.0.0.1:5181/assets/chat-T8f84jnF.js",
+  "mobile_chunk_requests_before_retry": 1,
+  "web_pageerrors": []
+}
