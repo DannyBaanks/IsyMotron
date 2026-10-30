@@ -56,7 +56,24 @@ export default function Home() {
   const loadDashboard = useCallback(async () => {
     setConnection("checking");
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      const keyName = "isymotron.dashboardKey";
+      const request = () => {
+        const key = window.sessionStorage.getItem(keyName);
+        return fetch("/api/dashboard", { cache: "no-store", headers: key ? { Authorization: `Bearer ${key}` } : {} });
+      };
+      let response = await request();
+      if (response.status === 401) {
+        window.sessionStorage.removeItem(keyName);
+        const entered = window.prompt("Clave de acceso del panel");
+        if (!entered) {
+          setState(demoState);
+          setConnection("demo");
+          return;
+        }
+        window.sessionStorage.setItem(keyName, entered);
+        response = await request();
+        if (response.status === 401) window.sessionStorage.removeItem(keyName);
+      }
       const data = await response.json();
       if (!response.ok) throw new Error(data.reason ?? "No se pudo conectar");
       if (data.hosts?.length) {
