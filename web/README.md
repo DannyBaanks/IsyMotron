@@ -3,6 +3,12 @@
 The `web/` folder is a Next.js App Router surface only. Python remains the
 authority plane; this UI never decides or grants capability.
 
+**Privacy limitation:** `/api/dashboard` does not authenticate its visitor.
+If a backend token is configured, anyone who can reach this Next.js server can
+request the backend state through the proxy. Keep the server on localhost and
+do not expose it to a network or the internet with real data until visitor
+authentication and a restricted response have been implemented and verified.
+
 ## Local run
 
 ```bash
